@@ -59,6 +59,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ======================
 #   User Validations
 # ======================
+def generate_user_id(id):
+    return f'PC2025U{str(id).zfill(3)}'
+
 
 def get_user_by_email(db: Session, email: EmailStr) -> User:
     return db.query(User).filter(User.email == email).first()

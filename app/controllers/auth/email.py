@@ -31,16 +31,37 @@ def send_verification_email(email: str, token: str):
 
         body = f"""
         <html>
-        <body>
-            <h2>Welcome! Please verify your email address</h2>
-            <p>Thank you for signing up. Please click the link below to verify your email address:</p>
-            <p><a href="{verification_link}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Verify Email</a></p>
-            <p>Or copy and paste this link into your browser:</p>
-            <p>{verification_link}</p>
-            <p>This link will expire in 60 minutes.</p>
-            <p>If you didn't create an account, please ignore this email.</p>
-        </body>
-        </html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <h2>Welcome to PropertyCare! Please verify your email address</h2>
+        
+        <p>Thank you for signing up. Please click the link below to verify your email address:</p>
+        
+        <p>
+            <a href="{verification_link}" 
+               style="background-color: #4CAF50; color: white; padding: 10px 20px; 
+                      text-decoration: none; border-radius: 5px;">
+                Verify Email
+            </a>
+        </p>
+        
+        <p>Or copy and paste this link into your browser:</p>
+        <p>{verification_link}</p>
+        
+        <p>This link will expire in 60 minutes.</p>
+        
+        <hr>
+        
+        <h3>About PropertyCare</h3>
+        <p>
+            <strong>PropertyCare</strong> is your trusted partner in seamless property management.
+            Whether you’re an owner, tenant, or agent, our platform helps you track maintenance,
+            handle tenant requests, and keep everything organized—all in one place.
+        </p>
+        
+        <p>If you didn't create an account, please ignore this email.</p>
+    </body>
+</html>
+
         """
 
         msg.attach(MIMEText(body, 'html'))

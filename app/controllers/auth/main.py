@@ -1,7 +1,7 @@
 from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token
 from app.controllers.auth.email import create_verification_token,send_verification_email
 from fastapi import APIRouter
-from app.controllers.auth.utils import get_user_by_email,ACCESS_TOKEN_EXPIRE_MINUTES,REFRESH_TOKEN_EXPIRE_MINUTES
+from app.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_MINUTES,generate_user_id
 from app.validators.auth import User as LoginSchema 
 from app.models.setup import User
 from fastapi import APIRouter, HTTPException, status,Depends,BackgroundTasks
@@ -68,8 +68,11 @@ async def signup(
 
     hashed_password = get_password_hash(user.password)
     token = create_verification_token()
-
+    last_user = db.query(User).order_by(User.id.desc()).first()
+    next_id = last_user.id + 1 if last_user else 1
+    user_id = generate_user_id(next_id)
     new_user = User(
+        user_id=user_id,
         email=user.email,
         hashed_password=hashed_password,
         verification_token=token,
