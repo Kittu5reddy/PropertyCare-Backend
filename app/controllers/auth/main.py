@@ -1,33 +1,58 @@
-from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash
+from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token
 from app.controllers.auth.email import create_verification_token,send_verification_email
 from fastapi import APIRouter
-from app.controllers.auth.utils import get_user_by_email
+from app.controllers.auth.utils import get_user_by_email,ACCESS_TOKEN_EXPIRE_MINUTES,REFRESH_TOKEN_EXPIRE_MINUTES
 from app.validators.auth import User as LoginSchema 
 from app.models.setup import User
 from fastapi import APIRouter, HTTPException, status,Depends,BackgroundTasks
 from app.models.setup import Session,get_db
+from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError,jwt
+
+
+
 auth=APIRouter(prefix='/auth',tags=['auth'])
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 
-@auth.post('/login')
-def login(user: LoginSchema):
-    if user.email == "kaushikpalvai2004@gmail.com" and user.password == "Palvai2004@":
-        payload = {"sub": user.email}
-        access_token = create_access_token(payload)
-        refresh_token = create_refresh_token(payload)
-        return {
-            "message": "Login successful",
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "Bearer"
-        }
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid email or password"
+from passlib.context import CryptContext
+from app.models.setup import Session, get_db
+from fastapi import Depends
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+from fastapi.responses import JSONResponse
+
+@auth.post("/login")
+def login(user: LoginSchema, db: Session = Depends(get_db)):
+    db_user = get_user_by_email(db, user.email)
+    if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    payload = {"sub": user.email}
+    access_token = create_access_token(payload)
+    refresh_token = create_refresh_token(payload)
+
+    response = JSONResponse(content={
+        "message": "Login successful",
+        "access_token": access_token,
+        "token_type": "Bearer"
+    })
+
+    # Set the refresh token as a secure HttpOnly cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,         # Use False if testing over HTTP
+        samesite="strict",   # Or 'lax' or 'none' for cross-site
+        max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_MINUTES,  # 7 days
+        path="/auth/refresh"
     )
+    return response
 
-background_tasks=BackgroundTasks()
+
 from fastapi import BackgroundTasks
 
 @auth.post("/signup")
@@ -92,3 +117,22 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
         <h2>Email verification successful</h2>
         <p>Your email has been verified. You can now log in to your account.</p>
     """, status_code=200)
+
+
+
+from fastapi import Request
+
+@auth.get("/refresh")
+def refresh_token(request: Request):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Missing refresh token")
+    try:
+        user=verify_refresh_token(refresh_token)
+        encode=create_access_token(user)
+        return {
+            "access_token":encode,
+            "type":"Bearer"
+        }
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")

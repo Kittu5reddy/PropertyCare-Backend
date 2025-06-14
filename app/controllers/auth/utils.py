@@ -1,9 +1,9 @@
 # =========================
 #    HELPER FUNCTIONS
 # =========================
-
+from fastapi import HTTPException
 from pydantic import EmailStr
-from jose import jwt
+from jose import jwt,JWTError
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -15,7 +15,9 @@ from app.models.setup import User
 #   Configuration
 # =================
 
-SECRET_KEY = Config.SECRET_KEY
+ACCES_TOKEN_SECRET_KEY = Config.ACCES_TOKEN_SECRET_KEY
+REFRESH_TOKEN_SECRET_KEY = Config.REFRESH_TOKEN_SECRET_KEY
+# SECRET_KEY = Config.SECRET_KEY
 ALGORITHM = Config.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = Config.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_MINUTES = Config.REFRESH_TOKEN_EXPIRE_MINUTES
@@ -29,13 +31,20 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def create_access_token(payload: dict, expires_delta: timedelta = None) -> str:
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     payload.update({"exp": expire})
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, ACCES_TOKEN_SECRET_KEY, algorithm=ALGORITHM)
 
 
 def create_refresh_token(payload: dict, expires_delta: timedelta = None) -> str:
     expire = datetime.utcnow() + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_MINUTES))
     payload.update({"exp": expire})
-    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(payload, REFRESH_TOKEN_SECRET_KEY, algorithm=ALGORITHM)
+
+def verify_refresh_token(token: str):
+    try:
+        payload = jwt.decode(token, REFRESH_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        raise HTTPException(401,detail="tamperd")
 
 # ======================
 #   Password Functions
