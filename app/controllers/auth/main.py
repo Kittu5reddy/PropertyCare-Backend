@@ -110,8 +110,8 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
         return HTMLResponse(content="""
             <h2>Email already verified</h2>
             <p>You can now log in to your account.</p>
+               
         """, status_code=200)
-
     user.is_verified = True
     user.verification_token = None  # Optional: Clear token after verification
     db.commit()
@@ -119,6 +119,7 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
     return HTMLResponse(content="""
         <h2>Email verification successful</h2>
         <p>Your email has been verified. You can now log in to your account.</p>
+         <a href="http://localhost:5173/login">Click Here</a>
     """, status_code=200)
 
 
@@ -139,3 +140,11 @@ def refresh_token(request: Request):
         }
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+
+
+@auth.get('/logout')
+def logout(request:Request):
+    request.cookies.clear()
+    return {'message':'logouted'}
+
