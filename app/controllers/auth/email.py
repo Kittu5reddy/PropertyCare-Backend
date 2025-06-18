@@ -4,14 +4,14 @@ import smtplib
 import secrets
 import os
 from dotenv import load_dotenv
-
+from config import Config
 load_dotenv()  # Load environment variables
 
 # Email configuration
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-EMAIL_ADDRESS = "kaushikpalvai2004@gmail.com"
-EMAIL_PASSWORD = "qtca zitr naez ilip"
+SMTP_SERVER = Config.SMTP_SERVER
+SMTP_PORT = Config.SMTP_PORT
+EMAIL_ADDRESS = Config.EMAIL_ADDRESS
+EMAIL_PASSWORD = Config.EMAIL_PASSWORD
 
 
 

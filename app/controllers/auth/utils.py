@@ -6,11 +6,12 @@ from pydantic import EmailStr
 from jose import jwt,JWTError
 from datetime import datetime, timedelta
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
-
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from jose import JWTError,jwt
 from config import Config
-from app.models.setup import User
-
+from app.models.users import User
+from fastapi import status
 # =================
 #   Configuration
 # =================
@@ -20,7 +21,7 @@ REFRESH_TOKEN_SECRET_KEY = Config.REFRESH_TOKEN_SECRET_KEY
 # SECRET_KEY = Config.SECRET_KEY
 ALGORITHM = Config.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = Config.ACCESS_TOKEN_EXPIRE_MINUTES
-REFRESH_TOKEN_EXPIRE_MINUTES = Config.REFRESH_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = Config.REFRESH_TOKEN_EXPIRE_DAYS
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -35,7 +36,7 @@ def create_access_token(payload: dict, expires_delta: timedelta = None) -> str:
 
 
 def create_refresh_token(payload: dict, expires_delta: timedelta = None) -> str:
-    expire = datetime.utcnow() + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.utcnow() + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
     payload.update({"exp": expire})
     return jwt.encode(payload, REFRESH_TOKEN_SECRET_KEY, algorithm=ALGORITHM)
 
@@ -60,14 +61,47 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 #   User Validations
 # ======================
 def generate_user_id(id):
-    return f'PC2025U{str(id).zfill(3)}'
+    return f'PC{datetime.utcnow().year}U{str(id).zfill(3)}'
+def generate_employee_id(id):
+    return f'PC{datetime.utcnow().year}E{str(id).zfill(3)}'
+def generate_employee_superviser_id(id):
+    return f'PC{datetime.utcnow().year}S{str(id).zfill(3)}'
+def generate_employee_admin_id(id):
+    return f'PC{datetime.utcnow().year}A{str(id).zfill(3)}'
 
 
-def get_user_by_email(db: Session, email: EmailStr) -> User:
-    return db.query(User).filter(User.email == email).first()
+async def get_user_by_email(db: AsyncSession, email: EmailStr) -> User:
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
 
-def get_user_by_verification_token(db: Session, token: str) -> User:
-    return db.query(User).filter(User.verification_token == token).first()
+async def get_user_by_verification_token(db: AsyncSession, token: str) -> User:
+    result = await db.execute(select(User).where(User.verification_token == token))
+    return result.scalar_one_or_none()
+
+
+
+
+
+
+
+
+
+
+async def get_current_user(token: str, db: AsyncSession):
+    try:
+        payload = jwt.decode(token, ACCES_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    result = await db.execute(select(User).where(User.user_name == username))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user
 
 # =================
 #   Example usage

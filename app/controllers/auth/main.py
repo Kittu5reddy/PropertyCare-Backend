@@ -1,32 +1,30 @@
 from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token
 from app.controllers.auth.email import create_verification_token,send_verification_email
-from fastapi import APIRouter
-from app.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_MINUTES,generate_user_id
+from fastapi import APIRouter,Request
+from app.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
 from app.validators.auth import User as LoginSchema 
-from app.models.setup import User
-from fastapi import APIRouter, HTTPException, status,Depends,BackgroundTasks
-from app.models.setup import Session,get_db
+from app.models.users import User
+from fastapi import APIRouter, HTTPException,Depends,BackgroundTasks
+from app.controllers.forms.utils import create_user_directory
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError,jwt
-
-
+from fastapi.responses import HTMLResponse
 
 auth=APIRouter(prefix='/auth',tags=['auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-
-
 from passlib.context import CryptContext
-from app.models.setup import Session, get_db
+from app.models import get_db,AsyncSession
 from fastapi import Depends
+from sqlalchemy import select, desc
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 from fastapi.responses import JSONResponse
 
 @auth.post("/login")
-def login(user: LoginSchema, db: Session = Depends(get_db)):
-    db_user = get_user_by_email(db, user.email)
+async def login(user: LoginSchema, db: AsyncSession = Depends(get_db)):
+    db_user = await get_user_by_email(db, user.email)
     if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -47,7 +45,7 @@ def login(user: LoginSchema, db: Session = Depends(get_db)):
         httponly=True,
         secure=False,         # Use False if testing over HTTP
         samesite="strict",   # Or 'lax' or 'none' for cross-site
-        max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_MINUTES,  # 7 days
+        max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,  # 7 days
         path="/auth/refresh"
     )
     return response
@@ -59,18 +57,22 @@ from fastapi import BackgroundTasks
 async def signup(
     user: LoginSchema,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
 
-    db_user = get_user_by_email(db, user.email)
+    db_user = await get_user_by_email(db, user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already exists")
 
     hashed_password = get_password_hash(user.password)
     token = create_verification_token()
-    last_user = db.query(User).order_by(User.id.desc()).first()
+    
+    # Get the last user ID using async query
+    result = await db.execute(select(User).order_by(desc(User.id)).limit(1))
+    last_user = result.scalar_one_or_none()
     next_id = last_user.id + 1 if last_user else 1
     user_id = generate_user_id(next_id)
+    
     new_user = User(
         user_id=user_id,
         email=user.email,
@@ -79,9 +81,9 @@ async def signup(
         is_verified=False
     )
     db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-
+    await db.commit()
+    await db.refresh(new_user)
+    await create_user_directory(user_id)
     background_tasks.add_task(
         send_verification_email,
         new_user.email,
@@ -94,13 +96,13 @@ async def signup(
     }
 
 
-from fastapi import Request
-from fastapi.responses import HTMLResponse
-
 @auth.get("/verify-email", response_class=HTMLResponse)
-async def verify_email(token: str, db: Session = Depends(get_db)):
-
-    user = db.query(User).filter(User.verification_token == token).first()
+async def verify_email(token: str,
+                        db: AsyncSession = Depends(get_db)):
+    # Use async query to find user by verification token
+    result = await db.execute(select(User).where(User.verification_token == token))
+    user = result.scalar_one_or_none()
+    
     if not user:
         return HTMLResponse(content="""
             <h2>Invalid or expired token</h2>
@@ -114,7 +116,7 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
         """, status_code=200)
     user.is_verified = True
     user.verification_token = None  # Optional: Clear token after verification
-    db.commit()
+    await db.commit()
 
     return HTMLResponse(content="""
         <h2>Email verification successful</h2>
@@ -123,11 +125,8 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
     """, status_code=200)
 
 
-
-from fastapi import Request
-
 @auth.get("/refresh")
-def refresh_token(request: Request):
+async def refresh_token(request: Request):
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Missing refresh token")
@@ -141,10 +140,9 @@ def refresh_token(request: Request):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
+from fastapi import Response
 
-
-@auth.get('/logout')
-def logout(request:Request):
-    request.cookies.clear()
-    return {'message':'logouted'}
-
+@auth.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token")  # or whatever your cookie name is
+    return {"message": "Logged out"}
