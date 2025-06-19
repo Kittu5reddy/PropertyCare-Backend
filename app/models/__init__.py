@@ -1,5 +1,5 @@
 from sqlalchemy.orm import declarative_base
-
+from config import Config
 Base=declarative_base()
 from .users import User
 from .personal_details import PCUser
@@ -12,9 +12,9 @@ DATABASE_URL = "postgresql+asyncpg://postgres:kaushik@localhost:5432/Propertycar
 engine = create_async_engine(
     DATABASE_URL,
     echo=True,
-    pool_size=10,
-    max_overflow=20,
-    pool_timeout=30,
+    pool_size=Config.POOL_SIZE,
+    max_overflow=Config.MAX_OVERFLOW,
+    pool_timeout=Config.POOL_TIME_OUT,
 )
 
 async def init_models():

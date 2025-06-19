@@ -83,7 +83,7 @@ async def signup(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
-    await create_user_directory(user_id)
+    
     background_tasks.add_task(
         send_verification_email,
         new_user.email,
@@ -117,6 +117,7 @@ async def verify_email(token: str,
     user.is_verified = True
     user.verification_token = None  # Optional: Clear token after verification
     await db.commit()
+    await create_user_directory(user.user_id)
 
     return HTMLResponse(content="""
         <h2>Email verification successful</h2>
