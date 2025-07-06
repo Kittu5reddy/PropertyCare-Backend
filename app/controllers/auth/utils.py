@@ -9,19 +9,19 @@ from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError,jwt
-from config import Config
+from config import settings
 from app.models.users import User
 from fastapi import status
 # =================
-#   Configuration
+#   settingsuration
 # =================
 
-ACCES_TOKEN_SECRET_KEY = Config.ACCES_TOKEN_SECRET_KEY
-REFRESH_TOKEN_SECRET_KEY = Config.REFRESH_TOKEN_SECRET_KEY
-# SECRET_KEY = Config.SECRET_KEY
-ALGORITHM = Config.ALGORITHM
-ACCESS_TOKEN_EXPIRE_MINUTES = Config.ACCESS_TOKEN_EXPIRE_MINUTES
-REFRESH_TOKEN_EXPIRE_DAYS = Config.REFRESH_TOKEN_EXPIRE_DAYS
+ACCES_TOKEN_SECRET_KEY = settings.ACCESS_TOKEN_SECRET_KEY
+REFRESH_TOKEN_SECRET_KEY = settings.REFRESH_TOKEN_SECRET_KEY
+# SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

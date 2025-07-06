@@ -9,7 +9,7 @@ from pathlib import Path
 import os
 import shutil
 from app.controllers.forms.utils import create_user_directory, get_file_name,save_file,log_upload  # adjust import as needed
-from config import Config
+from config import settings
 from app.validators.forms import PCFORM
 form=APIRouter(prefix='/form',tags=['form'])
 

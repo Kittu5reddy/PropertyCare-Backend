@@ -122,7 +122,7 @@ async def verify_email(token: str,
     return HTMLResponse(content="""
         <h2>Email verification successful</h2>
         <p>Your email has been verified. You can now log in to your account.</p>
-         <a href="http://localhost:5173/login">Click Here</a>
+         <a href="http://localhost:3000/login">Click Here</a>
     """, status_code=200)
 
 

@@ -4,14 +4,14 @@ import smtplib
 import secrets
 import os
 from dotenv import load_dotenv
-from config import Config
+from config import settings
 load_dotenv()  # Load environment variables
 
-# Email configuration
-SMTP_SERVER = Config.SMTP_SERVER
-SMTP_PORT = Config.SMTP_PORT
-EMAIL_ADDRESS = Config.EMAIL_ADDRESS
-EMAIL_PASSWORD = Config.EMAIL_PASSWORD
+# Email settingsuration
+SMTP_SERVER = settings.SMTP_SERVER
+SMTP_PORT = settings.SMTP_PORT
+EMAIL_ADDRESS = settings.EMAIL_ADDRESS
+EMAIL_PASSWORD = settings.EMAIL_PASSWORD
 
 
 
