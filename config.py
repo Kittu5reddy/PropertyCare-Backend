@@ -2,10 +2,11 @@ import os
 from typing import List
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
-
+from fastapi import Field
 # Load the correct .env file
 env = os.getenv("ENV", "dev")
 load_dotenv(f".env.{env}")
+load_dotenv()
 
 class Settings(BaseSettings):
     # JWT
@@ -14,15 +15,15 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
-
+    ALLOWED_PDF_EXTENSIONS: List[str] = Field(default_factory=list)
+    ALLOWED_IMAGE_EXTENSIONS: List[str] = Field(default_factory=list)
+    ALLOWED_VIDEO_EXTENSIONS: List[str] = Field(default_factory=list)
     # File Config
     BASE_DOCUMENT_PATH: str
     MAX_SIZE_PDF: int
     MAX_SIZE_IMAGE: int
     MAX_SIZE_VIDEO: int
-    ALLOWED_PDF_EXTENSIONS: List[str]
-    ALLOWED_IMAGE_EXTENSIONS: List[str]
-    ALLOWED_VIDEO_EXTENSIONS: List[str]
+
     SUBFOLDERS: dict[str, str] = {
         "aadhar": "aadhar",
         "pan": "pan",
@@ -40,7 +41,7 @@ class Settings(BaseSettings):
     POOL_SIZE: int = 10
     MAX_OVERFLOW: int = 20
     POOL_TIME_OUT: int = 30
-
+    DATABASE_URL: str  # ✅ Add this line
     # Email
     SMTP_SERVER: str
     SMTP_PORT: int
@@ -48,11 +49,6 @@ class Settings(BaseSettings):
     EMAIL_PASSWORD: str
     EMAIL_URL: str
 
-    # Computed property
-    @property
-    def DATABASE_URL(self):
-        encoded_password = self.PASSWORD.replace("@", "%40")
-        return f"postgresql+asyncpg://{self.USERNAME}:{encoded_password}@{self.HOST_NAME}:{self.PORT_ID}/{self.DATABASE_NAME}"
 
     class Config:
         env_file = f".env.{env}"
