@@ -49,7 +49,7 @@ class Settings(BaseSettings):
 
 
     class Config:
-        env_file = f".env.{env}"
+        env_file = f".env"
         case_sensitive = True
 
 settings = Settings()
