@@ -27,7 +27,7 @@ def send_verification_email(email: str, token: str):
         msg['To'] = email
         msg['Subject'] = "Verify Your Email Address"
 
-        verification_link = f"http://127.0.0.1:8000/auth/verify-email?token={token}"
+        verification_link = f"https://propertycare-backend.onrender.com/auth/verify-email?token={token}"
 
         body = f"""
         <html>
