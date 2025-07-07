@@ -2,7 +2,9 @@ import os
 from typing import List
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
-from fastapi import Field
+
+from pydantic import BaseSettings, Field
+
 # Load the correct .env file
 env = os.getenv("ENV", "dev")
 load_dotenv(f".env.{env}")
