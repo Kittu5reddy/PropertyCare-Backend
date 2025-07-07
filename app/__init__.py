@@ -5,7 +5,7 @@ from app.controllers.forms.main import form
 
 def create_app():
     app = FastAPI()
-    allow_origins=["http://localhost:3000"]
+    allow_origins=["http://localhost:3000","https://propertycare-nine.vercel.app"]
 
     # CORS configuration
     app.add_middleware(

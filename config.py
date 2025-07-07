@@ -4,8 +4,7 @@ from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
 # Load the correct .env file
-env = os.getenv("ENV", "dev")
-load_dotenv(f".env.{env}")
+
 load_dotenv()
 class Settings(BaseSettings):
     # JWT
