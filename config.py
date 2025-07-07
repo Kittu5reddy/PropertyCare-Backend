@@ -2,7 +2,6 @@ import os
 from typing import List
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
-from fastapi import Field
 from pydantic import  Field
 
 # Load the correct .env file
