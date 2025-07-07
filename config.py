@@ -4,6 +4,7 @@ from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
 # Load the correct .env file
+env = f".env"
 
 load_dotenv()
 class Settings(BaseSettings):
@@ -49,7 +50,7 @@ class Settings(BaseSettings):
 
 
     class Config:
-        env_file = f".env"
+        env_file = f".env.{env}"
         case_sensitive = True
 
 settings = Settings()
