@@ -22,7 +22,7 @@ DATABASE_NAME="kaushik"
 USERNAME="kaushik_user"
 PASSWORD="9wEDihstcFS4ytxyqOpQofJo8JpiehM2"
 PORT_ID=5432
-DATABASE_URL="postgresql+asyncpg://kaushik_user:9wEDihstcFS4ytxyqOpQofJo8JpiehM2@dpg-d1l6ofemcj7s73brmicg-a.oregon-postgres.render.com:5432/kaushik?sslmode=require"
+DATABASE_URL="postgresql+asyncpg://kaushik_user:9wEDihstcFS4ytxyqOpQofJo8JpiehM2@dpg-d1l6ofemcj7s73brmicg-a.oregon-postgres.render.com:5432/kaushik"
 
 # Email Config
 SMTP_SERVER="smtp.gmail.com"

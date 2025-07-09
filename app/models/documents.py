@@ -6,7 +6,7 @@ class Documents(Base):
     __tablename__ = "Documents"
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     document_id:Mapped[str] = mapped_column(String(50))
-    user_id: Mapped[str] = mapped_column(String(50),ForeignKey("user.id"))
+    user_id: Mapped[str] = mapped_column(String(50),ForeignKey("user.user_id"))
     document_name:Mapped[str] = mapped_column(String(50))
     document_path:Mapped[str] = mapped_column(String(50))
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -6,7 +6,7 @@ from sqlalchemy import Column, Integer, String, DateTime, func
 
 class PersonalDetails(Base):
     __tablename__ = "personal_details"
-    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("users.id"))
+    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("users.user_id"))
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     first_name: Mapped[str] = mapped_column(String(50),nullable=False)
     last_name: Mapped[str] = mapped_column(String(50),nullable=False)

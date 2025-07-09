@@ -1,5 +1,6 @@
 from sqlalchemy.orm import declarative_base
 from config import settings
+from typing import AsyncGenerator
 Base=declarative_base()
 from .users import User
 from .personal_details import PersonalDetails
@@ -29,6 +30,6 @@ async def init_models():
 AsyncSessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
