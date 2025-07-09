@@ -22,7 +22,7 @@ DATABASE_NAME="kaushik"
 USERNAME="kaushik_user"
 PASSWORD="9wEDihstcFS4ytxyqOpQofJo8JpiehM2"
 PORT_ID=5432
-DATABASE_URL="postgresql+asyncpg://kaushik_user:9wEDihstcFS4ytxyqOpQofJo8JpiehM2@dpg-d1l6ofemcj7s73brmicg-a.oregon-postgres.render.com:5432/kaushik?sslmode=require"
+DATABASE_URL="postgresql+asyncpg://kaushik_user:9wEDihstcFS4ytxyqOpQofJo8JpiehM2@dpg-d1l6ofemcj7s73brmicg-a.oregon-postgres.render.com:5432/kaushik"
 
 # Email Config
 SMTP_SERVER="smtp.gmail.com"
@@ -30,3 +30,10 @@ SMTP_PORT=587
 EMAIL_ADDRESS="kaushikpalvai2004@gmail.com"
 EMAIL_PASSWORD="qtca zitr naez ilip"
 EMAIL_URL="78135"
+
+
+IMAGE_KIT_PRIVATE_KEY='private_I6kp25QT2H9JRHRDs9XUZ7CHesk='
+IMAGE_KIT_PUBLIC_KEY='public_ukY2o7Okcgb4/ANIoGKtg1dU4ww='
+IMAGE_URL_END_POINT='https://ik.imagekit.io/propcare1'
+
+

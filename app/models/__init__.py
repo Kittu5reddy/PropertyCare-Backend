@@ -1,8 +1,9 @@
 from sqlalchemy.orm import declarative_base
 from config import settings
+from typing import AsyncGenerator
 Base=declarative_base()
 from .users import User
-from .personal_details import PCUser
+from .personal_details import PersonalDetails
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base
 from app.models import Base
@@ -17,6 +18,10 @@ engine = create_async_engine(
     pool_timeout=settings.POOL_TIME_OUT,
 )
 
+
+
+
+
 async def init_models():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -25,6 +30,6 @@ async def init_models():
 AsyncSessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session

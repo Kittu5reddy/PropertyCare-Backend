@@ -1,17 +1,10 @@
 from app import create_app
+from app.models import engine, Base
 import uvicorn
+from app.models import init_models
 
 app=create_app()
-from app.controllers.auth.utils import create_access_token
-
 import asyncio
-from app.models import engine, Base
-
-
-async def init_models():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("✅ Tables created.")
 
 
 
