@@ -2,7 +2,7 @@ from sqlalchemy.orm import declarative_base
 from config import settings
 Base=declarative_base()
 from .users import User
-from .personal_details import PCUser
+from .personal_details import PersonalDetails
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base
 from app.models import Base
@@ -16,6 +16,10 @@ engine = create_async_engine(
     max_overflow=settings.MAX_OVERFLOW,
     pool_timeout=settings.POOL_TIME_OUT,
 )
+
+
+
+
 
 async def init_models():
     async with engine.begin() as conn:

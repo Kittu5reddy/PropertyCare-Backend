@@ -30,3 +30,10 @@ SMTP_PORT=587
 EMAIL_ADDRESS="kaushikpalvai2004@gmail.com"
 EMAIL_PASSWORD="qtca zitr naez ilip"
 EMAIL_URL="78135"
+
+
+IMAGE_KIT_PRIVATE_KEY='private_I6kp25QT2H9JRHRDs9XUZ7CHesk='
+IMAGE_KIT_PUBLIC_KEY='public_ukY2o7Okcgb4/ANIoGKtg1dU4ww='
+IMAGE_URL_END_POINT='https://ik.imagekit.io/propcare1'
+
+

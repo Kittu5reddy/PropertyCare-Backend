@@ -9,14 +9,16 @@ from app.controllers.forms.utils import create_user_directory
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError,jwt
 from fastapi.responses import HTMLResponse
-
-auth=APIRouter(prefix='/auth',tags=['auth'])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
+from fastapi import Response
 from passlib.context import CryptContext
 from app.models import get_db,AsyncSession
 from fastapi import Depends
 from sqlalchemy import select, desc
+from fastapi import BackgroundTasks
+
+auth=APIRouter(prefix='/auth',tags=['auth'])
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -51,7 +53,6 @@ async def login(user: LoginSchema, db: AsyncSession = Depends(get_db)):
     return response
 
 
-from fastapi import BackgroundTasks
 
 @auth.post("/signup")
 async def signup(
@@ -141,7 +142,6 @@ async def refresh_token(request: Request):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
-from fastapi import Response
 
 @auth.post("/logout")
 async def logout(response: Response):

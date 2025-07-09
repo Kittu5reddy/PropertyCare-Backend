@@ -3,10 +3,9 @@ from typing import List
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
-# Load the correct .env file
-env = f".env"
-
+# Load environment variables from .env file
 load_dotenv()
+
 class Settings(BaseSettings):
     # JWT
     REFRESH_TOKEN_SECRET_KEY: str
@@ -49,8 +48,13 @@ class Settings(BaseSettings):
     EMAIL_URL: str
 
 
+    
+    IMAGE_KIT_PRIVATE_KEY:str
+    IMAGE_KIT_PUBLIC_KEY:str
+    IMAGE_URL_END_POINT:str
+
     class Config:
-        env_file = f".env.{env}"
+        env_file = ".env"
         case_sensitive = True
 
 settings = Settings()
