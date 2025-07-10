@@ -11,7 +11,7 @@ SMTP_SERVER = settings.SMTP_SERVER
 SMTP_PORT = settings.SMTP_PORT
 EMAIL_ADDRESS = settings.EMAIL_ADDRESS
 EMAIL_PASSWORD = settings.EMAIL_PASSWORD
-
+PATH=settings.EMAIL_TOKEN_VERIFICATION
 
 
 def create_verification_token():
@@ -26,7 +26,7 @@ def send_verification_email(email: str, token: str):
         msg['To'] = email
         msg['Subject'] = "Verify Your Email Address"
 
-        verification_link = f"https://propertycare-backend.onrender.com/auth/verify-email?token={token}"
+        verification_link = f"{PATH}/auth/verify-email?token={token}"
 
         body = f"""
         <html>

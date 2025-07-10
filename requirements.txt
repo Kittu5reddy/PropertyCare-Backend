@@ -6,6 +6,7 @@ asyncpg==0.29.0
 bcrypt==3.2.0
 certifi==2025.4.26
 cffi==1.17.1
+charset-normalizer==3.4.2
 click==8.2.1
 colorama==0.4.6
 cryptography==45.0.4
@@ -20,6 +21,7 @@ httpcore==1.0.9
 httptools==0.6.4
 httpx==0.28.1
 idna==3.10
+imagekitio==4.1.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
 markdown-it-py==3.0.0
@@ -40,6 +42,8 @@ python-dotenv==1.1.0
 python-jose==3.5.0
 python-multipart==0.0.20
 PyYAML==6.0.2
+requests==2.32.4
+requests-toolbelt==0.10.1
 rich==14.0.0
 rich-toolkit==0.14.7
 rsa==4.9.1
@@ -52,6 +56,7 @@ typer==0.16.0
 typing-inspection==0.4.1
 typing_extensions==4.14.0
 ujson==5.10.0
+urllib3==1.26.20
 uvicorn==0.34.3
 watchfiles==1.0.5
 websockets==15.0.1

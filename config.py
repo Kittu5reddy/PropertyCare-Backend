@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+load_dotenv('.env.dev')
 
 class Settings(BaseSettings):
     # JWT
@@ -19,9 +20,8 @@ class Settings(BaseSettings):
     MAX_SIZE_PDF: int
     MAX_SIZE_IMAGE: int
     MAX_SIZE_VIDEO: int
-    # ALLOWED_PDF_EXTENSIONS: List[str] = [".pdf"]
-    # ALLOWED_IMAGE_EXTENSIONS: List[str] = [".jpg", ".jpeg", ".png", ".gif"]
-    # ALLOWED_VIDEO_EXTENSIONS: List[str] = [".mp4", ".mov", ".avi", ".mkv"]
+
+
     SUBFOLDERS: dict[str, str] = {
         "aadhar": "aadhar",
         "pan": "pan",
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     EMAIL_ADDRESS: str
     EMAIL_PASSWORD: str
     EMAIL_URL: str
-
+    EMAIL_TOKEN_VERIFICATION:str
 
     
     IMAGE_KIT_PRIVATE_KEY:str
