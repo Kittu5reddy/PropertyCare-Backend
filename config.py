@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
-load_dotenv('.env.dev')
+# load_dotenv('.env.dev')
 
 class Settings(BaseSettings):
     # JWT
