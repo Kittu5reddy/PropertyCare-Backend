@@ -7,6 +7,7 @@ dotenv.load_dotenv('.env.prod')
 
 def check_db_connection():
     conn=0
+    user=0
     try:
         conn = psycopg2.connect(
     dbname=os.getenv('DATABASE_NAME'),
@@ -15,6 +16,7 @@ def check_db_connection():
     host=os.getenv('HOST_NAME'),
     port=os.getenv('PORT_ID')  # ✅ NOT quoted
 )
+        print(os.getenv('USERNAME'))
         print("✅ Connection successful")
     except Exception as e:
         print("❌ Connection failed:", e)

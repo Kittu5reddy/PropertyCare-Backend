@@ -25,11 +25,38 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 from fastapi.responses import JSONResponse
 
 @auth.post("/login")
-async def login(user: LoginSchema, db: AsyncSession = Depends(get_db)):
+async def login(
+    user: LoginSchema,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
     db_user = await get_user_by_email(db, user.email)
+
+    # Check if user exists and password is correct
     if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # If user is not verified, resend verification email
+    if not db_user.is_verified:
+        # If token is None (maybe cleared previously), regenerate and update
+        if not db_user.verification_token:
+            db_user.verification_token = create_verification_token()
+            await db.commit()
+            await db.refresh(db_user)
+
+        # Send email in background
+        background_tasks.add_task(
+            send_verification_email,
+            db_user.email,
+            db_user.verification_token
+        )
+
+        raise HTTPException(
+            status_code=403,
+            detail="Email not verified. A new verification email has been sent."
+        )
+
+    # Generate tokens
     payload = {"sub": user.email}
     access_token = create_access_token(payload)
     refresh_token = create_refresh_token(payload)
@@ -40,14 +67,14 @@ async def login(user: LoginSchema, db: AsyncSession = Depends(get_db)):
         "token_type": "Bearer"
     })
 
-    # Set the refresh token as a secure HttpOnly cookie
+    # Set refresh token as secure cookie
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,         # Use False if testing over HTTP
-        samesite="strict",   # Or 'lax' or 'none' for cross-site
-        max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,  # 7 days
+        secure=False,
+        samesite="strict",
+        max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,
         path="/auth/refresh"
     )
     return response
@@ -127,7 +154,7 @@ async def verify_email(token: str,
     """, status_code=200)
 
 
-@auth.get("/refresh")
+@auth.post("/refresh")
 async def refresh_token(request: Request):
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:

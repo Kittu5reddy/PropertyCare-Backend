@@ -22,7 +22,7 @@ from config import settings
 imagekit=ImageKit(public_key=settings.IMAGE_KIT_PUBLIC_KEY,private_key=settings.IMAGE_KIT_PRIVATE_KEY,url_endpoint=settings.IMAGE_URL_END_POINT)
 
 
-def create_user_directory(user_id: str):
+async def create_user_directory(user_id: str):
     base_folder = f"user/{user_id}/"
     
     SUBFOLDERS: dict[str, str] = {
@@ -56,4 +56,4 @@ def create_user_directory(user_id: str):
         )
 
     return results
-create_user_directory("2002")
+
