@@ -76,3 +76,24 @@ async def check_username(
         raise HTTPException(status_code=400, detail="Username already exists")
     
     return {"available": True}
+
+@form.get("/check-phonenumber/{phonenumber}")
+async def check_phonenumber(
+    phonenumber: str,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # Decode token to ensure it's valid
+        payload = get_current_user(token,db)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Now query the DB
+    result = await db.execute(select(PersonalDetails).where(PersonalDetails.contact_number == phonenumber))
+    existing = result.scalar_one_or_none()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="phone_number  already exists")
+    
+    return {"available": True}

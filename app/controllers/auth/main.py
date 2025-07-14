@@ -72,7 +72,7 @@ async def login(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
+        secure=True,
         samesite="strict",
         max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,
         path="/auth/refresh"
@@ -156,6 +156,7 @@ async def verify_email(token: str,
 
 @auth.post("/refresh")
 async def refresh_token(request: Request):
+    print(request)
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Missing refresh token")
