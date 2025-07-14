@@ -43,9 +43,13 @@ def create_refresh_token(payload: dict, expires_delta: timedelta = None) -> str:
 def verify_refresh_token(token: str):
     try:
         payload = jwt.decode(token, REFRESH_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
+        email = payload.get("sub")
+        if email is None:
+            raise HTTPException(401, detail="Invalid refresh token payload")
+        return {"sub": email}
     except JWTError:
-        raise HTTPException(401,detail="tamperd")
+        raise HTTPException(401, detail="Invalid or tampered refresh token")
+
 
 # ======================
 #   Password Functions

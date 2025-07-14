@@ -60,7 +60,7 @@ async def login(
     payload = {"sub": user.email}
     access_token = create_access_token(payload)
     refresh_token = create_refresh_token(payload)
-
+ 
     response = JSONResponse(content={
         "message": "Login successful",
         "access_token": access_token,
@@ -69,14 +69,15 @@ async def login(
 
     # Set refresh token as secure cookie
     response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="strict",
-        max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,
-        path="/auth/refresh"
-    )
+    key="refresh_token",
+    value=refresh_token,
+    httponly=True,
+    secure=True,  # ✅ IMPORTANT: Required for samesite="none"
+    samesite="none",  # ✅ Required for cross-origin
+    max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,
+    path="/auth/refresh"
+)
+
     return response
 
 
@@ -152,22 +153,24 @@ async def verify_email(token: str,
         <p>Your email has been verified. You can now log in to your account.</p>
          <a href="https://propertycare-nine.vercel.app/login">Click Here</a>
     """, status_code=200)
-
-
 @auth.post("/refresh")
 async def refresh_token(request: Request):
-    print(request)
     refresh_token = request.cookies.get("refresh_token")
+    print("Got refresh_token from cookie:", refresh_token)
+
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Missing refresh token")
+
     try:
-        user=verify_refresh_token(refresh_token)
-        encode=create_access_token(user)
+        payload = verify_refresh_token(refresh_token)
+        print("Decoded payload:", payload)
+        access_token = create_access_token(payload)
         return {
-            "access_token":encode,
-            "type":"Bearer"
+            "access_token": access_token,
+            "type": "Bearer"
         }
-    except JWTError:
+    except JWTError as e:
+        print("Refresh token invalid:", e)
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
 
