@@ -45,9 +45,16 @@ def verify_refresh_token(token: str):
         payload = jwt.decode(token, REFRESH_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
         if email is None:
-            raise HTTPException(401, detail="Invalid refresh token payload")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token payload"
+            )
         return {"sub": email}
-    except JWTError:
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token"
+        )
         raise HTTPException(401, detail="Invalid or tampered refresh token")
 
 

@@ -154,23 +154,35 @@ async def verify_email(token: str,
          <a href="https://propertycare-nine.vercel.app/login">Click Here</a>
     """, status_code=200)
 @auth.post("/refresh")
-async def refresh_token(request: Request):
+async def refresh_token(request: Request, response: Response):
     refresh_token = request.cookies.get("refresh_token")
-    print("Got refresh_token from cookie:", refresh_token)
-
+    
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Missing refresh token")
 
     try:
         payload = verify_refresh_token(refresh_token)
-        print("Decoded payload:", payload)
         access_token = create_access_token(payload)
+        
+        # Also refresh the refresh token
+        new_refresh_token = create_refresh_token(payload)
+        
+        # Set the new refresh token
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,
+            path="/auth/refresh"
+        )
+        
         return {
             "access_token": access_token,
             "type": "Bearer"
         }
     except JWTError as e:
-        print("Refresh token invalid:", e)
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
 
