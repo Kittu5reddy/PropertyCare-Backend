@@ -47,29 +47,6 @@ async def submit(
     await db.commit()
     await db.refresh(user)  # to get auto-generated fields if any
 
-    # # Upload documents to ImageKit
-    # documents = data.get("documents", {})
-
-    # if documents.get("profile_photo_filename"):
-    #     await upload_documents(
-    #         file=documents["profile_photo_filename"],
-    #         category="profile",
-    #         user_id=current_user_id
-    #     )
-
-    # if documents.get("pan_doc_filename"):
-    #     await upload_documents(
-    #         file=documents["pan_doc_filename"],
-    #         category="pan",
-    #         user_id=current_user_id
-    #     )
-
-    # if documents.get("aadhaar_doc_filename"):
-    #     await upload_documents(
-    #         file=documents["aadhaar_doc_filename"],
-    #         category="aadhaar",
-    #         user_id=current_user_id
-    #     )
 
     return {
         "message": "Data received and processed successfully",

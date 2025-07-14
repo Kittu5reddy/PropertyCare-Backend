@@ -1,12 +1,6 @@
-from fastapi import Form, File, UploadFile
-from typing import Annotated, Optional
-from enum import Enum
-from app.controllers.forms.utils import upload_documents
-class Gender(str, Enum):
-    male = "Male"
-    female = "Female"
-    other = "Other"
 
+
+from app.controllers.forms.utils import upload_documents
 from typing import Annotated, Optional
 from fastapi import Form, File, UploadFile
 from enum import Enum
@@ -43,8 +37,8 @@ async def get_personal_details(
             "filename": file.filename,
             "bytes": content
         }
-        # Call your ImageKit uploader here
-        return await upload_documents(file, category=category, user_id=user_name)
+
+        return await upload_documents(file_dict, category=category, user_id=user_name)
 
     if profile_photo:
         documents["profile_photo"] = await upload_and_store(profile_photo, category="profile_photo")

@@ -48,11 +48,10 @@ class Settings(BaseSettings):
     EMAIL_URL: str
     EMAIL_TOKEN_VERIFICATION:str
 
-    
-    IMAGE_KIT_PRIVATE_KEY:str
-    IMAGE_KIT_PUBLIC_KEY:str
-    IMAGE_URL_END_POINT:str
-
+    AWS_ACCESS_KEY_ID:str
+    AWS_SECRET_ACCESS_KEY:str
+    AWS_REGION:str
+    S3_BUCKET_NAME:str
     class Config:
         env_file = ".env"
         case_sensitive = True

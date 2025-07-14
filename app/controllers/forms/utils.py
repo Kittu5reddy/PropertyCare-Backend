@@ -1,62 +1,19 @@
-from imagekitio import ImageKit
+import boto3
+import os
+from botocore.exceptions import ClientError
 from config import settings
-from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
 
-
-imagekit=ImageKit(public_key=settings.IMAGE_KIT_PUBLIC_KEY,
-                  private_key=settings.IMAGE_KIT_PRIVATE_KEY,
-                  url_endpoint=settings.IMAGE_URL_END_POINT)
-
-
-
-async def create_user_directory(user_id: str):
-    base_folder = f"user/{user_id}/"
-    
-    SUBFOLDERS: dict[str, str] = {
-        "aadhar": "aadhar",
-        "pan": "pan",
-        "agreements": "agreements",
-        "profile_pictures": "profile_pictures",
-        "legal_documents": "legal_documents",
-        
-    }
-
-    results = {}
-
-    for key, subfolder in SUBFOLDERS.items():
-        folder_path = f"{base_folder}{subfolder}/"
-        
-        options = UploadFileRequestOptions(
-            folder=folder_path,
-            use_unique_file_name=False,
-            is_private_file=True
-        )
-
-        response = imagekit.upload_file(
-            file=b"init",  
-            file_name="init.txt",
-            options=options
-        )
-
-        results[subfolder] = (
-            response.response_metadata if response.response_metadata else response.error
-        )
-
-    return results
-
-from imagekitio import ImageKit
-from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
-from config import settings
-from fastapi import UploadFile
-from typing import Optional
-
-imagekit = ImageKit(
-    public_key=settings.IMAGE_KIT_PUBLIC_KEY,
-    private_key=settings.IMAGE_KIT_PRIVATE_KEY,
-    url_endpoint=settings.IMAGE_URL_END_POINT
+# Initialize S3 client
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+    region_name=settings.AWS_REGION
 )
 
-# Mapping for folder categories
+S3_BUCKET = settings.S3_BUCKET_NAME
+
+# Folder category mapping
 CATEGORY_FOLDER_MAP = {
     "aadhaar": "aadhar",
     "pan": "pan",
@@ -66,36 +23,79 @@ CATEGORY_FOLDER_MAP = {
 }
 
 
+
+async def create_user_directory(user_id: str):
+    base_folder = f"user/{user_id}/"
+    
+    SUBFOLDERS = {
+        "aadhar": "aadhar",
+        "pan": "pan",
+        "agreements": "agreements",
+        "profile_pictures": "profile_pictures",
+        "legal_documents": "legal_documents"
+    }
+
+    results = {}
+
+    for key, subfolder in SUBFOLDERS.items():
+        folder_path = f"{base_folder}{subfolder}/.keep"
+        try:
+            s3.put_object(
+                Bucket=S3_BUCKET,
+                Key=folder_path,
+                Body=b"init",
+                ACL="private"
+            )
+            results[subfolder] = {"status": "created", "path": folder_path}
+        except ClientError as e:
+            results[subfolder] = {"status": "error", "error": str(e)}
+
+    return results
+from fastapi import UploadFile
+import boto3
+from botocore.exceptions import ClientError
+from config import settings
+
+CATEGORY_FOLDER_MAP = {
+    "aadhaar": "aadhar",
+    "pan": "pan",
+    "agreements": "agreements",
+    "profile": "profile_pictures",
+    "legal": "legal_documents"
+}
+
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+    region_name=settings.AWS_REGION
+)
+
+S3_BUCKET = settings.S3_BUCKET_NAME
 async def upload_documents(file: dict, category: str, user_id: str) -> dict:
     folder_name = CATEGORY_FOLDER_MAP.get(category.lower())
     if not folder_name:
         return {"error": f"Invalid category '{category}'"}
 
     folder_path = f"user/{user_id}/{folder_name}/"
+    object_key = folder_path + file["filename"]  # ✅ Corrected here
 
-    options = UploadFileRequestOptions(
-        folder=folder_path,
-        use_unique_file_name=True,
-        is_private_file=True
-    )
+    try:
+        s3.put_object(
+            Bucket=S3_BUCKET,
+            Key=object_key,
+            Body=file["bytes"],  # ✅ use the content
+            ACL="private",
+            ContentType="application/octet-stream"  # or pass dynamic content type
+        )
 
-    response = imagekit.upload_file(
-        file=file["bytes"],
-        file_name=file["filename"],
-        options=options
-    )
+        file_url = f"https://{S3_BUCKET}.s3.{settings.AWS_REGION}.amazonaws.com/{object_key}"
 
-    if response.error:
-        return {"error": str(response.error)}
+        return {
+            "success": True,
+            "file_path": object_key,
+            "url": file_url
+        }
 
-    return {
-        "success": True,
-        "file_id": response.file_id,
-        "url": response.url,
-        "thumbnail_url": response.thumbnail_url,
-        "file_path": response.file_path,
-    }
-
-
-
-
+    except ClientError as e:
+        return {"error": str(e)}
