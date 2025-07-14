@@ -3,6 +3,7 @@ import os
 from botocore.exceptions import ClientError
 from config import settings
 
+
 # Initialize S3 client
 s3 = boto3.client(
     "s3",
@@ -60,7 +61,7 @@ CATEGORY_FOLDER_MAP = {
     "aadhaar": "aadhar",
     "pan": "pan",
     "agreements": "agreements",
-    "profile": "profile_pictures",
+    "profile_photo": "profile_pictures",
     "legal": "legal_documents"
 }
 
@@ -72,7 +73,8 @@ s3 = boto3.client(
 )
 
 S3_BUCKET = settings.S3_BUCKET_NAME
-async def upload_documents(file: dict, category: str, user_id: str) -> dict:
+async def upload_documents(file: dict, category: str,user_id) -> dict:
+   
     folder_name = CATEGORY_FOLDER_MAP.get(category.lower())
     if not folder_name:
         return {"error": f"Invalid category '{category}'"}
@@ -89,12 +91,11 @@ async def upload_documents(file: dict, category: str, user_id: str) -> dict:
             ContentType="application/octet-stream"  # or pass dynamic content type
         )
 
-        file_url = f"https://{S3_BUCKET}.s3.{settings.AWS_REGION}.amazonaws.com/{object_key}"
-
+ 
         return {
             "success": True,
             "file_path": object_key,
-            "url": file_url
+   
         }
 
     except ClientError as e:

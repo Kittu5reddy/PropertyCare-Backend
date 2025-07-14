@@ -8,13 +8,13 @@ class PersonalDetails(Base):
     __tablename__ = "personal_details"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("users.user_id"))
+    user_id: Mapped[str] = mapped_column(String(50),ForeignKey("users.user_id"), nullable=False, unique=True )
     user_name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True, index=True)  # fixed
     first_name: Mapped[str] = mapped_column(String(50), nullable=False)
     last_name: Mapped[str] = mapped_column(String(50), nullable=False)
     date_of_birth: Mapped[str] = mapped_column(String(20), nullable=False)
     gender: Mapped[str] = mapped_column(String(10), nullable=False)
-    contact_number: Mapped[int] = mapped_column(Integer, nullable=False)  # ok
+    contact_number: Mapped[str] = mapped_column(String(10), nullable=False)  
     house_number: Mapped[str] = mapped_column(String(20), nullable=False)
     street: Mapped[str] = mapped_column(String(100), nullable=False)
     city: Mapped[str] = mapped_column(String(50), nullable=False)

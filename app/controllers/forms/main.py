@@ -8,7 +8,7 @@ form=APIRouter(prefix="/form",tags=['form'])
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.personal_details import PersonalDetails
-from app.controllers.forms.utils import upload_documents
+
 
 from fastapi import Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +30,7 @@ async def submit(
         user_name=data["user_name"],
         date_of_birth=data["date_of_birth"],
         gender=data["gender"],
-        contact_number=int(data["contact_number"]),
+        contact_number=str(data["contact_number"]),
         description=data["description"],
         house_number=data["address"]["house_number"],
         street=data["address"]["street"],

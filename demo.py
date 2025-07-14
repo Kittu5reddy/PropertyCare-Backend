@@ -41,9 +41,4 @@ async def create_user_directory(user_id: str):
     return results
 import asyncio
 
-async def main():
-    c = await create_user_directory(2222)
-    print(c)
 
-if __name__ == "__main__":
-    asyncio.run(main())

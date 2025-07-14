@@ -1,8 +1,12 @@
 
 
 from app.controllers.forms.utils import upload_documents
+from app.controllers.auth.utils import get_current_user
 from typing import Annotated, Optional
-from fastapi import Form, File, UploadFile
+from app.controllers.auth.main import oauth2_scheme
+from app.models import get_db
+
+from fastapi import Form, File, UploadFile,Depends
 from enum import Enum
 
 class Gender(str, Enum):
@@ -15,7 +19,7 @@ async def get_personal_details(
     user_name: Annotated[str, Form(...)],
     dob: Annotated[str, Form(...)],
     gender: Annotated[Gender, Form(...)],
-    contact_number: Annotated[str, Form(...)],
+    contact_number: Annotated[int, Form(...)],
     house_number: Annotated[str, Form(...)],
     street: Annotated[str, Form(...)],
     city: Annotated[str, Form(...)],
@@ -28,9 +32,11 @@ async def get_personal_details(
     profile_photo: Annotated[Optional[UploadFile], File()] = None,
     pan_document: Annotated[Optional[UploadFile], File()] = None,
     aadhaar_document: Annotated[Optional[UploadFile], File()] = None,
+    token=Depends(oauth2_scheme),
+    db=Depends(get_db)
 ):
     documents = {}
-
+    user= await get_current_user(token,db)
     async def upload_and_store(file: UploadFile, category: str):
         content = await file.read()
         file_dict = {
@@ -38,7 +44,7 @@ async def get_personal_details(
             "bytes": content
         }
 
-        return await upload_documents(file_dict, category=category, user_id=user_name)
+        return await upload_documents(file_dict, category=category,user_id=user.user_id )
 
     if profile_photo:
         documents["profile_photo"] = await upload_and_store(profile_photo, category="profile_photo")
