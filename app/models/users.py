@@ -10,7 +10,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_verified = Column(Boolean, default=False)
-    is_pcfilled = Column(Boolean, default=False)
+    is_pdfilled = Column(Boolean, default=False)
     verification_token = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     status = Column(String)

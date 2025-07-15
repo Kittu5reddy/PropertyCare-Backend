@@ -194,9 +194,9 @@ async def refresh_token(request: Request, response: Response):
 @auth.get('/user-registration-status')
 async def user_registration_status(token=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
     try:
-        user:User=get_current_user
-        if user.is_pcfilled:
-            return {"is_pcfilled":"filled"}
+        user:User= await get_current_user(token)
+        if user.is_pdfilled:
+            return {"is_pdfilled":"filled"}
         else:
             raise HTTPException(400,detail="Please fill the form")
     except:
