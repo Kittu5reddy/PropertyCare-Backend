@@ -1,4 +1,4 @@
-from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token
+from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user
 from app.controllers.auth.email import create_verification_token,send_verification_email
 from fastapi import APIRouter,Request
 from app.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
@@ -184,6 +184,31 @@ async def refresh_token(request: Request, response: Response):
         }
     except JWTError as e:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+
+
+
+
+
+
+@auth.get('/user-registration-status')
+async def user_registration_status(token=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
+    try:
+        user:User=get_current_user
+        if user.is_pcfilled:
+            return {"is_pcfilled":"filled"}
+        else:
+            raise HTTPException(400,detail="Please fill the form")
+    except:
+        return ""
+
+
+
+
+
+
+
+
 
 
 @auth.post("/logout")

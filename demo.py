@@ -10,35 +10,15 @@ s3_client = boto3.client(
 )
 
 S3_BUCKET = os.getenv("S3_BUCKET_NAME")
+import boto3
+from botocore.client import Config
 
-async def create_user_directory(user_id: str):
-    base_folder = f"user/{user_id}/"
+s3 = boto3.client("s3", region_name="ap-south-1")
 
-    SUBFOLDERS = {
-        "aadhar": "aadhar",
-        "pan": "pan",
-        "agreements": "agreements",
-        "profile_pictures": "profile_pictures",
-        "legal_documents": "legal_documents",
-    }
-
-    results = {}
-
-    for key, subfolder in SUBFOLDERS.items():
-        folder_path = f"{base_folder}{subfolder}/.keep"
-
-        try:
-            s3_client.put_object(
-                Bucket=S3_BUCKET,
-                Key=folder_path,
-                Body=b"",  # empty file
-                ACL="private"
-            )
-            results[subfolder] = {"status": "created", "path": folder_path}
-        except Exception as e:
-            results[subfolder] = {"status": "error", "error": str(e)}
-
-    return results
-import asyncio
-
+url = s3.generate_presigned_url(
+    ClientMethod="get_object",
+    Params={"Bucket": "propcare", "Key": "yourfile.jpg"},
+    ExpiresIn=3600,
+)
+print(url)
 
