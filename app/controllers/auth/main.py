@@ -192,15 +192,16 @@ async def refresh_token(request: Request, response: Response):
 
 
 @auth.get('/user-registration-status')
-async def user_registration_status(token=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
+async def user_registration_status(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
     try:
-        user:User= await get_current_user(token)
-        if user.is_pdfilled:
-            return {"is_pdfilled":"filled"}
-        else:
-            raise HTTPException(400,detail="Please fill the form")
-    except:
-        return ""
+        user: User = await get_current_user(token=token, db=db)
+        return {"is_pcfilled": user.is_pcfilled}
+    
+    except Exception as e:# Optional: log it
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
 
