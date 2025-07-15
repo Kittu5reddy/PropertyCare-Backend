@@ -80,7 +80,7 @@ async def upload_documents(file: dict, category: str,user_id) -> dict:
         return {"error": f"Invalid category '{category}'"}
 
     folder_path = f"user/{user_id}/{folder_name}/"
-    object_key = folder_path + file["filename"]  # ✅ Corrected here
+    object_key = folder_path + folder_name  # ✅ Corrected here
 
     try:
         s3.put_object(
