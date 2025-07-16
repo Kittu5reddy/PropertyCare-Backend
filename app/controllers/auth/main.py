@@ -198,7 +198,7 @@ async def user_registration_status(
 ):
     try:
         user: User = await get_current_user(token=token, db=db)
-        return {"is_pcfilled": user.is_pcfilled}
+        return {"is_pdfilled": user.is_pdfilled}
     
     except Exception as e:# Optional: log it
         raise HTTPException(status_code=401, detail="Invalid or expired token")
