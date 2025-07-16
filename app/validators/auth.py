@@ -12,6 +12,6 @@ class EmailVerification(BaseModel):
 
 
 
-class ChangePassword:
+class ChangePassword(BaseModel):
     old_password:str
     new_password:str

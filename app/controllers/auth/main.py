@@ -285,6 +285,50 @@ async def get_personal_details(
 
 
 
+async def get_subscription_details(token:str=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
+    try:
+        user=await get_current_user(token,db)
+        return [
+        {
+            "plan_type": "Basic",
+            "property_covered": [
+                {
+                    "property_name": "Ramanthapur House",
+                    "property_id": "1010101",
+                    "location": "Hyderabad",
+                    "property_type": "Residential"
+                },
+                {
+                    "property_name": "Kukatpally Flat",
+                    "property_id": "1010102",
+                    "location": "Hyderabad",
+                    "property_type": "Apartment"
+                }
+            ]
+        },
+        {
+            "plan_type": "Premium",
+            "property_covered": [
+                {
+                    "property_name": "Jubilee Hills Villa",
+                    "property_id": "2020202",
+                    "location": "Hyderabad",
+                    "property_type": "Villa"
+                },
+                {
+                    "property_name": "Madhapur Studio",
+                    "property_id": "2020203",
+                    "location": "Hyderabad",
+                    "property_type": "Studio"
+                }
+            ]
+        }
+        ]
+    except JWTError:
+        raise HTTPException(401,detail="Unauthorized")
+
+
+
 @auth.post("/logout")
 async def logout(response: Response):
     response.delete_cookie("access_token")  # or whatever your cookie name is
