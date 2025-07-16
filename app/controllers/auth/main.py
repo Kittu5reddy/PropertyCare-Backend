@@ -1,9 +1,10 @@
-from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user
+from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,verify_password
 from app.controllers.auth.email import create_verification_token,send_verification_email
 from fastapi import APIRouter,Request
 from app.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
 from app.validators.auth import User as LoginSchema 
 from app.models.users import User
+from app.models.personal_details import PersonalDetails
 from fastapi import APIRouter, HTTPException,Depends,BackgroundTasks
 from app.controllers.forms.utils import create_user_directory
 from fastapi.security import OAuth2PasswordBearer
@@ -15,6 +16,7 @@ from app.models import get_db,AsyncSession
 from fastapi import Depends
 from sqlalchemy import select, desc
 from fastapi import BackgroundTasks
+from app.validators.auth import ChangePassword
 
 auth=APIRouter(prefix='/auth',tags=['auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -153,6 +155,9 @@ async def verify_email(token: str,
         <p>Your email has been verified. You can now log in to your account.</p>
          <a href="https://propertycare-nine.vercel.app/login">Click Here</a>
     """, status_code=200)
+
+
+
 @auth.post("/refresh")
 async def refresh_token(request: Request, response: Response):
     refresh_token = request.cookies.get("refresh_token")
@@ -206,9 +211,77 @@ async def user_registration_status(
 
 
 
+@auth.put("/change-password")
+async def change_password(
+    payload: ChangePassword,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)
+
+        if not verify_password(payload.old_password, user.hashed_password):
+            raise HTTPException(status_code=401, detail="Wrong current password")
+
+        user.hashed_password = get_password_hash(payload.new_password)
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        return {"message": "Password changed successfully"}
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Something went wrong")
 
 
 
+
+
+
+
+
+
+
+
+
+#===========================
+# Profile
+#===========================
+
+
+@auth.get("/get-personal-data")
+async def get_personal_details(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)
+
+        result = await db.execute(
+            select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
+        )
+        data = result.scalar_one_or_none()
+
+        if data is None:
+            raise HTTPException(status_code=404, detail="Personal details not found")
+
+        return {
+            "full_name": f"{data.first_name} {data.last_name}",
+            "user_name": data.user_name,
+            "contact_number": data.contact_number,
+            "location": f"{data.city}, {data.state}",
+            "member_from": data.created_at,
+            "total_properties":200,
+            "with_plans":20,
+            "no_plans":180
+        }
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 

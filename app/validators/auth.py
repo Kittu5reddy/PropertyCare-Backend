@@ -9,3 +9,9 @@ class User(BaseModel):
 
 class EmailVerification(BaseModel):
     token: str
+
+
+
+class ChangePassword:
+    old_password:str
+    new_password:str

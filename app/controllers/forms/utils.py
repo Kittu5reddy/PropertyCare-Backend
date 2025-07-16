@@ -52,27 +52,8 @@ async def create_user_directory(user_id: str):
             results[subfolder] = {"status": "error", "error": str(e)}
 
     return results
-from fastapi import UploadFile
-import boto3
-from botocore.exceptions import ClientError
-from config import settings
 
-CATEGORY_FOLDER_MAP = {
-    "aadhaar": "aadhar",
-    "pan": "pan",
-    "agreements": "agreements",
-    "profile_photo": "profile_pictures",
-    "legal": "legal_documents"
-}
 
-s3 = boto3.client(
-    "s3",
-    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-    region_name=settings.AWS_REGION
-)
-
-S3_BUCKET = settings.S3_BUCKET_NAME
 async def upload_documents(file: dict, category: str,user_id) -> dict:
    
     folder_name = CATEGORY_FOLDER_MAP.get(category.lower())
