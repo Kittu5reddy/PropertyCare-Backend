@@ -13,5 +13,11 @@ class EmailVerification(BaseModel):
 
 
 class ChangePassword(BaseModel):
-    old_password:str
+    current_password:str
     new_password:str
+
+
+
+
+class ChangePersonalDetails(BaseModel):
+    pass

@@ -210,7 +210,6 @@ async def user_registration_status(
 
 
 
-
 @auth.put("/change-password")
 async def change_password(
     payload: ChangePassword,
@@ -218,9 +217,9 @@ async def change_password(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        user = await get_current_user(token, db)
+        user: User = await get_current_user(token, db)
 
-        if not verify_password(payload.old_password, user.hashed_password):
+        if not verify_password(payload.current_password, user.hashed_password):
             raise HTTPException(status_code=401, detail="Wrong current password")
 
         user.hashed_password = get_password_hash(payload.new_password)
@@ -233,9 +232,8 @@ async def change_password(
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Something went wrong")
-
-
+        # Log the error in production
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
