@@ -77,7 +77,7 @@ async def check_username(
     
     return {"available": True}
 
-@form.get("/check-phonenumber/{phonenumber}")
+@form.get("/check-contact/{phonenumber}")
 async def check_phonenumber(
     phonenumber: str,
     db: AsyncSession = Depends(get_db),
