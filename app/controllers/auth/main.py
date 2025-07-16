@@ -284,7 +284,7 @@ async def get_personal_details(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-
+@auth.get('/get-subscription-details')
 async def get_subscription_details(token:str=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
     try:
         user=await get_current_user(token,db)
