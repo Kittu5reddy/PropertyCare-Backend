@@ -42,10 +42,12 @@ async def submit(
         aadhaar_number=data["govt_ids"]["aadhaar_number"],
         user_id=current_user_id
     )
-
+    current_user.is_pdfilled=True
     db.add(user)
+    db.add(current_user)  # Add this before commit to persist user update
     await db.commit()
     await db.refresh(user)  # to get auto-generated fields if any
+    await db.refresh(current_user)  # to get auto-generated fields if any
 
 
     return {
