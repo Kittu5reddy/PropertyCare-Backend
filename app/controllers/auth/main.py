@@ -254,7 +254,7 @@ async def change_password(
         user: User = await get_current_user(token, db)
 
         if not verify_password(payload.current_password, user.hashed_password):
-            raise HTTPException(status_code=500, detail="Wrong  password")
+            raise HTTPException(status_code=403, detail="Wrong  password")
 
         user.hashed_password = get_password_hash(payload.new_password)
         db.add(user)
@@ -267,6 +267,7 @@ async def change_password(
         raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
         # Log the error in production
+        print(str(e))
         raise HTTPException(status_code=500, detail="wrong password")
 
 
