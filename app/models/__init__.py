@@ -16,6 +16,7 @@ engine = create_async_engine(
     pool_size=settings.POOL_SIZE,
     max_overflow=settings.MAX_OVERFLOW,
     pool_timeout=settings.POOL_TIME_OUT,
+    pool_pre_ping=True
 )
 
 

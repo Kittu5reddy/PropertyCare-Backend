@@ -26,6 +26,18 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 from fastapi.responses import JSONResponse
 
+
+
+
+
+
+
+#=====================================================================================
+#           LOGIN
+#=====================================================================================
+
+
+
 @auth.post("/login")
 async def login(
     user: LoginSchema,
@@ -84,6 +96,10 @@ async def login(
 
 
 
+#==========================================================================================
+#           SIGNUP
+#==========================================================================================
+
 @auth.post("/signup")
 async def signup(
     user: LoginSchema,
@@ -127,6 +143,12 @@ async def signup(
     }
 
 
+
+#=================================================================================================
+#           EMAIL-VERFICIATION
+#=================================================================================================
+
+
 @auth.get("/verify-email", response_class=HTMLResponse)
 async def verify_email(token: str,
                         db: AsyncSession = Depends(get_db)):
@@ -156,6 +178,10 @@ async def verify_email(token: str,
          <a href="https://propertycare-nine.vercel.app/login">Click Here</a>
     """, status_code=200)
 
+
+#=============================================================================================
+#           REFRESH ROUTE
+#============================================================================================
 
 
 @auth.post("/refresh")
@@ -195,6 +221,10 @@ async def refresh_token(request: Request, response: Response):
 
 
 
+#=============================
+#   USER-REGISTRATION ROUTE
+#=============================
+
 
 @auth.get('/user-registration-status')
 async def user_registration_status(
@@ -209,6 +239,10 @@ async def user_registration_status(
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
 
+#=============================
+#           CHANGE PASSWORD
+#=============================
+
 
 @auth.put("/change-password")
 async def change_password(
@@ -220,7 +254,7 @@ async def change_password(
         user: User = await get_current_user(token, db)
 
         if not verify_password(payload.current_password, user.hashed_password):
-            raise HTTPException(status_code=401, detail="Wrong current password")
+            raise HTTPException(status_code=500, detail="Wrong  password")
 
         user.hashed_password = get_password_hash(payload.new_password)
         db.add(user)
@@ -233,7 +267,7 @@ async def change_password(
         raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
         # Log the error in production
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="wrong password")
 
 
 
@@ -245,7 +279,7 @@ async def change_password(
 
 
 #===========================
-# Profile
+#       PERSONAL DETAILS ROUTE
 #===========================
 
 
@@ -281,6 +315,10 @@ async def get_personal_details(
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
+#=============================
+#    SUBSCRIPTION DETAILS
+#=============================
 
 @auth.get('/get-subscription-details')
 async def get_subscription_details(token:str=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
@@ -326,6 +364,10 @@ async def get_subscription_details(token:str=Depends(oauth2_scheme),db:AsyncSess
         raise HTTPException(401,detail="Unauthorized")
 
 
+
+#=============================
+#           LOGOUT
+#=============================
 
 @auth.post("/logout")
 async def logout(response: Response):
