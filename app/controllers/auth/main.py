@@ -265,11 +265,7 @@ async def change_password(
 
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
-    except Exception as e:
-        # Log the error in production
-        print(str(e))
-        raise HTTPException(status_code=500, detail="wrong password")
-
+ 
 
 
 
