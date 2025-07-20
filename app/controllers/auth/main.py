@@ -17,6 +17,7 @@ from fastapi import Depends
 from sqlalchemy import select, desc
 from fastapi import BackgroundTasks
 from app.validators.auth import ChangePassword
+from app.controllers.forms.utils import get_image
 
 auth=APIRouter(prefix='/auth',tags=['auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -296,6 +297,8 @@ async def get_personal_details(
         if data is None:
             raise HTTPException(status_code=404, detail="Personal details not found")
 
+        
+        profile_url=get_image(f"/{user.user_id}/profile_pictures/profile_pictures.png")
         return {
             "full_name": f"{data.first_name} {data.last_name}",
             "user_name": data.user_name,

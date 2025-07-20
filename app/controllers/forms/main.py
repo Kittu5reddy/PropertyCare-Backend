@@ -4,16 +4,14 @@ from app.validators.forms import get_personal_details
 from app.controllers.auth.main import oauth2_scheme
 from app.models.personal_details import PersonalDetails
 from app.models import get_db
-form=APIRouter(prefix="/form",tags=['form'])
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.personal_details import PersonalDetails
-
-
 from fastapi import Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import PersonalDetails
 
+form=APIRouter(prefix="/form",tags=['form'])
 @form.post("/submit-details")
 async def submit(
     data: dict = Depends(get_personal_details),

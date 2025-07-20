@@ -2,8 +2,10 @@ import boto3
 import os
 from botocore.exceptions import ClientError
 from config import settings
-
-
+AWS_ACCESS_KEY_ID=settings.AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY=settings.AWS_SECRET_ACCESS_KEY
+AWS_REGION=settings.AWS_REGION
+S3_BUCKET = settings.S3_BUCKET_NAME
 # Initialize S3 client
 s3 = boto3.client(
     "s3",
@@ -12,7 +14,6 @@ s3 = boto3.client(
     region_name=settings.AWS_REGION
 )
 
-S3_BUCKET = settings.S3_BUCKET_NAME
 
 # Folder category mapping
 CATEGORY_FOLDER_MAP = {
@@ -55,14 +56,11 @@ async def create_user_directory(user_id: str):
 
 
 async def upload_documents(file: dict, category: str,user_id) -> dict:
-   
     folder_name = CATEGORY_FOLDER_MAP.get(category.lower())
     if not folder_name:
         return {"error": f"Invalid category '{category}'"}
-
     folder_path = f"user/{user_id}/{folder_name}/"
     object_key = folder_path + folder_name  # ✅ Corrected here
-
     try:
         s3.put_object(
             Bucket=S3_BUCKET,
@@ -71,8 +69,6 @@ async def upload_documents(file: dict, category: str,user_id) -> dict:
             ACL="private",
             ContentType="application/octet-stream"  # or pass dynamic content type
         )
-
- 
         return {
             "success": True,
             "file_path": object_key,
@@ -81,3 +77,10 @@ async def upload_documents(file: dict, category: str,user_id) -> dict:
 
     except ClientError as e:
         return {"error": str(e)}
+
+
+
+
+def get_image(filename: str):
+    url = f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{filename}"
+    return url
