@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.controllers.auth.main import auth
 from app.controllers.forms.main import form
+from app.controllers.dashboard.main import dash
 
 def create_app():
     app = FastAPI()
@@ -17,5 +18,6 @@ def create_app():
     )
 
     app.include_router(auth)
+    app.include_router(dash)
     app.include_router(form)
     return app

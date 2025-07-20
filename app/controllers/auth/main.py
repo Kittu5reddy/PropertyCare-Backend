@@ -299,7 +299,6 @@ async def get_personal_details(
 
         
         profile_url=get_image(f"user/{user.user_id}/profile_photo/profile_photo.png")
-        print(profile_url)
         return {
             "full_name": f"{data.first_name} {data.last_name}",
             "user_name": data.user_name,

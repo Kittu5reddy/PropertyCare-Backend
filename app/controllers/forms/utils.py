@@ -128,5 +128,6 @@ async def upload_image_as_png(file: dict, category: str, user_id: Union[str, int
             return {"error": str(e)}
 
 
+# S3_BUCKET="propcare"
 def get_image(filename: str) -> str:
-    return f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{filename}"
+    return f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com{filename}"
