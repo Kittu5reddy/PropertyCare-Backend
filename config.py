@@ -23,11 +23,11 @@ class Settings(BaseSettings):
 
 
     SUBFOLDERS: dict[str, str] = {
-        "aadhar": "aadhar",
-        "pan": "pan",
-        "agreements": "agreements",
-        "profile_pics": "profile_pictures",
-        "legal_documents": "legal_documents"
+    "aadhaar": "aadhar",
+    "pan": "pan",
+    "agreements": "agreements",
+    "profile_photo": "profile_photo",
+    "legal": "legal_documents"
     }
 
     # Database

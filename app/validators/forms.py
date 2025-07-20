@@ -1,10 +1,12 @@
 
 
-from app.controllers.forms.utils import upload_documents
+from app.controllers.forms.utils import upload_documents,upload_image_as_png
 from app.controllers.auth.utils import get_current_user
 from typing import Annotated, Optional
 from app.controllers.auth.main import oauth2_scheme
 from app.models import get_db
+from PIL import Image
+from io import BytesIO
 
 from fastapi import Form, File, UploadFile,Depends
 from enum import Enum
@@ -37,13 +39,15 @@ async def get_personal_details(
 ):
     documents = {}
     user= await get_current_user(token,db)
+
     async def upload_and_store(file: UploadFile, category: str):
         content = await file.read()
         file_dict = {
             "filename": file.filename,
             "bytes": content
         }
-
+        if category=="profile_photo":
+            return await upload_image_as_png(file_dict, category=category,user_id=user.user_id )
         return await upload_documents(file_dict, category=category,user_id=user.user_id )
 
     if profile_photo:

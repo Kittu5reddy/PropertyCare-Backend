@@ -298,7 +298,8 @@ async def get_personal_details(
             raise HTTPException(status_code=404, detail="Personal details not found")
 
         
-        profile_url=get_image(f"/{user.user_id}/profile_pictures/profile_pictures.png")
+        profile_url=get_image(f"user/{user.user_id}/profile_photo/profile_photo.png")
+        print(profile_url)
         return {
             "full_name": f"{data.first_name} {data.last_name}",
             "user_name": data.user_name,
@@ -307,12 +308,14 @@ async def get_personal_details(
             "member_from": data.created_at,
             "total_properties":200,
             "with_plans":20,
-            "no_plans":180
+            "no_plans":180,
+            "profile_photo_url":profile_url
         }
 
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
+        print(str(e))
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
