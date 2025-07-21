@@ -3,7 +3,7 @@ from app.controllers.auth.email import create_verification_token,send_verificati
 from fastapi import APIRouter,Request
 from app.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
 from app.validators.auth import User as LoginSchema 
-from app.models.users import User
+from app.models.users import User,UserNameUpdate
 from app.models.personal_details import PersonalDetails
 from fastapi import APIRouter, HTTPException,Depends,BackgroundTasks
 from app.controllers.forms.utils import create_user_directory
@@ -19,6 +19,7 @@ from fastapi import BackgroundTasks
 from app.validators.auth import ChangePassword
 from app.controllers.forms.utils import get_image
 
+from datetime import datetime,timedelta
 auth=APIRouter(prefix='/auth',tags=['auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -346,6 +347,62 @@ async def get_subscription_details(token:str=Depends(oauth2_scheme),db:AsyncSess
         raise HTTPException(401,detail="Unauthorized")
 
 
+
+
+
+@auth.get("/edit-profile")
+async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    try:
+        user = await get_current_user(token, db)
+
+        # Fetch personal details
+        result = await db.execute(
+            select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
+        )
+        data = result.scalar_one_or_none()
+
+        if not data:
+            raise HTTPException(status_code=404, detail="Personal details not found")
+
+        # Fetch username update record
+        result = await db.execute(
+            select(UserNameUpdate).where(UserNameUpdate.user_id == user.user_id).limit(1)
+        )
+        username_update = result.scalar_one_or_none()
+
+        # Determine if username is changable
+        is_username_changable = False
+        if username_update:
+            last_updated = username_update.last_updated
+            now = datetime.utcnow()
+            delta = now - last_updated
+            if delta > timedelta(days=30):  # e.g., allow username change after 30 days
+                is_username_changable = True
+        else:
+            # No record means first time, so allow
+            is_username_changable = True
+
+        # Return profile data
+        return {
+            "first_name": data.first_name,
+            "last_name": data.last_name,
+            "email": user.email,
+            "user_name": data.user_name,
+            "contact_number": data.contact_number,
+            "house_number": data.house_number,
+            "street": data.street,
+            "city": data.city,
+            "state": data.state,
+            "pin_code": data.pin_code,
+            "country": data.country,
+            "image_url": get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png"),
+            "aadhaar_number": data.aadhaar_number,
+            "pan_number": data.pan_number,
+            "can_change_username": is_username_changable
+        }
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 #=============================
 #           LOGOUT

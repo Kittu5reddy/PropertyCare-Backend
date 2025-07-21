@@ -15,3 +15,8 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     status = Column(String)
     
+class UserNameUpdate(Base):
+    __tablename__ = "user_name_updates"  # Important: Add a table name
+    id = Column(Integer, primary_key=True, index=True)  # Needed for ORM mapping
+    user_id = Column(String, index=True)  # Foreign key or link to User.user_id (if applicable)
+    last_updated = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
