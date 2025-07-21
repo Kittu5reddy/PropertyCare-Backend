@@ -40,22 +40,26 @@ def create_refresh_token(payload: dict, expires_delta: timedelta = None) -> str:
     payload.update({"exp": expire})
     return jwt.encode(payload, REFRESH_TOKEN_SECRET_KEY, algorithm=ALGORITHM)
 
+
+
+
 def verify_refresh_token(token: str):
     try:
         payload = jwt.decode(token, REFRESH_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
+        is_pdfilled = payload.get("is_pdfilled")  
         if email is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token payload"
+                detail="user not found"
             )
-        return {"sub": email}
+        return {"sub": email,"is_pdfilled":is_pdfilled}
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token"
         )
-        raise HTTPException(401, detail="Invalid or tampered refresh token")
+
 
 
 # ======================
@@ -83,7 +87,10 @@ def generate_employee_admin_id(id):
 
 async def get_user_by_email(db: AsyncSession, email: EmailStr) -> User:
     result = await db.execute(select(User).where(User.email == email))
-    return result.scalar_one_or_none()
+    if result:
+        return result.scalar_one_or_none()
+    else:
+        raise HTTPException(401,details="unauthorized")
 
 async def get_user_by_verification_token(db: AsyncSession, token: str) -> User:
     result = await db.execute(select(User).where(User.verification_token == token))
@@ -117,7 +124,10 @@ async def get_current_user(token: str, db: AsyncSession):
 
 
 
-
+def get_is_pd_filled(token:str):
+    payload=jwt.decode(token,ACCES_TOKEN_SECRET_KEY,algorithms=[ALGORITHM])
+    # print(payload)
+    return payload['is_pdfilled']
 
 # =================
 #   Example usage

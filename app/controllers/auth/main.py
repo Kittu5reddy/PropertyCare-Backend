@@ -1,4 +1,4 @@
-from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,verify_password
+from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,verify_password,get_is_pd_filled
 from app.controllers.auth.email import create_verification_token,send_verification_email
 from fastapi import APIRouter,Request
 from app.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
@@ -72,10 +72,10 @@ async def login(
         )
 
     # Generate tokens
-    payload = {"sub": user.email}
+    payload = {"sub": user.email,"is_pdfilled":db_user.is_pdfilled}
     access_token = create_access_token(payload)
     refresh_token = create_refresh_token(payload)
- 
+    
     response = JSONResponse(content={
         "message": "Login successful",
         "access_token": access_token,
@@ -186,30 +186,16 @@ async def verify_email(token: str,
 
 
 @auth.post("/refresh")
-async def refresh_token(request: Request, response: Response):
+async def refresh_token(request: Request, response: Response,db:AsyncSession=Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
     
     if not refresh_token:
+        print("Missing refresh token")
         raise HTTPException(status_code=401, detail="Missing refresh token")
-
     try:
-        payload = verify_refresh_token(refresh_token)
+        payload =verify_refresh_token(refresh_token)
         access_token = create_access_token(payload)
-        
-        # Also refresh the refresh token
-        new_refresh_token = create_refresh_token(payload)
-        
-        # Set the new refresh token
-        response.set_cookie(
-            key="refresh_token",
-            value=new_refresh_token,
-            httponly=True,
-            secure=True,
-            samesite="none",
-            max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,
-            path="/auth/refresh"
-        )
-        
+
         return {
             "access_token": access_token,
             "type": "Bearer"
@@ -229,13 +215,11 @@ async def refresh_token(request: Request, response: Response):
 
 @auth.get('/user-registration-status')
 async def user_registration_status(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    token: str = Depends(oauth2_scheme)
 ):
     try:
-        user: User = await get_current_user(token=token, db=db)
-        return {"is_pdfilled": user.is_pdfilled}
-    
+        message= {"is_pdfilled":get_is_pd_filled(token)}
+        return message
     except Exception as e:# Optional: log it
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
@@ -310,12 +294,8 @@ async def get_personal_details(
             "no_plans":180,
             "profile_photo_url":profile_url
         }
-
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
-    except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 #=============================
@@ -372,6 +352,6 @@ async def get_subscription_details(token:str=Depends(oauth2_scheme),db:AsyncSess
 #=============================
 
 @auth.post("/logout")
-async def logout(response: Response):
-    response.delete_cookie("access_token")  # or whatever your cookie name is
+def logout(response: Response):
+    response.delete_cookie("refresh_token")  # or whatever your cookie name is
     return {"message": "Logged out"}
