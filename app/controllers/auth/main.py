@@ -298,7 +298,7 @@ async def get_personal_details(
             raise HTTPException(status_code=404, detail="Personal details not found")
 
         
-        profile_url=get_image(f"user/{user.user_id}/profile_photo/profile_photo.png")
+        profile_url=get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png")
         return {
             "full_name": f"{data.first_name} {data.last_name}",
             "user_name": data.user_name,
