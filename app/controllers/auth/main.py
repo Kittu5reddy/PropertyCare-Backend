@@ -639,7 +639,6 @@ async def change_country(
         db.add(user)
         await db.commit()
         await db.refresh(user)
-
         return {"message": "country  updated successfully."}
     except HTTPException as http_exc:
         raise http_exc  # re-raise the actual HTTP error (like 401)
