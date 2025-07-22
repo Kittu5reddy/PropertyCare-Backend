@@ -77,7 +77,7 @@ async def get_property_data(token:str=Depends(oauth2_scheme),db:AsyncSession=Dep
         {
         "property_id":"10202",
         "name":"Uppal Plot",
-        "type":"Open-Plot",
+        "type":"Open-Plotz  ",
         "date":"JUNE 05, 2020",
         "area":"300sqward",
         "img_url":get_image('/user/demo/uppal_plot/3.jpg')

@@ -1,4 +1,4 @@
-from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,verify_password,get_is_pd_filled
+from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,get_is_pd_filled
 from app.controllers.auth.email import create_verification_token,send_verification_email
 from fastapi import APIRouter,Request
 from app.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
@@ -17,8 +17,8 @@ from fastapi import Depends
 from sqlalchemy import select, desc
 from fastapi import BackgroundTasks
 from app.validators.auth import ChangePassword
+from app.validators.user_profile import ChangeFirstName,ChangeLastName,ChangeUsername,ChangeContactNumber,ChangeHouseNumber,ChangeStreet,ChangeCity,ChangeState,ChangeCountry,ChangePinCode
 from app.controllers.forms.utils import get_image
-
 from datetime import datetime,timedelta
 auth=APIRouter(prefix='/auth',tags=['auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -350,6 +350,14 @@ async def get_subscription_details(token:str=Depends(oauth2_scheme),db:AsyncSess
 
 
 
+
+
+
+
+#=========================================================================
+#      Profie Edits
+#=========================================================================
+
 @auth.get("/edit-profile")
 async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     try:
@@ -400,9 +408,248 @@ async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: Asyn
             "pan_number": data.pan_number,
             "can_change_username": is_username_changable
         }
-
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+
+
+
+
+@auth.put('/change-first-name')
+async def change_first_name(
+    form: ChangeFirstName,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.first_name = form.first_name.strip()
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        return {"message": "First name updated successfully."}
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update first name: {str(e)}")
+
+
+@auth.put('/change-last-name')
+async def change_last_name(
+    form: ChangeLastName,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.last_name = form.last_name.strip()
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        return {"message": "Last name updated successfully."}
+
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update last name: {str(e)}")
+
+
+
+# @auth.put('/change-username')
+# async def change_username(
+#     form: ChangeUsername,
+#     token: str = Depends(oauth2_scheme),
+#     db: AsyncSession = Depends(get_db)
+# ):
+#     try:
+#         user: PersonalDetails = await get_current_user_personal_details(token, db)
+#         update_data:UserNameUpdate= await db.execute(select(UserNameUpdate).where(UserNameUpdate.user_id==user.user_id).limit((1)))
+#         data=update_data.last_updated.scalar_or_none
+
+
+
+
+
+
+@auth.put('/change-contact-number')
+async def change_contact_number(
+    form: ChangeContactNumber,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.contact_number = form.contact_number.strip()
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        return {"message": "contact number updated successfully."}
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update contact number: {str(e)}")
+
+
+
+
+
+
+
+@auth.put('/change-house-number')
+async def change_house_number(
+    form: ChangeHouseNumber,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.house_number = form.house_number.strip()
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        return {"message": "house number updated successfully."}
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update house number: {str(e)}")
+
+
+
+
+@auth.put('/change-street')
+async def change_street(
+    form: ChangeStreet,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.street = form.street.strip()
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        return {"message": "street name updated successfully."}
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update street name: {str(e)}")
+    
+
+@auth.put('/change-city')
+async def change_city(
+    form: ChangeCity,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.city = form.city.strip()
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        return {"message": "city  updated successfully."}
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update city : {str(e)}")
+    
+
+    
+@auth.put('/change-state')
+async def change_state(
+    form: ChangeState,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.state = form.state.strip()
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        return {"message": "state  updated successfully."}
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update state name: {str(e)}")
+    
+
+
+@auth.put('/change-pin-code')
+async def change_pin_code(
+    form: ChangePinCode,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.pin_code = form.pin_code.strip()
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        return {"message": "pin code updated successfully."}
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update pin code: {str(e)}")
+    
+
+@auth.put('/change-country')
+async def change_country(
+    form: ChangeCountry,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.country = form.country.strip()
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        return {"message": "country  updated successfully."}
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update country : {str(e)}")
+
+# /auth/change-username
+
 
 #=============================
 #           LOGOUT

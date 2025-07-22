@@ -11,6 +11,7 @@ from sqlalchemy import select
 from jose import JWTError,jwt
 from config import settings
 from app.models.users import User
+from app.models.personal_details import PersonalDetails
 from fastapi import status
 # =================
 #   settingsuration
@@ -121,6 +122,47 @@ async def get_current_user(token: str, db: AsyncSession):
 
     return user
 
+
+
+
+
+
+async def get_current_user_personal_details(token: str, db: AsyncSession):
+    try:
+        payload = jwt.decode(token, ACCES_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials",
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
+
+    result_user = await db.execute(select(User).where(User.email == email))
+    user = result_user.scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    result_data = await db.execute(
+        select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
+    )
+    data = result_data.scalar_one_or_none()
+
+    if data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Personal details not found",
+        )
+
+    return data
 
 
 
