@@ -13,28 +13,28 @@ async def get_property_data(token:str=Depends(oauth2_scheme),db:AsyncSession=Dep
     data=[ 
         {
         "property_id":"10202",
-        "name":"srikanth Nilayam",
+        "name":"Srikanth Nilayam",
         "type":"resenditial",
         "area":"300sqward",
         "img_url":get_image('/user/demo/srikanth_nilayam/3.jpg')
     },
         {
         "property_id":"10222",
-        "name":"srikanth Nilayam",
+        "name":"Sangamesh Nilayam",
         "type":"resenditial",
         "area":"300sqward",
         "img_url":get_image('/user/demo/sangamesh_nilayam/2.jpg')
     },
         {
         "property_id":"10202",
-        "name":"srikanth Nilayam",
+        "name":"Appurva Nilayam",
         "type":"resenditial",
         "area":"300sqward",
         "img_url":get_image('/user/demo/appurva_nilayam/1.jpg')
     },
         {
         "property_id":"10202",
-        "name":"srikanth Nilayam",
+        "name":"Uppal Plot",
         "type":"resenditial",
         "area":"300sqward",
         "img_url":get_image('/user/demo/uppal_plot/3.jpg')

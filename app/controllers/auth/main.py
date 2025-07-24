@@ -486,9 +486,12 @@ async def change_contact_number(
     db: AsyncSession = Depends(get_db)
 ):
     try:
+        result=await db.execute(select(PersonalDetails).where(PersonalDetails.contact_number!=form.contact_number).limit((1)))
+        result=result.scalar_one_or_none()
+        if result:
+            return HTTPException(500,detail=f"number already exits")        
         user: PersonalDetails = await get_current_user_personal_details(token, db)
         user.contact_number = form.contact_number.strip()
-
         db.add(user)
         await db.commit()
         await db.refresh(user)

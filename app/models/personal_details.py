@@ -14,7 +14,7 @@ class PersonalDetails(Base):
     last_name: Mapped[str] = mapped_column(String(50), nullable=False)
     date_of_birth: Mapped[str] = mapped_column(String(20), nullable=False)
     gender: Mapped[str] = mapped_column(String(10), nullable=False)
-    contact_number: Mapped[str] = mapped_column(String(10), nullable=False)  
+    contact_number: Mapped[str] = mapped_column(String(10), nullable=False,unique=True)  
     house_number: Mapped[str] = mapped_column(String(20), nullable=False)
     street: Mapped[str] = mapped_column(String(100), nullable=False)
     city: Mapped[str] = mapped_column(String(50), nullable=False)
