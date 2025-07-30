@@ -604,11 +604,6 @@ async def change_state(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update state name: {str(e)}")
 
-@auth.get('/demo-dee')
-def demo():
-    return {"message":"hello wfvdforld"}
-
-
 @auth.put('/change-pin-code')
 async def change_pin_code(
     form: ChangePinCode,
