@@ -606,7 +606,7 @@ async def change_state(
 
 @auth.get('/demo-dee')
 def demo():
-    return {"message":"hello world"}
+    return {"message":"hello wfvdforld"}
 
 
 @auth.put('/change-pin-code')
