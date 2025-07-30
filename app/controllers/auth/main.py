@@ -603,7 +603,10 @@ async def change_state(
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update state name: {str(e)}")
-    
+
+@auth.get('/demo-dee')
+def demo():
+    return {"message":"hello world"}
 
 
 @auth.put('/change-pin-code')
