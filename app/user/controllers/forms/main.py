@@ -1,15 +1,16 @@
 from fastapi import APIRouter,Depends,HTTPException
 from jose import JWTError
-from app.validators.forms import get_personal_details
-from app.controllers.auth.main import oauth2_scheme
-from app.models.personal_details import PersonalDetails
-from app.models import get_db
+from app.user.validators.forms import get_personal_details
+from app.user.controllers.auth.main import oauth2_scheme
+from app.user.models.personal_details import PersonalDetails
+from app.user.models import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.personal_details import PersonalDetails
+from app.user.models.personal_details import PersonalDetails
+from app.user.controllers.auth.utils import  get_current_user
 from fastapi import Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import PersonalDetails
+from app.user.models import PersonalDetails
 
 form=APIRouter(prefix="/form",tags=['form'])
 @form.post("/submit-details")
@@ -54,7 +55,6 @@ async def submit(
     }
 
 
-from app.controllers.auth.utils import  get_current_user
 
 @form.get("/check-username/{username}")
 async def check_username(

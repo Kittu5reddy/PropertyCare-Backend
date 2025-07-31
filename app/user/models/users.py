@@ -1,6 +1,6 @@
-from app.models import Base
+from app.user.models import Base
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, func,ForeignKey
 
 
 class User(Base):
@@ -13,7 +13,8 @@ class User(Base):
     is_pdfilled = Column(Boolean, default=False)
     verification_token = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    status = Column(String)
+    created_by = Column(String,ForeignKey("admin.admin_id"))
+    status = Column(String,default="active")
     
 class UserNameUpdate(Base):
     __tablename__ = "user_name_updates"  # Important: Add a table name

@@ -1,12 +1,16 @@
 from sqlalchemy.orm import declarative_base
+from sqlalchemy import MetaData
 from config import settings
 from typing import AsyncGenerator
-Base=declarative_base()
+from sqlalchemy import text
+metadata = MetaData(schema="PropCare")
+Base = declarative_base(metadata=metadata)
 from .users import User
+from app.admin.models.admins import Admin
 from .personal_details import PersonalDetails
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy.orm import declarative_base
-from app.models import Base
+# from sqlalchemy.orm import declarative_base
+# from app.user.models import Base
 
 DATABASE_URL = settings.DATABASE_URL
 
@@ -25,6 +29,7 @@ engine = create_async_engine(
 
 async def init_models():
     async with engine.begin() as conn:
+        await conn.execute(text('CREATE SCHEMA IF NOT EXISTS "PropCare"'))
         await conn.run_sync(Base.metadata.create_all)
     print("✅ Tables created successfully.")
 

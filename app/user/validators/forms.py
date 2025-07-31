@@ -1,10 +1,10 @@
 
 
-from app.controllers.forms.utils import upload_documents,upload_image_as_png
-from app.controllers.auth.utils import get_current_user
+from app.user.controllers.forms.utils import upload_documents,upload_image_as_png
+from app.user.controllers.auth.utils import get_current_user
 from typing import Annotated, Optional
-from app.controllers.auth.main import oauth2_scheme
-from app.models import get_db
+from app.user.controllers.auth.main import oauth2_scheme
+from app.user.models import get_db
 from PIL import Image
 from io import BytesIO
 

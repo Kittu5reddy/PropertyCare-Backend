@@ -1,24 +1,24 @@
-from app.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,get_is_pd_filled
-from app.controllers.auth.email import create_verification_token,send_verification_email
+from app.user.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,get_is_pd_filled
+from app.user.controllers.auth.email import create_verification_token,send_verification_email
 from fastapi import APIRouter,Request
-from app.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
-from app.validators.auth import User as LoginSchema 
-from app.models.users import User,UserNameUpdate
-from app.models.personal_details import PersonalDetails
+from app.user.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
+from app.user.validators.auth import User as LoginSchema 
+from app.user.models.users import User,UserNameUpdate
+from app.user.models.personal_details import PersonalDetails
 from fastapi import APIRouter, HTTPException,Depends,BackgroundTasks
-from app.controllers.forms.utils import create_user_directory
+from app.user.controllers.forms.utils import create_user_directory
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError,jwt
 from fastapi.responses import HTMLResponse
 from fastapi import Response
 from passlib.context import CryptContext
-from app.models import get_db,AsyncSession
+from app.user.models import get_db,AsyncSession
 from fastapi import Depends
 from sqlalchemy import select, desc
 from fastapi import BackgroundTasks
-from app.validators.auth import ChangePassword
-from app.validators.user_profile import ChangeFirstName,ChangeLastName,ChangeUsername,ChangeContactNumber,ChangeHouseNumber,ChangeStreet,ChangeCity,ChangeState,ChangeCountry,ChangePinCode
-from app.controllers.forms.utils import get_image
+from app.user.validators.auth import ChangePassword
+from app.user.validators.user_profile import ChangeFirstName,ChangeLastName,ChangeUsername,ChangeContactNumber,ChangeHouseNumber,ChangeStreet,ChangeCity,ChangeState,ChangeCountry,ChangePinCode
+from app.user.controllers.forms.utils import get_image
 from datetime import datetime,timedelta
 auth=APIRouter(prefix='/auth',tags=['auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

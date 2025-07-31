@@ -1,10 +1,10 @@
 from fastapi import APIRouter,Depends
-from app.controllers.auth.main import oauth2_scheme
-from app.controllers.forms.utils import get_image
+from app.user.controllers.auth.main import oauth2_scheme
+from app.user.controllers.forms.utils import get_image
 
 
 
-from app.models import AsyncSession,get_db
+from app.user.models import AsyncSession,get_db
 dash=APIRouter(prefix='/dash',tags=['/dash'])
 
 @dash.get('/property-details')

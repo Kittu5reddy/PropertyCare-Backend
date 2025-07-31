@@ -10,8 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import JWTError,jwt
 from config import settings
-from app.models.users import User
-from app.models.personal_details import PersonalDetails
+from app.user.models.users import User
+from app.user.models.personal_details import PersonalDetails
 from fastapi import status
 # =================
 #   settingsuration

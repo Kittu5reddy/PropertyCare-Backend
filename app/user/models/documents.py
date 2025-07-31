@@ -1,6 +1,6 @@
 
 from sqlalchemy.orm import Mapped, mapped_column
-from app.models import Base
+from app.user.models import Base
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, func,ForeignKey
 class Documents(Base):
     __tablename__ = "Documents"
