@@ -4,15 +4,18 @@ from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
-# load_dotenv('.env.dev')
+#make it uncomment in production and comment in developement
+# load_dotenv('.env.prod')
+load_dotenv('.env.dev')
 
 class Settings(BaseSettings):
     # JWT
     REFRESH_TOKEN_SECRET_KEY: str
     ACCESS_TOKEN_SECRET_KEY: str
+    
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
+    ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
 
     # File Config
@@ -32,6 +35,7 @@ class Settings(BaseSettings):
 
     # Database
     HOST_NAME: str
+    SCHEMA:str
     DATABASE_NAME: str
     USERNAME: str
     PASSWORD: str
@@ -40,6 +44,9 @@ class Settings(BaseSettings):
     MAX_OVERFLOW: int = 20
     POOL_TIME_OUT: int = 30
     DATABASE_URL: str  # ✅ Add this line
+
+
+
     # Email
     SMTP_SERVER: str
     SMTP_PORT: int
