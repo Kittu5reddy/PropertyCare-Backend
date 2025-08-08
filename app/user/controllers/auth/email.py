@@ -75,3 +75,47 @@ def send_verification_email(email: str, token: str):
     except Exception as e:
         print(f"Failed to send email: {e}")
         return False
+
+
+def send_admin_login_alert_email(email: str, ip_address: str = None, user_agent: str = None):
+    """Send an alert email to admin when a login occurs."""
+    from datetime import datetime
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_ADDRESS
+        msg['To'] = email
+        msg['Subject'] = "Admin Login Notification"
+
+        # Compose dynamic info
+        time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        ip_info = f"<p><b>IP Address:</b> {ip_address}</p>" if ip_address else ""
+        ua_info = f"<p><b>Device/Browser:</b> {user_agent}</p>" if user_agent else ""
+
+        body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <h2>Admin Login Alert</h2>
+                <p>
+                    Your admin account was just logged into on <b>{time_str}</b>.
+                </p>
+                {ip_info}
+                {ua_info}
+                <p>If this was you, no action is needed.</p>
+                <p><span style="color:red"><b>If this was not you</b></span>, please reset your password immediately and review your account security.</p>
+                <hr>
+                <p>This is an automated alert for your security.</p>
+            </body>
+        </html>
+        """
+
+        msg.attach(MIMEText(body, 'html'))
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_ADDRESS, email, msg.as_string())
+        server.quit()
+
+        return True
+    except Exception as e:
+        print(f"Failed to send admin login alert email: {e}")
+        return False

@@ -7,6 +7,7 @@ metadata = MetaData(schema="PropCare")
 Base = declarative_base(metadata=metadata)
 from .users import User
 from app.admin.models.admins import Admin
+from app.admin.models.subscriptions import Subscription,SubscriptionHistory
 from .personal_details import PersonalDetails
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 # from sqlalchemy.orm import declarative_base

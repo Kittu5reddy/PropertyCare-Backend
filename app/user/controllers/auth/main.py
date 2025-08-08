@@ -13,13 +13,14 @@ from fastapi.responses import HTMLResponse
 from fastapi import Response
 from passlib.context import CryptContext
 from app.user.models import get_db,AsyncSession
-from fastapi import Depends
+from fastapi import Depends,File,UploadFile
 from sqlalchemy import select, desc
 from fastapi import BackgroundTasks
 from app.user.validators.auth import ChangePassword
 from app.user.validators.user_profile import ChangeFirstName,ChangeLastName,ChangeUsername,ChangeContactNumber,ChangeHouseNumber,ChangeStreet,ChangeCity,ChangeState,ChangeCountry,ChangePinCode
 from app.user.controllers.forms.utils import get_image
 from datetime import datetime,timedelta
+from app.user.controllers.forms.utils import upload_image_as_png
 auth=APIRouter(prefix='/auth',tags=['auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -357,6 +358,7 @@ async def get_subscription_details(token:str=Depends(oauth2_scheme),db:AsyncSess
 #=========================================================================
 #      Profie Edits
 #=========================================================================
+from datetime import datetime, timedelta
 
 @auth.get("/edit-profile")
 async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
@@ -382,7 +384,7 @@ async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: Asyn
         is_username_changable = False
         if username_update:
             last_updated = username_update.last_updated
-            now = datetime.utcnow()
+            now = datetime.now(tz=last_updated.tzinfo)  # Ensure same timezone
             delta = now - last_updated
             if delta > timedelta(days=30):  # e.g., allow username change after 30 days
                 is_username_changable = True
@@ -409,10 +411,9 @@ async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: Asyn
             "can_change_username": is_username_changable
         }
     except HTTPException as http_exc:
-        raise http_exc  # re-raise the actual HTTP error (like 401)
+        raise http_exc
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
 
 
 
@@ -461,22 +462,49 @@ async def change_last_name(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update last name: {str(e)}")
 
+@auth.put('/change-username')
+async def change_username(
+    form: ChangeUsername,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token,db)
 
+        # Check for username conflict
+        existing_username = await db.execute(
+            select(PersonalDetails).where(
+                PersonalDetails.user_name == form.user_name
+            )
+        )
+        if existing_username.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="Username already exists")
 
-# @auth.put('/change-username')
-# async def change_username(
-#     form: ChangeUsername,
-#     token: str = Depends(oauth2_scheme),
-#     db: AsyncSession = Depends(get_db)
-# ):
-#     try:
-#         user: PersonalDetails = await get_current_user_personal_details(token, db)
-#         update_data:UserNameUpdate= await db.execute(select(UserNameUpdate).where(UserNameUpdate.user_id==user.user_id).limit((1)))
-#         data=update_data.last_updated.scalar_or_none
+        # Get personal details
+        personal_details_result = await db.execute(
+            select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
+        )
+        personal_details = personal_details_result.scalar_one_or_none()
 
+        if not personal_details:
+            raise HTTPException(status_code=404, detail="User not found")
 
+        personal_details.user_name = form.user_name
+        db.add(personal_details)
+        await db.commit()
+        await db.refresh(personal_details)
 
+        return {"message": "Username updated successfully."}
 
+    except HTTPException as http_exc:
+        print(http_exc)
+        raise http_exc
+    except JWTError:
+        print(e)
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=f"Failed to update username: {str(e)}")
 
 
 @auth.put('/change-contact-number')
@@ -532,8 +560,23 @@ async def change_house_number(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update house number: {str(e)}")
 
+@auth.put("/change-profile-photo")
+async def change_profile_photo(profile_photo: UploadFile = File(...),token:str=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
+    try:
+        user=get_current_user(token,db)
 
-
+        file_data = await profile_photo.read()
+        result = await upload_image_as_png(
+            file={"bytes": file_data},
+            category="profile_photo",
+            user_id=user.user_id  # You should fetch this from the session or token
+        )
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
 @auth.put('/change-street')
 async def change_street(
@@ -647,8 +690,6 @@ async def change_country(
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update country : {str(e)}")
-
-# /auth/change-username
 
 
 #=============================

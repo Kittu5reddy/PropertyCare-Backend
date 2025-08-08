@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN: int
+    REFRESH_TOKEN_EXPIRE_DAYS_ADMIN: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
 
     # File Config

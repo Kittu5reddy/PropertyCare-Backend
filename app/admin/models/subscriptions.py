@@ -8,7 +8,7 @@ class Subscription(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     sub_id = Column(String, unique=True, index=True)
-    created_by = Column(String(50), ForeignKey("admins.admin_id"), nullable=False)
+    created_by = Column(String(50), ForeignKey("admin.admin_id"), nullable=False)
     sub_type = Column(String(50), nullable=False)
     sub_name = Column(String(50), nullable=False)
     # Use SQLAlchemy's native JSON type for the property field
@@ -25,6 +25,6 @@ class SubscriptionHistory(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     subscription_id = Column(Integer, ForeignKey("subscriptions.id"), nullable=False)
-    created_by = Column(String(50), ForeignKey("admins.admin_id"), nullable=False)
+    created_by = Column(String(50), ForeignKey("admin.admin_id"), nullable=False)
     changes_made = Column(JSON, nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

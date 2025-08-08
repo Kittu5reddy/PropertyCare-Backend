@@ -176,8 +176,4 @@ def get_is_pd_filled(token:str):
 # =================
 
 if __name__ == "__main__":
-    payload = {"sub": "kaushik"}
-    access = create_access_token(payload)
-    refresh = create_refresh_token(payload)
-    print("Access Token:", access)
-    print("Refresh Token:", refresh)
+    print(get_password_hash("Palvai2004@"))
