@@ -1,0 +1,56 @@
+
+from app.user.models import Base
+
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, func,ForeignKey,Text,JSON
+from datetime import datetime
+from sqlalchemy.orm import Mapped, mapped_column
+class PropertyDetails(Base):
+    __tablename__ = "property_details"
+    id = Column(Integer, primary_key=True, index=True)
+    property_id = Column(String, unique=True, index=True)
+    property_name: Mapped[str] = mapped_column(String(50))  
+    plot_number: Mapped[str] = mapped_column(String(50))
+    user_id: Mapped[str] = mapped_column(String(50),ForeignKey("users.user_id"), nullable=False )
+    house_number: Mapped[str] = mapped_column(String(50), nullable=False)
+    project_name_or_venture: Mapped[str] = mapped_column(String(20))
+    street: Mapped[str] = mapped_column(String(100), nullable=False)
+    city: Mapped[str] = mapped_column(String(50), nullable=False)
+    state: Mapped[str] = mapped_column(String(50), nullable=False)
+    country: Mapped[str] = mapped_column(String(50), nullable=False,default="India")
+    pin_code: Mapped[int] = mapped_column(Integer, nullable=False)  
+    size:Mapped[int] = mapped_column(Integer,nullable=False)
+    phone_number: Mapped[str] = mapped_column(String(10), nullable=False)  
+    land_mark:Mapped[str] =  mapped_column(Text, nullable=True)
+    latitude: Mapped[str] = mapped_column(String(12))  
+    longitude: Mapped[str] = mapped_column(String(13))  
+    facing:Mapped[str] = mapped_column(String(13),nullable=False)  
+    type:Mapped[str] = mapped_column(String(225),nullable=False)  
+    admin_id: Mapped[str] = mapped_column(String(50),ForeignKey("admin.admin_id"),nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+
+
+
+class PropertyHistory(Base):
+    __tablename__ = "property_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    # which property the history belongs to
+    property_id: Mapped[int] = mapped_column(Integer, ForeignKey("property_details.id"), nullable=False)
+
+    # who made the change (linking to user table)
+    updated_by_user: Mapped[str] = mapped_column(String(50), ForeignKey("users.user_id"), nullable=False)
+    updated_by_admin: Mapped[str] = mapped_column(String(50), ForeignKey("admin.admin_id"), nullable=False)
+
+    # type of action (CREATE / UPDATE / DELETE)
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    # store old/new values in JSON
+    changes_made: Mapped[dict] = mapped_column(JSON, nullable=True)
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
+    )

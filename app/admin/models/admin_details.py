@@ -7,7 +7,7 @@ class AdminDetails(Base):
     __tablename__ = "admin_details"
     id = Column(Integer, primary_key=True, index=True)
     admin_id = Column(String, unique=True, index=True)
-    user_id: Mapped[str] = mapped_column(String(50),ForeignKey("admin.user_id"), nullable=False, unique=True )
+    user_id: Mapped[str] = mapped_column(String(50),ForeignKey("admin.admin_id"), nullable=False, unique=True )
     user_name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True, index=True)  # fixed
     first_name: Mapped[str] = mapped_column(String(50), nullable=False)
     last_name: Mapped[str] = mapped_column(String(50), nullable=False)

@@ -1,6 +1,7 @@
 from app.user.models import Base
 
 from sqlalchemy import JSON, Column, Integer, String, Boolean, DateTime, func,ForeignKey
+from sqlalchemy.dialects.postgresql import ARRAY
 
 
 class Subscription(Base):
@@ -11,12 +12,16 @@ class Subscription(Base):
     created_by = Column(String(50), ForeignKey("admin.admin_id"), nullable=False)
     sub_type = Column(String(50), nullable=False)
     sub_name = Column(String(50), nullable=False)
-    # Use SQLAlchemy's native JSON type for the property field
-    services = Column(JSON, nullable=True)
-    is_active= Column(Boolean,default=False)
-    cost = Column(Integer, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    services = Column(JSON, nullable=True)   # ok, but see note below
+    is_active= Column(Boolean, default=False)
+    cost_usd = Column(Integer, nullable=False)
+    cost_inr = Column(Integer, nullable=False)
 
+    durations = Column(ARRAY(String), nullable=False)   # ⚠️ works only with PostgreSQL
+    applicable_to = Column(JSON, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 
@@ -28,3 +33,4 @@ class SubscriptionHistory(Base):
     created_by = Column(String(50), ForeignKey("admin.admin_id"), nullable=False)
     changes_made = Column(JSON, nullable=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    action = Column(String(50), nullable=False)  # e.g., CREATED, UPDATED, DELETED

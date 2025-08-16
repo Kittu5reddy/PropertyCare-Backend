@@ -5,10 +5,15 @@ from typing import AsyncGenerator
 from sqlalchemy import text
 metadata = MetaData(schema="PropCare")
 Base = declarative_base(metadata=metadata)
-from .users import User
+
+from app.user.models.users import User,UserNameUpdate
+from app.user.models.personal_details import PersonalDetails,PersonalDetailsHistory
+from app.user.models.property_details import PropertyHistory,PropertyDetails
+from app.user.models.usersubscriptiontransaction import UserSubscriptionTransaction,UserSubscriptionTransactionHistory
+from app.user.models.documents import Documents,DocumentHistory
 from app.admin.models.admins import Admin
 from app.admin.models.subscriptions import Subscription,SubscriptionHistory
-from .personal_details import PersonalDetails
+from app.admin.models.admin_details import AdminDetails
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 # from sqlalchemy.orm import declarative_base
 # from app.user.models import Base
