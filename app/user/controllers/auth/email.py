@@ -6,12 +6,12 @@ from dotenv import load_dotenv
 from config import settings
 
 
-# Email settingsuration
-SMTP_SERVER = settings.SMTP_SERVER
-SMTP_PORT = settings.SMTP_PORT
+# GoDaddy SMTP settings
+SMTP_SERVER = "smtpout.secureserver.net"
+SMTP_PORT = 465  # SSL port
 EMAIL_ADDRESS = settings.EMAIL_ADDRESS
 EMAIL_PASSWORD = settings.EMAIL_PASSWORD
-PATH=settings.EMAIL_TOKEN_VERIFICATION
+PATH = settings.EMAIL_TOKEN_VERIFICATION
 
 
 def create_verification_token():
@@ -60,13 +60,12 @@ def send_verification_email(email: str, token: str):
         <p>If you didn't create an account, please ignore this email.</p>
     </body>
 </html>
-
         """
 
         msg.attach(MIMEText(body, 'html'))
 
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
+        # GoDaddy requires SSL on port 465
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT)
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.sendmail(EMAIL_ADDRESS, email, msg.as_string())
         server.quit()
@@ -109,8 +108,9 @@ def send_admin_login_alert_email(email: str, ip_address: str = None, user_agent:
         """
 
         msg.attach(MIMEText(body, 'html'))
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        server.starttls()
+
+        # GoDaddy requires SSL on port 465
+        server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT)
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.sendmail(EMAIL_ADDRESS, email, msg.as_string())
         server.quit()

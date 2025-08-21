@@ -64,7 +64,7 @@ async def check_username(
 ):
     try:
         # Decode token to ensure it's valid
-        payload = get_current_user(token,db)
+        payload = await get_current_user(token,db)
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -85,7 +85,7 @@ async def check_phonenumber(
 ):
     try:
         # Decode token to ensure it's valid
-        payload = get_current_user(token,db)
+        payload = await get_current_user(token,db)
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 

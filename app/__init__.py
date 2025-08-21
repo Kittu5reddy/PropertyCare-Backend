@@ -7,7 +7,11 @@ from app.admin.controllers.auth import admin
 from app.admin.controllers.user import admin_user
 def create_app():
     app = FastAPI()
-    allow_origins=["http://localhost:3000","http://localhost:5173","https://propertycare-nine.vercel.app"]
+    allow_origins=["http://localhost:3000",
+                   "http://localhost:5173",
+                   "https://user.vibhoospropcare.com",
+                   "https://admin.vibhoospropcare.com",
+                   "https://propertycare-nine.vercel.app"]
 
     # CORS configuration
     app.add_middleware(

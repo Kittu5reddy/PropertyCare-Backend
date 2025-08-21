@@ -563,7 +563,7 @@ async def change_house_number(
 @auth.put("/change-profile-photo")
 async def change_profile_photo(profile_photo: UploadFile = File(...),token:str=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
     try:
-        user=get_current_user(token,db)
+        user=await get_current_user(token,db)
 
         file_data = await profile_photo.read()
         result = await upload_image_as_png(

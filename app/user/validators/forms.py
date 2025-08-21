@@ -15,11 +15,13 @@ class Gender(str, Enum):
     male = "Male"
     female = "Female"
     other = "Other"
+from datetime import date
+
 async def get_personal_details(
     first_name: Annotated[str, Form(...)],
     last_name: Annotated[str, Form(...)],
     user_name: Annotated[str, Form(...)],
-    dob: Annotated[str, Form(...)],
+    dob: Annotated[date, Form(...)],  
     gender: Annotated[Gender, Form(...)],
     contact_number: Annotated[int, Form(...)],
     house_number: Annotated[str, Form(...)],
@@ -38,24 +40,19 @@ async def get_personal_details(
     db=Depends(get_db)
 ):
     documents = {}
-    user= await get_current_user(token,db)
+    user = await get_current_user(token, db)
 
     async def upload_and_store(file: UploadFile, category: str):
         content = await file.read()
-        file_dict = {
-            "filename": file.filename,
-            "bytes": content
-        }
-        if category=="profile_photo":
-            return await upload_image_as_png(file_dict, category=category,user_id=user.user_id )
-        return await upload_documents(file_dict, category=category,user_id=user.user_id )
+        file_dict = {"filename": file.filename, "bytes": content}
+        if category == "profile_photo":
+            return await upload_image_as_png(file_dict, category=category, user_id=user.user_id)
+        return await upload_documents(file_dict, category=category, user_id=user.user_id)
 
     if profile_photo:
         documents["profile_photo"] = await upload_and_store(profile_photo, category="profile_photo")
-
     if pan_document:
         documents["pan_document"] = await upload_and_store(pan_document, category="pan")
-
     if aadhaar_document:
         documents["aadhaar_document"] = await upload_and_store(aadhaar_document, category="aadhaar")
 
@@ -63,7 +60,7 @@ async def get_personal_details(
         "first_name": first_name,
         "last_name": last_name,
         "user_name": user_name,
-        "date_of_birth": dob,
+        "date_of_birth": dob,   # 👈 already a date object now
         "gender": gender,
         "contact_number": contact_number,
         "description": description,
