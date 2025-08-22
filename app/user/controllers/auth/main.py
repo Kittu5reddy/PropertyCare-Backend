@@ -285,6 +285,7 @@ async def get_personal_details(
 
         
         profile_url=get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png")
+        print(profile_url)
         return {
             "full_name": f"{data.first_name} {data.last_name}",
             "user_name": data.user_name,
@@ -507,6 +508,7 @@ async def change_username(
         raise HTTPException(status_code=500, detail=f"Failed to update username: {str(e)}")
 
 
+
 @auth.put('/change-contact-number')
 async def change_contact_number(
     form: ChangeContactNumber,
@@ -514,19 +516,26 @@ async def change_contact_number(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        result=await db.execute(select(PersonalDetails).where(PersonalDetails.contact_number!=form.contact_number).limit((1)))
-        result=result.scalar_one_or_none()
-        if result:
-            return HTTPException(500,detail=f"number already exits")        
+        # Check if the number is already taken
+        result = await db.execute(
+            select(PersonalDetails)
+            .where(PersonalDetails.contact_number == form.contact_number)
+        )
+        existing_user = result.scalar_one_or_none()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Number already exists")
+
+        # Get current user
         user: PersonalDetails = await get_current_user_personal_details(token, db)
         user.contact_number = form.contact_number.strip()
         db.add(user)
         await db.commit()
         await db.refresh(user)
 
-        return {"message": "contact number updated successfully."}
+        return {"message": "Contact number updated successfully."}
+
     except HTTPException as http_exc:
-        raise http_exc  # re-raise the actual HTTP error (like 401)
+        raise http_exc
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
@@ -558,6 +567,7 @@ async def change_house_number(
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Failed to update house number: {str(e)}")
 
 @auth.put("/change-profile-photo")
@@ -574,6 +584,10 @@ async def change_profile_photo(profile_photo: UploadFile = File(...),token:str=D
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         return result
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     

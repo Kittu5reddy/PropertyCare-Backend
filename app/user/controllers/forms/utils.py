@@ -5,12 +5,17 @@ from typing import Dict, Union
 from botocore.exceptions import ClientError
 from io import BytesIO
 from PIL import Image, UnidentifiedImageError
+from datetime import datetime
 
+from fastapi import HTTPException
 # Config values
 AWS_ACCESS_KEY_ID = settings.AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY = settings.AWS_SECRET_ACCESS_KEY
 AWS_REGION = settings.AWS_REGION
 S3_BUCKET = settings.S3_BUCKET_NAME
+DISTRIBUTION_ID = settings.DISTRIBUTION_ID
+
+
 
 CATEGORY_FOLDER_MAP = {
     "aadhaar": "aadhar",
@@ -23,6 +28,24 @@ CATEGORY_FOLDER_MAP = {
 # Reusable S3 session
 session = aioboto3.Session()
 
+
+async def invalidate_files(paths: list[str]):
+    try:
+        # Ensure all paths start with a leading '/'
+        paths = [p if p.startswith('/') else f'/{p}' for p in paths]
+
+        async with session.client("cloudfront") as client:
+            response = await client.create_invalidation(
+                DistributionId=DISTRIBUTION_ID,
+                InvalidationBatch={
+                    "Paths": {"Quantity": len(paths), "Items": paths},
+                    "CallerReference": str(datetime.now().timestamp()),
+                },
+            )
+            return response["Invalidation"]
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def create_user_directory(user_id: str) -> Dict[str, Dict[str, str]]:
     base_folder = f"user/{user_id}/"
@@ -87,7 +110,7 @@ async def upload_image_as_png(file: dict, category: str, user_id: Union[str, int
         return {"error": f"Invalid category '{category}'"}
 
     object_key = f"user/{user_id}/{folder_name}/{category}.png"
-
+    print(object_key)
     # Convert to PNG
     try:
         image = Image.open(BytesIO(file["bytes"])).convert("RGB")
@@ -113,6 +136,8 @@ async def upload_image_as_png(file: dict, category: str, user_id: Union[str, int
                 ACL="private",
                 ContentType="image/png"
             )
+            await invalidate_files([object_key])
+
             return {
                 "success": True,
                 "file_path": object_key,
@@ -123,4 +148,4 @@ async def upload_image_as_png(file: dict, category: str, user_id: Union[str, int
 
 
 def get_image(filename: str) -> str:
-    return f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com{filename}"
+    return f"https://d15n07lkmwi827.cloudfront.net{filename}"

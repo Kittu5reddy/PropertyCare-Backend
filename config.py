@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY:str
     AWS_REGION:str
     S3_BUCKET_NAME:str
+    DISTRIBUTION_ID:str
     class Config:
         env_file = ".env"
         case_sensitive = True
