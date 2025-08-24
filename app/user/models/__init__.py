@@ -10,7 +10,7 @@ from app.user.models.users import User,UserNameUpdate
 from app.user.models.personal_details import PersonalDetails,PersonalDetailsHistory
 from app.user.models.property_details import PropertyHistory,PropertyDetails
 from app.user.models.usersubscriptiontransaction import UserSubscriptionTransaction,UserSubscriptionTransactionHistory
-from app.user.models.documents import Documents,DocumentHistory
+from app.user.models.documents import PropertyDocuments,DocumentHistory,UserDocuments
 from app.admin.models.admins import Admin
 from app.admin.models.subscriptions import Subscription,SubscriptionHistory
 from app.admin.models.admin_details import AdminDetails

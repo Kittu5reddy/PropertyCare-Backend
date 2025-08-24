@@ -6,6 +6,7 @@ from app.user.controllers.subscrptions.main import sub
 from app.user.controllers.dashboard.main import dash
 from app.admin.controllers.auth import admin
 from app.admin.controllers.user import admin_user
+from app.user.controllers.properties.main import prop
 def create_app():
     app = FastAPI()
     allow_origins=["http://localhost:3000",
@@ -29,4 +30,5 @@ def create_app():
     app.include_router(admin_user) 
     app.include_router(dash)
     app.include_router(form)
+    app.include_router(prop)
     return app

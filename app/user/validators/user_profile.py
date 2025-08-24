@@ -20,6 +20,6 @@ class ChangeCity(BaseModel):
 class ChangeState(BaseModel):
     state:str
 class ChangePinCode(BaseModel):
-    pin_code:str
+    pin_code:int
 class ChangeCountry(BaseModel):
     country:str

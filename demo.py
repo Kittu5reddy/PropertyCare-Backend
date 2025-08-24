@@ -1,24 +1,28 @@
-import smtplib, ssl
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import boto3
+import os
+import dotenv
+dotenv.load_dotenv()
 
-sender_email = "info@vibhoospropcare.com"
-receiver_email = "kaushikpalvai2004@gmail.com"
-password = "Propcare2025@"
+def list_s3_objects(bucket_name, prefix=None):
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+        region_name=os.getenv('AWS_REGION')
+    )
+    
+    paginator = s3.get_paginator("list_objects_v2")
+    page_iterator = paginator.paginate(Bucket=bucket_name, Prefix=prefix) if prefix else paginator.paginate(Bucket=bucket_name)
+    
+    keys = []
+    for page in page_iterator:
+        if "Contents" in page:
+            for obj in page["Contents"]:
+                keys.append(obj["Key"])
+    
+    return keys
 
-# Create the email
-msg = MIMEMultipart("alternative")
-msg["Subject"] = "Test Email"
-msg["From"] = sender_email
-msg["To"] = receiver_email
-
-text = "Hi, this is a test email from vibhoospropcare.com!"
-msg.attach(MIMEText(text, "plain"))
-
-# Send via GoDaddy SMTP
-context = ssl.create_default_context()
-with smtplib.SMTP_SSL("smtpout.secureserver.net", 465, context=context) as server:
-    server.login(sender_email, password)
-    server.sendmail(sender_email, receiver_email, msg.as_string())
-
-print("✅ Email sent successfully")
+bucket_name = "propcare-demos"
+folder_prefix = "user/PC2025U001/profile_photo/"
+total = list_s3_objects(bucket_name, folder_prefix)
+print(f"Total objects in '{folder_prefix}' = {total}")

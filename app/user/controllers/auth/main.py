@@ -204,7 +204,9 @@ async def refresh_token(request: Request, response: Response,db:AsyncSession=Dep
         }
     except JWTError as e:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
-
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+        
 
 
 
@@ -249,11 +251,10 @@ async def change_password(
         await db.refresh(user)
 
         return {"message": "Password changed successfully"}
-
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise the actual HTTP error (like 401)
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
- 
-
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 
@@ -415,7 +416,9 @@ async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: Asyn
         raise http_exc
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
-
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+        
 
 
 
@@ -457,9 +460,10 @@ async def change_last_name(
         await db.refresh(user)
 
         return {"message": "Last name updated successfully."}
-
     except HTTPException as http_exc:
         raise http_exc  # re-raise the actual HTTP error (like 401)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update last name: {str(e)}")
 
@@ -669,7 +673,7 @@ async def change_pin_code(
 ):
     try:
         user: PersonalDetails = await get_current_user_personal_details(token, db)
-        user.pin_code = form.pin_code.strip()
+        user.pin_code = form.pin_code
 
         db.add(user)
         await db.commit()
@@ -681,6 +685,7 @@ async def change_pin_code(
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Failed to update pin code: {str(e)}")
     
 
