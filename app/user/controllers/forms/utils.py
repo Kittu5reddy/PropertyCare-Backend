@@ -8,6 +8,7 @@ from PIL import Image, UnidentifiedImageError
 from datetime import datetime
 import uuid
 from fastapi import HTTPException
+import time
 # Config values
 AWS_ACCESS_KEY_ID = settings.AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY = settings.AWS_SECRET_ACCESS_KEY
@@ -255,4 +256,4 @@ async def property_upload_documents(file: dict, category: str, property_id: Unio
             return {"error": str(e)}
 
 def get_image(filename: str) -> str:
-    return f"https://d15n07lkmwi827.cloudfront.net{filename}"
+    return f"https://d15n07lkmwi827.cloudfront.net{filename}v={int(time.time())}"
