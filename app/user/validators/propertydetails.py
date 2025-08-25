@@ -8,7 +8,6 @@ class PropertyDetailForm(BaseModel):
     survey_number: str
     plot_number: str
     house_number: str
-    street:str
     city: str
     state: str
     district: str
@@ -20,6 +19,7 @@ class PropertyDetailForm(BaseModel):
     owner_contact: str
     type_of_property: str
     sub_type_property: str
+    street:Optional[str] = ""
     gmaps_url: Optional[str] = ""
     nearby_landmark: Optional[str] = ""
     latitude: Optional[str] = ""

@@ -14,7 +14,9 @@ async def get_property_details(
             PropertyDetails.property_id,
             PropertyDetails.property_name,
             PropertyDetails.size,
-            PropertyDetails.type
+            PropertyDetails.type,
+            PropertyDetails.city,
+
         )
         .where(PropertyDetails.user_id == user_id)
         .limit(limit)  # limit on properties
@@ -34,9 +36,12 @@ async def get_property_details(
             images=None
         data.append({
             "property_id": row.property_id,
-            "property_name": row.property_name,
+            "location":row.city,
+            "name": row.property_name,
             "size": row.size,
             "type": row.type,
-            "images": images if images else """https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1075&q=80"""
+             "subscription": '',
+            "status": 'active',
+            "image_url": images if images else """https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1075&q=80"""
         })
     return data
