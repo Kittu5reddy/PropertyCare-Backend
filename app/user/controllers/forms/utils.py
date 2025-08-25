@@ -32,23 +32,23 @@ CATEGORY_FOLDER_MAP = {
 session = aioboto3.Session()
 
 
-# async def invalidate_files(paths: list[str]):
-#     try:
-#         # Ensure all paths start with a leading '/'
-#         paths = [p if p.startswith('/') else f'/{p}' for p in paths]
+async def invalidate_files(paths: list[str]):
+    try:
+        # Ensure all paths start with a leading '/'
+        paths = [p if p.startswith('/') else f'/{p}' for p in paths]
 
-#         async with session.client("cloudfront") as client:
-#             response = await client.create_invalidation(
-#                 DistributionId=DISTRIBUTION_ID,
-#                 InvalidationBatch={
-#                     "Paths": {"Quantity": len(paths), "Items": paths},
-#                     "CallerReference": str(datetime.now().timestamp()),
-#                 },
-#             )
-#             return response["Invalidation"]
-#     except Exception as e:
-#         print(str(e))
-#         raise HTTPException(status_code=500, detail=str(e))
+        async with session.client("cloudfront") as client:
+            response = await client.create_invalidation(
+                DistributionId=DISTRIBUTION_ID,
+                InvalidationBatch={
+                    "Paths": {"Quantity": len(paths), "Items": paths},
+                    "CallerReference": str(datetime.now().timestamp()),
+                },
+            )
+            return response["Invalidation"]
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 async def create_user_directory(user_id: str) -> Dict[str, Dict[str, str]]:
     base_folder = f"user/{user_id}/"
@@ -165,7 +165,7 @@ async def upload_image_as_png(file: dict, category: str, user_id: Union[str, int
                 ACL="private",
                 ContentType="image/png"
             )
-            # await invalidate_files([object_key])
+            await invalidate_files([object_key])
 
             return {
                 "success": True,
@@ -214,7 +214,7 @@ async def property_upload_image_as_png(file: dict, category: str, property_id: U
                 ACL="private",
                 ContentType="image/png"
             )
-            # await invalidate_files([object_key])
+            await invalidate_files([object_key])
 
             return {
                 "success": True,
