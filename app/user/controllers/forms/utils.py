@@ -32,23 +32,23 @@ CATEGORY_FOLDER_MAP = {
 session = aioboto3.Session()
 
 
-async def invalidate_files(paths: list[str]):
-    try:
-        # Ensure all paths start with a leading '/'
-        paths = [p if p.startswith('/') else f'/{p}' for p in paths]
+# async def invalidate_files(paths: list[str]):
+#     try:
+#         # Ensure all paths start with a leading '/'
+#         paths = [p if p.startswith('/') else f'/{p}' for p in paths]
 
-        async with session.client("cloudfront") as client:
-            response = await client.create_invalidation(
-                DistributionId=DISTRIBUTION_ID,
-                InvalidationBatch={
-                    "Paths": {"Quantity": len(paths), "Items": paths},
-                    "CallerReference": str(datetime.now().timestamp()),
-                },
-            )
-            return response["Invalidation"]
-    except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=str(e))
+#         async with session.client("cloudfront") as client:
+#             response = await client.create_invalidation(
+#                 DistributionId=DISTRIBUTION_ID,
+#                 InvalidationBatch={
+#                     "Paths": {"Quantity": len(paths), "Items": paths},
+#                     "CallerReference": str(datetime.now().timestamp()),
+#                 },
+#             )
+#             return response["Invalidation"]
+#     except Exception as e:
+#         print(str(e))
+#         raise HTTPException(status_code=500, detail=str(e))
 
 async def create_user_directory(user_id: str) -> Dict[str, Dict[str, str]]:
     base_folder = f"user/{user_id}/"
@@ -165,7 +165,7 @@ async def upload_image_as_png(file: dict, category: str, user_id: Union[str, int
                 ACL="private",
                 ContentType="image/png"
             )
-            await invalidate_files([object_key])
+            # await invalidate_files([object_key])
 
             return {
                 "success": True,
@@ -214,7 +214,7 @@ async def property_upload_image_as_png(file: dict, category: str, property_id: U
                 ACL="private",
                 ContentType="image/png"
             )
-            await invalidate_files([object_key])
+            # await invalidate_files([object_key])
 
             return {
                 "success": True,
@@ -257,3 +257,29 @@ async def property_upload_documents(file: dict, category: str, property_id: Unio
 
 def get_image(filename: str) -> str:
     return f"https://d15n07lkmwi827.cloudfront.net{filename}?v={int(time.time())}"
+
+
+async def list_s3_objects(bucket_name=S3_BUCKET, prefix=None, limit: int = 1):
+    async with session.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
+    ) as s3:
+        paginator = s3.get_paginator("list_objects_v2")
+        page_iterator = (
+            paginator.paginate(Bucket=bucket_name, Prefix=prefix)
+            if prefix else paginator.paginate(Bucket=bucket_name)
+        )
+
+        keys = []
+        async for page in page_iterator:
+            if "Contents" in page:
+                for obj in page["Contents"]:
+                    key = obj["Key"]
+                    # skip unwanted files
+                    if key.endswith(".keep"):
+                        continue
+                    keys.append(key)
+
+        return keys[:limit]  # apply limit after filtering
