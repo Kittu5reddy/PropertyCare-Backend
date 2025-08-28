@@ -15,7 +15,7 @@ AWS_SECRET_ACCESS_KEY = settings.AWS_SECRET_ACCESS_KEY
 AWS_REGION = settings.AWS_REGION
 S3_BUCKET = settings.S3_BUCKET_NAME
 DISTRIBUTION_ID = settings.DISTRIBUTION_ID
-
+CLOUDFRONT_URL=settings.CLOUDFRONT_URL
 
 
 CATEGORY_FOLDER_MAP = {
@@ -256,7 +256,7 @@ async def property_upload_documents(file: dict, category: str, property_id: Unio
             return {"error": str(e)}
 
 def get_image(filename: str) -> str:
-    return f"https://d15n07lkmwi827.cloudfront.net{filename}?v={int(time.time())}"
+    return f"{CLOUDFRONT_URL}{filename}?v={int(time.time())}"
 
 
 async def list_s3_objects(bucket_name=S3_BUCKET, prefix=None, limit: int = 1):

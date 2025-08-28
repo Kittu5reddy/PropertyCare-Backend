@@ -96,6 +96,16 @@ class Settings(BaseSettings):
     AWS_REGION:str
     S3_BUCKET_NAME:str
     DISTRIBUTION_ID:str
+    CLOUDFRONT_URL:str
+
+
+
+    # ==================================
+    #         I M A G E S 
+    # ==================================
+    DEFAULT_IMG_URL:str
+
+
     class Config:
         env_file = ".env"
         case_sensitive = True

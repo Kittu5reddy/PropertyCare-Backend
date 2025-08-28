@@ -3,7 +3,7 @@ from app.user.models.property_details import PropertyDetails
 from app.user.models import get_db,AsyncSession
 from fastapi import Depends
 from app.user.controllers.forms.utils import list_s3_objects,get_image
-
+from config import settings
 async def get_property_details(
     user_id: str,
     db: AsyncSession,
@@ -42,6 +42,6 @@ async def get_property_details(
             "type": row.type,
              "subscription": '',
             "status": 'active',
-            "image_url": images if images else """https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1075&q=80"""
+            "image_url": settings.CLOUDFRONT_URL + f'/property/{row.property_id}/original_image.png'
         })
     return data
