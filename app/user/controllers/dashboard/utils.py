@@ -27,7 +27,7 @@ async def get_property_details(
 
     data = []
     for row in rows:
-        photos = await check_object_exists(f"property/{row.property_id}/legal_documents/property_image..png")
+        photos = await check_object_exists(f"property/{row.property_id}/legal_documents/property_photo.png")
         data.append({
             "property_id": row.property_id,
             "location":row.city,
@@ -36,6 +36,6 @@ async def get_property_details(
             "type": row.type,
              "subscription":str(date.today()) ,
             "status": 'active',
-            "image_url": get_image(f"/property/{row.property_id}/legal_documents/property_image..png") if photos else settings.DEFAULT_IMG_URL
+            "image_url": get_image(f"/property/{row.property_id}/legal_documents/property_photo.png") if photos else settings.DEFAULT_IMG_URL
         })
     return data

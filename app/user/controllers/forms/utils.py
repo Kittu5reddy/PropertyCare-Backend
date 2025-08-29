@@ -178,7 +178,8 @@ async def upload_image_as_png(file: dict, category: str, user_id: Union[str, int
 PROPERTY_FOLDER_MAP = {
     "property_photos":"property_photos",
     "monthly_photos":"monthly_photos",
-    "legal_documents":"legal_documents"
+    "legal_documents":"legal_documents",
+    "property_photo":"property_photo"
 }
 
 

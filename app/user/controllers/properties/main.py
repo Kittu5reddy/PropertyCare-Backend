@@ -103,7 +103,6 @@ async def property_documents(
 
     for file in files:
         content = await file.read()
-
         if "__" in file.filename:
             doc_type, original_name = file.filename.split("__", 1)
         else:
@@ -118,19 +117,18 @@ async def property_documents(
         }
 
         # Upload to S3
-        if doc_type == "property_photos":
-            result=await property_upload_image_as_png(file_dict, "property_photos", property_id)    
-        elif doc_type=="property_photo":
-            result=await property_upload_image_as_png(file_dict, "property_photo", property_id)    
+        if doc_type in ["property_photos", "property_photo"]:
+            result = await property_upload_image_as_png(file_dict, doc_type, property_id)
         else:
-            await property_upload_documents(file_dict, doc_type, property_id)
-            # obj:PropertyDocuments=PropertyDocuments(document_id=)
-        # Public response metadata (no raw bytes)
+            result = await property_upload_documents(file_dict, doc_type, property_id)
+
         uploaded.append({
             "doc_type": doc_type,
             "filename": original_name,
             "size": len(content),
+            "s3_path": result.get("file_path") if result else None
         })
+
 
     return {"property_id": property_id, "uploaded": uploaded}
 
@@ -140,10 +138,6 @@ async def get_property_list(
     user_id:str, 
     db: AsyncSession = Depends(get_db)
 ):
-    # user = await get_current_user(token, db)
-    # print(user.user_id)
-
-    # Selecting multiple columns (tuples)
     result = await db.execute(
         select(
             PropertyDetails.property_id,
@@ -156,7 +150,7 @@ async def get_property_list(
     rows = result.all()  # list of tuples
     properties = []
     for row in rows:
-        photos = await check_object_exists(f"property/{row[0]}/legal_documents/property_image..png")
+        photos = await check_object_exists(f"property/{row[0]}/legal_documents/property_photo.png")
         properties.append({
             "property_id": row[0],
             "name": row[1],
@@ -165,36 +159,10 @@ async def get_property_list(
             "size": str(row[4]),
             'status':"active",
             'subscription':str(date.today()),
-            "image_url": get_image(f"/property/{row[0]}/legal_documents/property_image..png") if  photos else settings.DEFAULT_IMG_URL
+            "image_url":  get_image(f"/property/{row[0]}/legal_documents/property_photo.png") if photos else settings.DEFAULT_IMG_URL
         })
 
-    # print(properties)
+
     return properties
 
 
-
-@prop.get('/property-info/{property_id}')
-async def get_propery_info(
-    property_id: str,
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-):
-    try:
-        user = await get_current_user(token, db)  # ✅ added await
-        result = await db.execute(
-            select(PropertyDetails).where(PropertyDetails.property_id == property_id).limit(1)
-        )
-        data = result.scalar_one_or_none()
-
-        if not data:
-            raise HTTPException(status_code=404, detail="Property not found")
-
-        return data
-
-    except HTTPException as http_exc:
-        raise http_exc  # re-raise FastAPI errors
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {str(e)}")
