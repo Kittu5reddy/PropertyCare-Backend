@@ -9,8 +9,9 @@ from app.user.models.property_details import PropertyDetails
 prop=APIRouter(prefix='/property',tags=['user property'])
 from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,create_property_directory
 from fastapi import APIRouter, Depends, UploadFile, File
-from app.user.controllers.forms.utils import list_s3_objects
+from app.user.controllers.forms.utils import list_s3_objects,get_image
 from config import settings
+from datetime import datetime,date
 @prop.post("/is-property-exists")
 async def is_property_exist(
     form: PropertyDetailForm,
@@ -154,15 +155,17 @@ async def get_property_list(
     rows = result.all()  # list of tuples
     properties = []
     for row in rows:
-        photos = await list_s3_objects(prefix=f"/property/{row[0]}/original_photos/")
+        photos = await list_s3_objects(prefix=f"property/{row[0]}/original_photos/")
+        print(photos)
         properties.append({
             "property_id": row[0],
             "name": row[1],
             "location": row[2],
             "type": row[3],
             "size": str(row[4]),
-            'subscription':'active',
-            "image_url": photos if  photos else settings.DEFAULT_IMG_URL
+            'status':"active",
+            'subscription':str(date.today()),
+            "image_url": get_image('/'+photos[0]) if  photos else settings.DEFAULT_IMG_URL
         })
 
     # print(properties)

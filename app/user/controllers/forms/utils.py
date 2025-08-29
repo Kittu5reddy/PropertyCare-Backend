@@ -271,9 +271,10 @@ async def list_s3_objects(bucket_name=S3_BUCKET, prefix=None, limit: int = 1):
             paginator.paginate(Bucket=bucket_name, Prefix=prefix)
             if prefix else paginator.paginate(Bucket=bucket_name)
         )
-
+        
         keys = []
         async for page in page_iterator:
+            print(page)
             if "Contents" in page:
                 for obj in page["Contents"]:
                     key = obj["Key"]
@@ -281,5 +282,4 @@ async def list_s3_objects(bucket_name=S3_BUCKET, prefix=None, limit: int = 1):
                     if key.endswith(".keep"):
                         continue
                     keys.append(key)
-
         return keys[:limit]  # apply limit after filtering
