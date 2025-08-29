@@ -236,17 +236,16 @@ async def get_reference_images(
 @prop.get("/get-property-documents/{property_id}")
 async def get_reference_images(
     property_id: str,
-    token:str=Depends(oauth2_scheme),
+    token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
     try:
         objects = await list_s3_objects(prefix=f"property/{property_id}/legal_documents/")
-        image_urls = list(map(get_image,objects))
-
-        return {
-            "property_id": property_id,
-            "images": image_urls
-        }
+        image_urls = list(map(get_image, objects))
+        image_urls = {image.split("/")[-1].split('.')[0]: image for image in image_urls}
+        print(image_urls)
+        return  image_urls
+        
     except Exception as e:
         print(str(e))
         raise HTTPException(status_code=500, detail=f"Failed to fetch reference images: {str(e)}")
