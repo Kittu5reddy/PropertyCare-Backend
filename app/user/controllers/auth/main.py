@@ -1,6 +1,6 @@
 from app.user.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,get_is_pd_filled
 from app.user.controllers.auth.email import create_verification_token,send_verification_email
-from fastapi import APIRouter,Request
+from fastapi import APIRouter,Request,status
 from app.user.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
 from app.user.validators.auth import User as LoginSchema 
 from app.user.models.users import User,UserNameUpdate
@@ -258,9 +258,37 @@ async def change_password(
 
 
 
+@auth.get("/get-user-id")
+async def get_personal_details(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)
 
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
 
+        return {"user_id": user.user_id}
 
+    except HTTPException:
+        # re-raise FastAPI HTTPExceptions as is
+        raise
+    except JWTError as e:
+        # JWT-specific errors
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Invalid token: {str(e)}"
+        )
+    except Exception as e:
+        # catch all unexpected errors
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {str(e)}"
+        )
 
 
 #===========================

@@ -9,8 +9,8 @@ from app.user.models.property_details import PropertyDetails
 prop=APIRouter(prefix='/property',tags=['user property'])
 from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,create_property_directory
 from fastapi import APIRouter, Depends, UploadFile, File
-from app.user.models.documents import PropertyDocuments
-
+from app.user.controllers.forms.utils import list_s3_objects
+from config import settings
 @prop.post("/is-property-exists")
 async def is_property_exist(
     form: PropertyDetailForm,
@@ -131,3 +131,61 @@ async def property_documents(
         })
 
     return {"property_id": property_id, "uploaded": uploaded}
+
+
+@prop.get("/properties-list/{user_id}")
+async def get_property_list(
+    user_id:str, 
+    db: AsyncSession = Depends(get_db)
+):
+    # user = await get_current_user(token, db)
+    # print(user.user_id)
+
+    # Selecting multiple columns (tuples)
+    result = await db.execute(
+        select(
+            PropertyDetails.property_id,
+            PropertyDetails.property_name,
+            PropertyDetails.city,
+            PropertyDetails.type,
+            PropertyDetails.size
+        ).where(PropertyDetails.user_id == user_id)
+    )
+    rows = result.all()  # list of tuples
+    properties = []
+    for row in rows:
+        photos = await list_s3_objects(prefix=f"/property/{row[0]}/original_photos/")
+        properties.append({
+            "property_id": row[0],
+            "name": row[1],
+            "location": row[2],
+            "type": row[3],
+            "size": str(row[4]),
+            'subscription':'active',
+            "image_url": photos if  photos else settings.DEFAULT_IMG_URL
+        })
+
+    # print(properties)
+    return properties
+
+
+# Properties List end point
+# GET /properties-list?page=1&limit=10
+
+# I need-
+# {
+#   "properties": [
+#     {
+#       "property_id": "",
+#       "name": "",
+#       "location": "",
+#       "type": "",
+#       "size": "",
+#       "status": "",
+#       "subscription": "",//date
+#       "image_url": ""
+#     },
+#     // ... up to 6  items per pg
+#   ],
+#   "total": 42
+# }
