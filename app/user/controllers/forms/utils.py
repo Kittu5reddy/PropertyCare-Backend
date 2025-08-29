@@ -176,7 +176,7 @@ async def upload_image_as_png(file: dict, category: str, user_id: Union[str, int
             return {"error": str(e)}
 
 PROPERTY_FOLDER_MAP = {
-    "original_photos":"original_photos",
+    "property_photos":"property_photos",
     "monthly_photos":"monthly_photos",
     "legal_documents":"legal_documents"
 }
@@ -186,8 +186,10 @@ async def property_upload_image_as_png(file: dict, category: str, property_id: U
     folder_name = PROPERTY_FOLDER_MAP.get(category.lower())
     if not folder_name:
         return {"error": f"Invalid category '{category}'"}
-
-    object_key = f"property/{property_id}/{folder_name}/{uuid.uuid4()}.png"
+    if category=="property_photo":
+        object_key = f"property/{property_id}/legal_documents/{category}.png"
+    else:
+        object_key = f"property/{property_id}/{folder_name}/{uuid.uuid4()}.png"
     print(object_key)
     # Convert to PNG
     try:
@@ -232,7 +234,8 @@ async def property_upload_documents(file: dict, category: str, property_id: Unio
 
     file_name = file.get("filename", "uploaded_file")
     name, ext = os.path.splitext(file_name)
-    object_key = f"property/{property_id}/legal_documents/{category}.{ext}"
+    
+    object_key = f"property/{property_id}/legal_documents/{category}{ext}"
 
     async with session.client(
         "s3",
@@ -283,3 +286,18 @@ async def list_s3_objects(bucket_name=S3_BUCKET, prefix=None, limit: int = 1):
                         continue
                     keys.append(key)
         return keys[:limit]  # apply limit after filtering
+
+async def check_object_exists( object_key: str,bucket_name: str=S3_BUCKET) -> bool:
+    async with session.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
+    ) as s3:
+        try:
+            await s3.head_object(Bucket=bucket_name, Key=object_key)
+            return True
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                return False
+            raise

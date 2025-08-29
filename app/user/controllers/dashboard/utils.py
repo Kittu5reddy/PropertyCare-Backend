@@ -2,7 +2,8 @@ from sqlalchemy import select
 from app.user.models.property_details import PropertyDetails
 from app.user.models import get_db,AsyncSession
 from fastapi import Depends
-from app.user.controllers.forms.utils import list_s3_objects,get_image
+from app.user.controllers.forms.utils import list_s3_objects,get_image,check_object_exists
+from datetime import date
 from config import settings
 async def get_property_details(
     user_id: str,
@@ -26,22 +27,15 @@ async def get_property_details(
 
     data = []
     for row in rows:
-        images = await list_s3_objects(
-            prefix=f"property/{row.property_id}/original_photos",
-            limit=1 
-        )
-        if images:
-            images=get_image("/"+images[0])
-        else:
-            images=None
+        photos = await check_object_exists(f"property/{row.property_id}/legal_documents/property_image..png")
         data.append({
             "property_id": row.property_id,
             "location":row.city,
             "name": row.property_name,
             "size": row.size,
             "type": row.type,
-             "subscription": '',
+             "subscription":str(date.today()) ,
             "status": 'active',
-            "image_url": settings.CLOUDFRONT_URL + f'/property/{row.property_id}/original_image.png'
+            "image_url": get_image(f"/property/{row.property_id}/legal_documents/property_image..png") if photos else settings.DEFAULT_IMG_URL
         })
     return data

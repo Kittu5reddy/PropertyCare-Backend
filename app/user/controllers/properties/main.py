@@ -9,7 +9,7 @@ from app.user.models.property_details import PropertyDetails
 prop=APIRouter(prefix='/property',tags=['user property'])
 from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,create_property_directory
 from fastapi import APIRouter, Depends, UploadFile, File
-from app.user.controllers.forms.utils import list_s3_objects,get_image
+from app.user.controllers.forms.utils import list_s3_objects,get_image,check_object_exists
 from config import settings
 from datetime import datetime,date
 @prop.post("/is-property-exists")
@@ -118,9 +118,10 @@ async def property_documents(
         }
 
         # Upload to S3
-        if doc_type == "plot_photos":
-            result=await property_upload_image_as_png(file_dict, "original_photos", property_id)
-            
+        if doc_type == "property_photos":
+            result=await property_upload_image_as_png(file_dict, "property_photos", property_id)    
+        elif doc_type=="property_photo":
+            result=await property_upload_image_as_png(file_dict, "property_photo", property_id)    
         else:
             await property_upload_documents(file_dict, doc_type, property_id)
             # obj:PropertyDocuments=PropertyDocuments(document_id=)
@@ -155,8 +156,7 @@ async def get_property_list(
     rows = result.all()  # list of tuples
     properties = []
     for row in rows:
-        photos = await list_s3_objects(prefix=f"property/{row[0]}/original_photos/")
-        print(photos)
+        photos = await check_object_exists(f"property/{row[0]}/legal_documents/property_image..png")
         properties.append({
             "property_id": row[0],
             "name": row[1],
@@ -165,30 +165,36 @@ async def get_property_list(
             "size": str(row[4]),
             'status':"active",
             'subscription':str(date.today()),
-            "image_url": get_image('/'+photos[0]) if  photos else settings.DEFAULT_IMG_URL
+            "image_url": get_image(f"/property/{row[0]}/legal_documents/property_image..png") if  photos else settings.DEFAULT_IMG_URL
         })
 
     # print(properties)
     return properties
 
 
-# Properties List end point
-# GET /properties-list?page=1&limit=10
 
-# I need-
-# {
-#   "properties": [
-#     {
-#       "property_id": "",
-#       "name": "",
-#       "location": "",
-#       "type": "",
-#       "size": "",
-#       "status": "",
-#       "subscription": "",//date
-#       "image_url": ""
-#     },
-#     // ... up to 6  items per pg
-#   ],
-#   "total": 42
-# }
+@prop.get('/property-info/{property_id}')
+async def get_propery_info(
+    property_id: str,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)  # ✅ added await
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id).limit(1)
+        )
+        data = result.scalar_one_or_none()
+
+        if not data:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        return data
+
+    except HTTPException as http_exc:
+        raise http_exc  # re-raise FastAPI errors
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {str(e)}")

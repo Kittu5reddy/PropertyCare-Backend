@@ -17,7 +17,7 @@ async def get_property_data(
 ):
     user = await get_current_user(token, db)
     data = await get_property_details(user.user_id, db,5)
-    print(data)
+    # print(data)
     return {"data": data}
 
 @dash.get("/monthly-photos")
@@ -28,6 +28,8 @@ async def get_property_data(
     user = await get_current_user(token, db)
     data = await get_property_details(user.user_id, db)   
     return {"data": data}
+
+
 
 
 
