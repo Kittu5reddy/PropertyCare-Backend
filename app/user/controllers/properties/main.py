@@ -83,8 +83,8 @@ async def user_add_property(
             size=int(form.size) if form.size else None,
             phone_number=form.owner_contact,
             land_mark=form.nearby_landmark,
-            latitude=float(form.latitude) if form.latitude else None,
-            longitude=float(form.longitude) if form.longitude else None,
+            latitude=str(form.latitude) if form.latitude else None,
+            longitude=str(form.longitude) if form.longitude else None,
             facing=form.facing,
             type=form.type_of_property.strip() if form.type_of_property else None,
             sub_type=form.sub_type_property.strip() if form.sub_type_property else None,
@@ -92,11 +92,14 @@ async def user_add_property(
         )
 
         documents = PropertyDocuments(property_id=property_id)
-        db.add_all([property, documents])
+        db.add(property)
+        await db.commit()
+        await db.refresh(property)
+        # db.add_all([property, documents]) 
+        db.add(documents)
 
         # Save
         await db.commit()
-        await db.refresh(property)
         await db.refresh(documents)
 
         return {"property_id": property_id, "message": "Property added successfully"}
@@ -215,6 +218,7 @@ async def get_property_info(
                 PropertyDetails.gmap_url,
                 PropertyDetails.land_mark,
                 PropertyDetails.description,
+                PropertyDetails.reference_images
             ).where(PropertyDetails.property_id == property_id).limit(1)
         )
 
@@ -224,6 +228,19 @@ async def get_property_info(
             raise HTTPException(status_code=404, detail="Property not found")
 
         data = dict(row)  # Convert RowMapping → dict
+        objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
+        # print(objects)
+        # Convert S3 keys to signed/public URLs if needed
+        data['property_photos'] = list(map(get_image,list("/"+images for images in objects)))
+        object_key = f'property/{property_id}/legal_documents/property_photo.png'
+
+        # Check if object exists in S3
+        is_exists = await check_object_exists(object_key)
+
+        if is_exists:
+            data['property_photo']=get_image("/"+object_key)
+        else:
+            data['property_photo']=settings.DEFAULT_IMG_URL
         # print(data)
         return data
 
