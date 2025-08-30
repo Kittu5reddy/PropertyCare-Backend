@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, func, ForeignKey, Text, JSON
+from sqlalchemy import String, Integer, DateTime, func, ForeignKey, Text, JSON,Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from app.user.models import Base
 from config import settings
@@ -18,6 +18,8 @@ class PropertyDetails(Base):
     street: Mapped[str] = mapped_column(String(100), nullable=False)
     city: Mapped[str] = mapped_column(String(50), nullable=False)
     state: Mapped[str] = mapped_column(String(50), nullable=False)
+    district: Mapped[str] = mapped_column(String(50), nullable=False)
+    mandal: Mapped[str] = mapped_column(String(50), nullable=False)
     country: Mapped[str] = mapped_column(String(50), nullable=False, default="India")
     pin_code: Mapped[int] = mapped_column(Integer, nullable=False)
     size: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -25,12 +27,14 @@ class PropertyDetails(Base):
     land_mark: Mapped[str] = mapped_column(Text, nullable=True)
     latitude: Mapped[str] = mapped_column(String(20), nullable=True)
     longitude: Mapped[str] = mapped_column(String(20), nullable=True)
+    gmap_url: Mapped[str] = mapped_column(String(225), nullable=True)
     facing: Mapped[str] = mapped_column(String(20), nullable=False)
     type: Mapped[str] = mapped_column(String(100), nullable=False)
     sub_type: Mapped[str] = mapped_column(String(100), nullable=False)
     admin_id: Mapped[str] = mapped_column(String(50), ForeignKey("admin.admin_id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     description: Mapped[str] = mapped_column(Text, nullable=True)
+    reference_images: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
 
 
 class PropertyHistory(Base):

@@ -68,6 +68,8 @@ async def user_add_property(
         street=form.street,
         city=form.city,
         state=form.state,
+        district=form.district,
+        mandal=form.mandal,
         country="India",  # default
         pin_code=int(form.pin_code),
         size=int(form.size),
@@ -166,3 +168,84 @@ async def get_property_list(
     return properties
 
 
+
+@prop.get("get-property-info/{property_id}")
+async def get_property_info(
+    property_id: str,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)
+        result = await db.execute(
+            select(
+                PropertyDetails.property_id,
+                PropertyDetails.property_name,
+                PropertyDetails.survey_number,
+                PropertyDetails.plot_number,
+                PropertyDetails.project_name_or_venture,
+                PropertyDetails.house_number,
+                PropertyDetails.street,
+                PropertyDetails.mandal,
+                PropertyDetails.district,
+                PropertyDetails.city,
+                PropertyDetails.pin_code,
+                PropertyDetails.state,
+                PropertyDetails.size,
+                PropertyDetails.facing,
+                PropertyDetails.type,
+                PropertyDetails.sub_type,
+                PropertyDetails.latitude,
+                PropertyDetails.longitude,
+                PropertyDetails.gmap_url,
+                PropertyDetails.land_mark,
+                PropertyDetails.description,
+            ).where(PropertyDetails.property_id == property_id)
+        )
+        data = result.scalar_one_or_none()
+        return data
+    except HTTPException as http_exc:
+        raise http_exc
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {str(e)}")
+
+
+
+@prop.get("/get-reference-images/{property_id}")
+async def get_reference_images(
+    property_id: str,
+    token:str=Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
+        # print(objects)
+        # Convert S3 keys to signed/public URLs if needed
+        image_urls = list(map(get_image,objects))
+
+        return {
+            "property_id": property_id,
+            "images": image_urls
+        }
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to fetch reference images: {str(e)}")
+@prop.get("/get-property-documents/{property_id}")
+async def get_reference_images(
+    property_id: str,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        objects = await list_s3_objects(prefix=f"property/{property_id}/legal_documents/")
+        image_urls = list(map(get_image, objects))
+        image_urls = {image.split("/")[-1].split('.')[0]: image for image in image_urls}
+        print(image_urls)
+        return  image_urls
+        
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to fetch reference images: {str(e)}")

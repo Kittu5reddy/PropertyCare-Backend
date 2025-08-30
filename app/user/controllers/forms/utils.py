@@ -219,7 +219,7 @@ def get_image(filename: str) -> str:
     return f"{CLOUDFRONT_URL}{filename}?v={int(time.time())}"
 
 
-async def list_s3_objects(bucket_name=S3_BUCKET, prefix=None, limit: int = 1):
+async def list_s3_objects(bucket_name=S3_BUCKET, prefix=None):
     async with session.client(
         "s3",
         aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -234,7 +234,7 @@ async def list_s3_objects(bucket_name=S3_BUCKET, prefix=None, limit: int = 1):
         
         keys = []
         async for page in page_iterator:
-            print(page)
+            # print(page)
             if "Contents" in page:
                 for obj in page["Contents"]:
                     key = obj["Key"]
@@ -242,7 +242,7 @@ async def list_s3_objects(bucket_name=S3_BUCKET, prefix=None, limit: int = 1):
                     if key.endswith(".keep"):
                         continue
                     keys.append(key)
-        return keys[:limit]  # apply limit after filtering
+        return keys  # apply limit after filtering
 
 async def check_object_exists( object_key: str,bucket_name: str=S3_BUCKET) -> bool:
     async with session.client(
