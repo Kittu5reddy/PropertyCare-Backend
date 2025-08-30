@@ -3,6 +3,7 @@ from jose import JWTError
 from app.user.controllers.auth.main import oauth2_scheme,AsyncSession,get_db,get_current_user
 from app.user.validators.propertydetails import  PropertyDetailForm
 from app.user.models.users import User
+from app.user.models.documents import PropertyDocuments
 from .utils import generate_property_id
 from sqlalchemy import select,func,and_
 from app.user.models.property_details import PropertyDetails
@@ -54,50 +55,59 @@ async def user_add_property(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        
-        user:User=await get_current_user(token,db)
+        # Authenticate
+        user: User = await get_current_user(token, db)
+
+        # Generate property_id
         result = await db.execute(select(func.max(PropertyDetails.id)))
-        last_id = result.scalar_one_or_none() or 0 # None if no rows
-        next_id = last_id + 1  # safe increment
+        last_id = result.scalar_one_or_none() or 0
+        next_id = last_id + 1
         property_id = generate_property_id(next_id)
+
+        # Create records
         property = PropertyDetails(
-        property_id=property_id,  # unique ID
-        property_name=form.name,
-        survey_number=form.survey_number,
-        plot_number=form.plot_number,
-        user_id=user.user_id,
-        house_number=form.house_number,
-        project_name_or_venture=form.project_name,
-        street=form.street,
-        city=form.city,
-        state=form.state,
-        district=form.district,
-        mandal=form.mandal,
-        country="India",  # default
-        pin_code=int(form.pin_code),
-        size=int(form.size),
-        phone_number=form.owner_contact,
-        land_mark=form.nearby_landmark,
-        latitude=form.latitude  ,
-        longitude=form.longitude ,
-        facing=form.facing,
-        type=f"{form.type_of_property} ",
-        sub_type=f" {form.sub_type_property}",
-        description=form.additional_notes,
-    )
-        await create_property_directory(property_id)
-        db.add(property)
+            property_id=property_id,
+            property_name=form.name,
+            survey_number=form.survey_number,
+            plot_number=form.plot_number,
+            user_id=user.user_id,
+            house_number=form.house_number,
+            project_name_or_venture=form.project_name,
+            street=form.street,
+            city=form.city,
+            state=form.state,
+            district=form.district,
+            mandal=form.mandal,
+            country="India",
+            pin_code=int(form.pin_code) if form.pin_code else None,
+            size=int(form.size) if form.size else None,
+            phone_number=form.owner_contact,
+            land_mark=form.nearby_landmark,
+            latitude=float(form.latitude) if form.latitude else None,
+            longitude=float(form.longitude) if form.longitude else None,
+            facing=form.facing,
+            type=form.type_of_property.strip() if form.type_of_property else None,
+            sub_type=form.sub_type_property.strip() if form.sub_type_property else None,
+            description=form.additional_notes,
+        )
+
+        documents = PropertyDocuments(property_id=property_id)
+        db.add_all([property, documents])
+
+        # Save
         await db.commit()
         await db.refresh(property)
-        return {"property_id":property_id}
+        await db.refresh(documents)
+
+        return {"property_id": property_id, "message": "Property added successfully"}
+
     except HTTPException as http_exc:
-        raise http_exc  # re-raise the actual HTTP error (like 401)
+        raise http_exc
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
         print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to update first name: {str(e)}")
-    
+        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
 
 @prop.post("/add-documents/{property_id}")
 async def property_documents(
@@ -248,8 +258,6 @@ async def get_reference_images(
     
 
 
-
-
 @prop.get("/get-property-documents/{property_id}")
 async def get_reference_images(
     property_id: str,
@@ -264,35 +272,37 @@ async def get_reference_images(
         objects = await list_s3_objects(prefix=f"property/{property_id}/legal_documents/")
         image_urls = list(map(get_image, objects))
 
-        # Map file names to URLs
-        image_urls = {image.split("/")[-1].split('.')[0]: image for image in image_urls}
-        print(image_urls)
-        return image_urls
+        # Fetch DB record
+        result = await db.execute(
+            select(PropertyDocuments).where(PropertyDocuments.property_id == property_id)
+        )
+        data = result.scalar_one_or_none()
+
+        # Construct response
+        response = {}
+        for image in image_urls:
+            key = image.split("/")[-1].split('.')[0]
+            response[key] = {
+                "url": image,
+                "isverified": getattr(data, key, False) if data else False
+            }
+
+        return response
 
     except ClientError as e:
-        # AWS S3 errors
-        print(f"S3 Error: {str(e)}")
         raise HTTPException(status_code=502, detail=f"S3 Error: {str(e)}")
 
     except SQLAlchemyError as e:
-        # Database-related errors
-        print(f"Database Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
 
     except UnidentifiedImageError:
-        # If something goes wrong with image processing
-        print("Invalid image format found in S3")
         raise HTTPException(status_code=400, detail="Invalid image format found in S3")
 
     except HTTPException as e:
-        # Pass through already raised HTTP exceptions
         raise e
 
     except Exception as e:
-        # Fallback for unexpected errors
-        print(f"Unexpected Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected Error: {str(e)}")
-
 
 
 
