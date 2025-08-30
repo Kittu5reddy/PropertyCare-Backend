@@ -18,9 +18,10 @@ from sqlalchemy import select, desc
 from fastapi import BackgroundTasks
 from app.user.validators.auth import ChangePassword
 from app.user.validators.user_profile import ChangeFirstName,ChangeLastName,ChangeUsername,ChangeContactNumber,ChangeHouseNumber,ChangeStreet,ChangeCity,ChangeState,ChangeCountry,ChangePinCode
-from app.user.controllers.forms.utils import get_image
+from app.user.controllers.forms.utils import get_image,get_current_time
 from datetime import datetime,timedelta
 from app.user.controllers.forms.utils import upload_image_as_png
+import time
 auth=APIRouter(prefix='/auth',tags=['auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -313,8 +314,7 @@ async def get_personal_details(
             raise HTTPException(status_code=404, detail="Personal details not found")
 
         
-        profile_url=get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png")
-        print(profile_url)
+        profile_url=get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}")
         return {
             "full_name": f"{data.first_name} {data.last_name}",
             "user_name": data.user_name,
@@ -435,7 +435,7 @@ async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: Asyn
             "state": data.state,
             "pin_code": data.pin_code,
             "country": data.country,
-            "image_url": get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png"),
+            "image_url": get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"),
             "aadhaar_number": data.aadhaar_number,
             "pan_number": data.pan_number,
             "can_change_username": is_username_changable
@@ -603,7 +603,9 @@ async def change_house_number(
         raise HTTPException(status_code=500, detail=f"Failed to update house number: {str(e)}")
 
 @auth.put("/change-profile-photo")
-async def change_profile_photo(profile_photo: UploadFile = File(...),token:str=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
+async def change_profile_photo(profile_photo: UploadFile = File(...),
+                               token:str=Depends(oauth2_scheme),
+                               db:AsyncSession=Depends(get_db)):
     try:
         user=await get_current_user(token,db)
 

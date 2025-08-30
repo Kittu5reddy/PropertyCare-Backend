@@ -12,6 +12,9 @@ from fastapi import APIRouter, Depends, UploadFile, File
 from app.user.controllers.forms.utils import list_s3_objects,get_image,check_object_exists
 from config import settings
 from datetime import datetime,date
+from botocore.exceptions import ClientError
+from sqlalchemy.exc import SQLAlchemyError
+from PIL import UnidentifiedImageError
 @prop.post("/is-property-exists")
 async def is_property_exist(
     form: PropertyDetailForm,
@@ -168,15 +171,17 @@ async def get_property_list(
     return properties
 
 
-
-@prop.get("get-property-info/{property_id}")
+@prop.get("/get-property-info/{property_id}")
 async def get_property_info(
     property_id: str,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
     try:
+        # Validate token
         user = await get_current_user(token, db)
+
+        # Execute query
         result = await db.execute(
             select(
                 PropertyDetails.property_id,
@@ -200,10 +205,18 @@ async def get_property_info(
                 PropertyDetails.gmap_url,
                 PropertyDetails.land_mark,
                 PropertyDetails.description,
-            ).where(PropertyDetails.property_id == property_id)
+            ).where(PropertyDetails.property_id == property_id).limit(1)
         )
-        data = result.scalar_one_or_none()
+
+        # Get one row as mapping (dict-like)
+        row = result.mappings().one_or_none()
+        if not row:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        data = dict(row)  # Convert RowMapping → dict
+        # print(data)
         return data
+
     except HTTPException as http_exc:
         raise http_exc
     except JWTError:
@@ -224,15 +237,19 @@ async def get_reference_images(
         objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
         # print(objects)
         # Convert S3 keys to signed/public URLs if needed
-        image_urls = list(map(get_image,objects))
+        image_urls = list(map(get_image,list("/"+images for images in objects)))
 
         return {
-            "property_id": property_id,
-            "images": image_urls
+            "property_photos": image_urls
         }
     except Exception as e:
         print(str(e))
         raise HTTPException(status_code=500, detail=f"Failed to fetch reference images: {str(e)}")
+    
+
+
+
+
 @prop.get("/get-property-documents/{property_id}")
 async def get_reference_images(
     property_id: str,
@@ -240,12 +257,68 @@ async def get_reference_images(
     db: AsyncSession = Depends(get_db)
 ):
     try:
+        # Authenticate user
+        user = await get_current_user(token, db)
+
+        # List objects from S3
         objects = await list_s3_objects(prefix=f"property/{property_id}/legal_documents/")
         image_urls = list(map(get_image, objects))
+
+        # Map file names to URLs
         image_urls = {image.split("/")[-1].split('.')[0]: image for image in image_urls}
         print(image_urls)
-        return  image_urls
-        
+        return image_urls
+
+    except ClientError as e:
+        # AWS S3 errors
+        print(f"S3 Error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"S3 Error: {str(e)}")
+
+    except SQLAlchemyError as e:
+        # Database-related errors
+        print(f"Database Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
+
+    except UnidentifiedImageError:
+        # If something goes wrong with image processing
+        print("Invalid image format found in S3")
+        raise HTTPException(status_code=400, detail="Invalid image format found in S3")
+
+    except HTTPException as e:
+        # Pass through already raised HTTP exceptions
+        raise e
+
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to fetch reference images: {str(e)}")
+        # Fallback for unexpected errors
+        print(f"Unexpected Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected Error: {str(e)}")
+
+
+
+
+@prop.get('/get-property-image/{property_id}')
+async def get_reference_images(property_id: str):
+    try:
+        object_key = f'property/{property_id}/legal_documents/property_photo.png'
+
+        # Check if object exists in S3
+        is_exists = await check_object_exists(object_key)
+
+        if is_exists:
+            return {"property_photo":get_image("/"+object_key)}
+        else:
+            return settings.DEFAULT_IMG_URL
+
+    except ClientError as e:
+        # AWS S3 related error
+        print(f"S3 Error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"S3 Error: {str(e)}")
+
+    except HTTPException as e:
+        # Re-raise if already an HTTPException
+        raise e
+
+    except Exception as e:
+        # Unexpected error
+        print(f"Unexpected Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected Error: {str(e)}")

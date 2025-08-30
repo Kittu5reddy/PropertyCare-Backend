@@ -182,7 +182,53 @@ PROPERTY_FOLDER_MAP = {
     "property_photo":"property_photo"
 }
 
- 
+
+
+async def property_upload_image_as_png(file: dict, category: str, property_id: Union[str, int]) -> dict:
+    folder_name = PROPERTY_FOLDER_MAP.get(category.lower())
+    if not folder_name:
+        return {"error": f"Invalid category '{category}'"}
+    if category=="property_photo":
+        object_key = f"property/{property_id}/legal_documents/{category}.png"
+    else:
+        object_key = f"property/{property_id}/{folder_name}/{uuid.uuid4()}.png"
+    print(object_key)
+    # Convert to PNG
+    try:
+        image = Image.open(BytesIO(file["bytes"])).convert("RGB")
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        buffer.seek(0)
+    except UnidentifiedImageError:
+        return {"error": "Uploaded file is not a valid image."}
+    except Exception as e:
+        return {"error": f"Image conversion error: {str(e)}"}
+
+    async with session.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
+    ) as s3:
+        try:
+            await s3.put_object(
+                Bucket=S3_BUCKET,
+                Key=object_key,
+                Body=buffer.read(),
+                ACL="private",
+                ContentType="image/png"
+            )
+            await invalidate_files([object_key])
+
+            return {
+                "success": True,
+                "file_path": object_key,
+                "content_type": "image/png"
+            }
+        except ClientError as e:
+            return {"error": str(e)}
+
+
 
 async def property_upload_documents(file: dict, category: str, property_id: Union[str, int]) -> dict:
     folder_name = category.lower()
@@ -216,7 +262,10 @@ async def property_upload_documents(file: dict, category: str, property_id: Unio
             return {"error": str(e)}
 
 def get_image(filename: str) -> str:
-    return f"{CLOUDFRONT_URL}{filename}?v={int(time.time())}"
+    return f"{CLOUDFRONT_URL}{filename}"
+
+def get_current_time() -> str:
+    return f"?v={int(time.time())}"
 
 
 async def list_s3_objects(bucket_name=S3_BUCKET, prefix=None):
