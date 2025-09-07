@@ -1,5 +1,6 @@
-from fastapi import APIRouter,Depends,HTTPException
+from fastapi import APIRouter,Depends,HTTPException,Form
 from jose import JWTError
+import time
 from app.user.controllers.auth.main import oauth2_scheme,AsyncSession,get_db,get_current_user
 from app.user.validators.propertydetails import  PropertyDetailForm
 from app.user.models.users import User
@@ -8,7 +9,7 @@ from .utils import generate_property_id
 from sqlalchemy import select,func,and_
 from app.user.models.property_details import PropertyDetails
 prop=APIRouter(prefix='/property',tags=['user property'])
-from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,create_property_directory
+from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,create_property_directory,property_delete_document,invalidate_files
 from fastapi import APIRouter, Depends, UploadFile, File
 from app.user.controllers.forms.utils import list_s3_objects,get_image,check_object_exists
 from config import settings
@@ -238,7 +239,7 @@ async def get_property_info(
         is_exists = await check_object_exists(object_key)
 
         if is_exists:
-            data['property_photo']=get_image("/"+object_key)
+            data['property_photo']=get_image("/"+object_key+f"?v={time.time()}")
         else:
             data['property_photo']=settings.DEFAULT_IMG_URL
         # print(data)
@@ -287,7 +288,7 @@ async def get_reference_images(
 
         # List objects from S3
         objects = await list_s3_objects(prefix=f"property/{property_id}/legal_documents/")
-        image_urls = list(map(get_image, objects))
+        image_urls = list(map(get_image, map(lambda x:"/"+x,objects)))
 
         # Fetch DB record
         result = await db.execute(
@@ -298,6 +299,7 @@ async def get_reference_images(
         # Construct response
         response = {}
         for image in image_urls:
+            print((image))
             key = image.split("/")[-1].split('.')[0]
             response[key] = {
                 "url": image,
@@ -349,3 +351,86 @@ async def get_reference_images(property_id: str):
         # Unexpected error
         print(f"Unexpected Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Unexpected Error: {str(e)}")
+    
+
+@prop.put("/change-property-photo/{property_id}")
+async def change_property_photo(
+    property_id: str,
+    file: UploadFile = File(...),
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)
+
+        # Check if property exists
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+        )
+        property_obj = result.scalar_one_or_none()
+        if not property_obj:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        # Upload to S3 (pass as dict to function)
+        file_content = await file.read()
+        result = await property_upload_image_as_png(
+            {"bytes": file_content},  # dict wrapper
+            "property_photo",         # category
+            property_id               # property_id
+        )
+        await invalidate_files(f'/property/{property_id}/legal_documents/property_photo.png')
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return result
+
+    except HTTPException as e:
+        raise e   # re-raise FastAPI HTTP errors
+
+    except Exception as e:
+        # Log it if needed
+        print(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error{str(e)}")
+
+@prop.delete("/delete-document/{property_id}")
+async def delete_document(
+    property_id: str,
+    category: str,   # pass category name
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    user = await get_current_user(token, db)
+
+    result = await property_delete_document(category, property_id)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+
+    return result
+
+
+from fastapi import Form, File, UploadFile, HTTPException
+
+@prop.post('/upload-document/{property_id}')
+async def upload_property_documents(
+    property_id: str,
+    category: str = Form(...),  
+    file: UploadFile = File(...),            
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    user = await get_current_user(token, db)
+
+    # Convert UploadFile → dict
+    contents = await file.read()
+    file_data = {
+        "filename": file.filename,
+        "bytes": contents,
+        "content_type": file.content_type,
+    }
+
+    # Call existing helper
+    result = await property_upload_documents(file_data, category, property_id)
+
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result

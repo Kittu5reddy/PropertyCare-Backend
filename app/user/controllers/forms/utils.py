@@ -307,3 +307,37 @@ async def check_object_exists( object_key: str,bucket_name: str=S3_BUCKET) -> bo
             if e.response["Error"]["Code"] == "404":
                 return False
             raise
+
+    
+async def property_delete_document(category: str, property_id: Union[str, int]) -> dict:
+    prefix = f"property/{property_id}/legal_documents/{category}"
+
+    async with session.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
+    ) as s3:
+        try:
+            response = await s3.list_objects_v2(
+                Bucket=S3_BUCKET,
+                Prefix=prefix
+            )
+
+            if "Contents" not in response:
+                return {"error": f"No document found for category '{category}'"}
+
+            deleted_files = []
+            for obj in response["Contents"]:
+                object_key = obj["Key"]
+                await s3.delete_object(Bucket=S3_BUCKET, Key=object_key)
+                await invalidate_files([f"/{object_key}"])
+                deleted_files.append(object_key)
+
+            return {
+                "success": True,
+                "deleted_files": deleted_files
+            }
+
+        except ClientError as e:
+            return {"error": str(e)}
