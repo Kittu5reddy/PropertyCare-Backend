@@ -341,3 +341,47 @@ async def property_delete_document(category: str, property_id: Union[str, int]) 
 
         except ClientError as e:
             return {"error": str(e)}
+
+
+
+
+
+async def property_delete_single_document(
+    category: str,
+    property_id: Union[str, int],
+    filename: str
+) -> dict:
+    """
+    Delete a single document from S3 for a given property and category.
+    """
+    if category=="property_photos":
+        object_key = f"property/{property_id}/{category}/{filename}"
+    else:
+        object_key = f"property/{property_id}/legal_documents/{category}/{filename}"
+
+    async with session.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
+    ) as s3:
+        try:
+            # Check if file exists
+            response = await s3.head_object(Bucket=S3_BUCKET, Key=object_key)
+
+            # Delete file
+            await s3.delete_object(Bucket=S3_BUCKET, Key=object_key)
+
+            # Invalidate cache (if needed for CloudFront/CDN)
+            await invalidate_files([f"/{object_key}"])
+
+            return {
+                "success": True,
+                "deleted_file": object_key
+            }
+
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code == "404":
+                return {"error": f"File '{filename}' not found in category '{category}'"}
+            return {"error": str(e)}

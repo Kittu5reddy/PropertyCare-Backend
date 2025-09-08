@@ -26,3 +26,5 @@ class PropertyDetailForm(BaseModel):
     longitude: Optional[str] = ""
     additional_notes: Optional[str] = ""
 
+class UpdatePropertyNameRequest(BaseModel):
+    property_name: str

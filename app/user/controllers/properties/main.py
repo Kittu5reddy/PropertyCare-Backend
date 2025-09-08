@@ -1,15 +1,15 @@
-from fastapi import APIRouter,Depends,HTTPException,Form
+from fastapi import APIRouter,Depends,HTTPException,Form, Body
 from jose import JWTError
 import time
 from app.user.controllers.auth.main import oauth2_scheme,AsyncSession,get_db,get_current_user
-from app.user.validators.propertydetails import  PropertyDetailForm
+from app.user.validators.propertydetails import  PropertyDetailForm,UpdatePropertyNameRequest
 from app.user.models.users import User
 from app.user.models.documents import PropertyDocuments
 from .utils import generate_property_id
 from sqlalchemy import select,func,and_
 from app.user.models.property_details import PropertyDetails
 prop=APIRouter(prefix='/property',tags=['user property'])
-from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,create_property_directory,property_delete_document,invalidate_files
+from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,create_property_directory,property_delete_document,invalidate_files,property_delete_single_document
 from fastapi import APIRouter, Depends, UploadFile, File
 from app.user.controllers.forms.utils import list_s3_objects,get_image,check_object_exists
 from config import settings
@@ -434,3 +434,150 @@ async def upload_property_documents(
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
+
+
+
+@prop.post("/add-reference-image/{property_id}")
+async def add_reference_photo(
+    property_id: str,
+    category: str = Form(...),
+    file: UploadFile = File(...),
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    # Authenticate user
+    user = await get_current_user(token, db)
+
+    try:
+        # Read file into memory
+        contents = await file.read()
+        file_data = {
+            "filename": file.filename,
+            "bytes": contents,
+            "content_type": file.content_type,
+        }
+
+        # Upload via helper
+        result = await property_upload_image_as_png(file_data, category, property_id)
+
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return {
+            "status": "success",
+            "message": f"Reference photo uploaded under category '{category}' for property {property_id}",
+            "file_path": result.get("file_path"),
+        }
+
+    except HTTPException as e:
+        raise e  # re-raise known errors
+    except Exception as e:
+        print(f"Upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload reference photo: {str(e)}")
+    
+@prop.delete("/delete-reference-image/{property_id}")
+async def delete_reference_photo(
+    property_id: str,
+    property_photos: str = Body(..., embed=True),  # now expects { "property_photos": "..." }
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+
+    try:
+        user = await get_current_user(token, db)
+        filename = property_photos.split("/")[-1]
+        print(filename,property_id)
+        result = await property_delete_single_document(
+            category="property_photos",
+            property_id=property_id,
+            filename=filename
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+
+        return {"status": "success", "deleted_file": result["deleted_file"]}
+
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to delete reference photo: {str(e)}")
+
+
+
+
+@prop.put("/update-property-name/{property_id}")
+async def update_property_name(
+    property_id: str,
+    payload: UpdatePropertyNameRequest,   
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)
+
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+        )
+        property_obj = result.scalar_one_or_none()
+
+        if not property_obj:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        # Update name
+        property_obj.property_name = payload.property_name
+        await db.commit()
+        await db.refresh(property_obj)
+
+        return {"message": "Property name updated successfully", "property": property_obj.property_name}
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error updating property: {str(e)}")
+
+
+
+
+from pydantic import BaseModel
+from typing import Dict, Any
+
+class UpdatePropertyDetailsRequest(BaseModel):
+    details: Dict[str, Any]
+from typing import Dict, Any
+from fastapi import Body
+
+@prop.put("/update-property-details/{property_id}")
+async def update_property_details(
+    property_id: str,
+    payload: Dict[str, Any] = Body(...),   # accepts raw JSON as dict
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)
+
+        # Check if property exists
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+        )
+        property_obj = result.scalar_one_or_none()
+
+        if not property_obj:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        # Dynamically update fields from JSON
+        for key, value in payload.items():
+            if hasattr(property_obj, key):
+                setattr(property_obj, key, value)
+
+        await db.commit()
+        await db.refresh(property_obj)
+
+        return {
+            "message": "Property details updated successfully",
+            "property": property_obj
+        }
+
+    except Exception as e:
+        await db.rollback()
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Error updating property: {str(e)}")
