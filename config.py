@@ -106,6 +106,10 @@ class Settings(BaseSettings):
     DEFAULT_IMG_URL:str
 
 
+
+
+    # MONTH={}
+
     class Config:
         env_file = ".env"
         case_sensitive = True

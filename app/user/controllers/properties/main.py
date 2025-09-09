@@ -2,6 +2,7 @@ from fastapi import APIRouter,Depends,HTTPException,Form, Body
 from jose import JWTError
 import time
 from app.user.controllers.auth.main import oauth2_scheme,AsyncSession,get_db,get_current_user
+from app.user.controllers.surveillance.main import  get_current_month_photos
 from app.user.validators.propertydetails import  PropertyDetailForm,UpdatePropertyNameRequest
 from app.user.models.users import User
 from app.user.models.documents import PropertyDocuments
@@ -17,6 +18,10 @@ from datetime import datetime,date
 from botocore.exceptions import ClientError
 from sqlalchemy.exc import SQLAlchemyError
 from PIL import UnidentifiedImageError
+
+
+
+
 @prop.post("/is-property-exists")
 async def is_property_exist(
     form: PropertyDetailForm,
@@ -242,7 +247,10 @@ async def get_property_info(
             data['property_photo']=get_image("/"+object_key+f"?v={time.time()}")
         else:
             data['property_photo']=settings.DEFAULT_IMG_URL
-        # print(data)
+
+        monthly_photos=await get_current_month_photos(property_id,token,db)
+        data['monthly-photos']=monthly_photos.get('photos')
+
         return data
 
     except HTTPException as http_exc:

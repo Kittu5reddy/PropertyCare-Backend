@@ -2,11 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.user.controllers.auth.main import auth
 from app.user.controllers.forms.main import form
+from app.user.controllers.surveillance.main import surveillance
 from app.user.controllers.subscrptions.main import sub
 from app.user.controllers.dashboard.main import dash
 from app.admin.controllers.auth import admin
 from app.admin.controllers.user import admin_user
 from app.user.controllers.properties.main import prop
+
 def create_app():
     app = FastAPI()
     allow_origins=["http://localhost:3000",
@@ -31,4 +33,5 @@ def create_app():
     app.include_router(dash)
     app.include_router(form)
     app.include_router(prop)
+    app.include_router(surveillance)
     return app
