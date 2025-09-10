@@ -68,6 +68,19 @@ class Settings(BaseSettings):
     DATABASE_URL: str  
 
 
+    # ================================
+    #        R E D I S
+    # ================================
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str | None = None
+    REDIS_POOL_SIZE: int = 50          
+    REDIS_POOL_TIMEOUT: int = 10       
+    REDIS_EXPIRE_TIME: int = 300       
+    REDIS_URL: str
+
+
 
 
 
