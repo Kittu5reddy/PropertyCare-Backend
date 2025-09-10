@@ -12,7 +12,7 @@ from jose import JWTError,jwt
 from fastapi.responses import HTMLResponse
 from fastapi import Response
 from passlib.context import CryptContext
-from app.user.models import get_db,AsyncSession,redis_set_data,redis_get_data,redis_update_data,redis_delete_data
+from app.user.models import get_db,AsyncSession,redis_set_data,redis_get_data,redis_update_data,redis_delete_data,redis_client
 from fastapi import Depends,File,UploadFile
 from sqlalchemy import select, desc
 from fastapi import BackgroundTasks
@@ -103,8 +103,22 @@ async def refresh_token(request: Request, response: Response, db: AsyncSession =
 
 
 @auth.post("/logout")
-def logout(response: Response):
+async def logout(
+    response: Response,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    user = await get_current_user(token, db)
+
+    # Find and delete all cache keys for this user
+    pattern = f"user:{user.user_id}:*"
+    keys = await redis_client.keys(pattern)  # gets all matching keys
+    if keys:
+        await redis_client.delete(*keys)
+
+    # Remove refresh token cookie
     response.delete_cookie("refresh_token")
+
     return {"message": "Logged out"}
 
 

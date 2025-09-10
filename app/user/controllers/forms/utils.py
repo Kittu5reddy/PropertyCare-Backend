@@ -262,7 +262,7 @@ async def property_upload_documents(file: dict, category: str, property_id: Unio
             return {"error": str(e)}
 
 def get_image(filename: str) -> str:
-    return f"{CLOUDFRONT_URL}{filename}"
+    return f"{CLOUDFRONT_URL}{filename}{get_current_time()}"
 
 def get_current_time() -> str:
     return f"?v={int(time.time())}"

@@ -106,14 +106,27 @@ async def get_user_by_verification_token(db: AsyncSession, token: str) -> User:
 
 
 
-async def get_current_user(token: str, db: AsyncSession):
+from jose import jwt, JWTError, ExpiredSignatureError
+
+async def get_current_user(token: str, db: AsyncSession) -> User:
     try:
         payload = jwt.decode(token, ACCES_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token"
+            )
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        )
     except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
@@ -164,6 +177,61 @@ async def get_current_user_personal_details(token: str, db: AsyncSession):
 
     return data
 
+from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+import redis.exceptions
+from jose import JWTError
+
+def handle_exception(e: Exception, db=None):
+    """
+    Centralized exception handler for database, cache, JWT, and validation errors.
+    Can be reused in any route.
+    """
+    # Rollback transaction if DB session is passed
+    if db is not None:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+    if isinstance(e, HTTPException):
+        raise e
+
+    elif isinstance(e, IntegrityError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Database integrity error: {str(e.orig)}"
+        )
+
+    elif isinstance(e, SQLAlchemyError):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database error occurred"
+        )
+
+    elif isinstance(e, redis.exceptions.RedisError):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Cache server error"
+        )
+
+    elif isinstance(e, JWTError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token"
+        )
+
+    elif isinstance(e, KeyError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Missing required field: {e.args[0]}"
+        )
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Unexpected error: {str(e)}"
+        )
 
 
 def get_is_pd_filled(token:str):

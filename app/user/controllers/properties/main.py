@@ -293,7 +293,8 @@ async def change_property_photo(
         await invalidate_files(f'/property/{property_id}/legal_documents/property_photo.png')
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
-
+        cache_key = f"property:{property_id}:info"
+        await redis_delete_data(cache_key)
         return result
 
     except HTTPException as e:
