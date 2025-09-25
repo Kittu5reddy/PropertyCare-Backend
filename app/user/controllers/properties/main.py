@@ -72,7 +72,7 @@ async def upload_property_documents(
     db: AsyncSession = Depends(get_db)
 ):
     user = await get_current_user(token, db)
-
+    cache_key="property:{property_id}:documents"
     # Convert UploadFile → dict
     contents = await file.read()
     file_data = {
@@ -83,51 +83,43 @@ async def upload_property_documents(
 
     # Call existing helper
     result = await property_upload_documents(file_data, category, property_id)
-
+    await redis_delete_data(cache_key)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
 
 
 
+
 @prop.post("/add-reference-image/{property_id}")
 async def add_reference_photo(
     property_id: str,
-    category: str = Form(...),
-    file: UploadFile = File(...),
+    category: str = Form(...),  # required
+    files: list[UploadFile] = File(...),  # multiple files
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
-    # Authenticate user
-    user = await get_current_user(token, db)
-
     try:
-        # Read file into memory
-        contents = await file.read()
-        file_data = {
-            "filename": file.filename,
-            "bytes": contents,
-            "content_type": file.content_type,
-        }
-
-        # Upload via helper
-        result = await property_upload_image_as_png(file_data, category, property_id)
-
-        if "error" in result:
-            raise HTTPException(status_code=400, detail=result["error"])
-
-        return {
-            "status": "success",
-            "message": f"Reference photo uploaded under category '{category}' for property {property_id}",
-            "file_path": result.get("file_path"),
-        }
+        user = await get_current_user(token, db)
+        cache_key = f"property:{property_id}:reference-images"
+        results = []
+        for file in files:
+            contents = await file.read()
+            file_data = {
+                "filename": file.filename,
+                "bytes": contents,
+                "content_type": file.content_type,
+            }
+            result = await property_upload_image_as_png(file_data, category, property_id)
+            results.append(result)
+        await redis_delete_data(cache_key)
+        return {"status": "success", "files": results}
 
     except HTTPException as e:
-        raise e  # re-raise known errors
+        raise e
     except Exception as e:
         print(f"Upload error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to upload reference photo: {str(e)}")
-    
 
 
 @prop.post("/add-property")
@@ -387,7 +379,7 @@ async def delete_reference_photo(
     db: AsyncSession = Depends(get_db),
 ):
 
-    try:
+    try:    
         user = await get_current_user(token, db)
         filename = property_photos.split("/")[-1]
         if "?v" in filename:
