@@ -1,5 +1,4 @@
 from app.user.models import Base
-
 from sqlalchemy import JSON, Column, Integer, String, Boolean, DateTime, func,ForeignKey
 from sqlalchemy.dialects.postgresql import ARRAY
 

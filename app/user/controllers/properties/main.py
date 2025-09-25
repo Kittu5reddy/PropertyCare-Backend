@@ -371,10 +371,11 @@ async def delete_document(
     db: AsyncSession = Depends(get_db)
 ):
     user = await get_current_user(token, db)
-
+    cache_key="property:{property_id}:documents"
     result = await property_delete_document(category, property_id)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
+    await redis_delete_data(cache_key)
     return result
 
 
@@ -389,6 +390,9 @@ async def delete_reference_photo(
     try:
         user = await get_current_user(token, db)
         filename = property_photos.split("/")[-1]
+        if "?v" in filename:
+            filename=filename.split('?')[0]
+        print(filename)
         print(filename,property_id)
         result = await property_delete_single_document(
             category="property_photos",
@@ -666,7 +670,11 @@ async def get_reference_documents(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        
+        cache_key="property:{property_id}:documents"
+        cached_data = await redis_get_data(cache_key)
+        if cached_data:
+            print(("hit"))
+            return cached_data       
         # Authenticate user
         user = await get_current_user(token, db)
 
@@ -689,7 +697,7 @@ async def get_reference_documents(
                 "url": image,
                 "isverified": getattr(data, key, False) if data else False
             }
-
+        await redis_set_data(cache_key=cache_key,data=response)
         return response
 
     except ClientError as e:
