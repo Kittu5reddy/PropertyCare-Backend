@@ -8,16 +8,13 @@ from datetime import datetime
 
 class PropertyDocuments(Base):
     __tablename__ = "property_documents"   
-
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-
     property_id: Mapped[str] = mapped_column(
         String(50), 
         ForeignKey("property_details.property_id"), 
         nullable=False,
         unique=True   # one-to-one with property
     )
-
     # Match column names with S3 filenames
     property_photo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     property_photos: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -30,7 +27,6 @@ class PropertyDocuments(Base):
     lrs: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     bank_noc: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     agreement_of_sale: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

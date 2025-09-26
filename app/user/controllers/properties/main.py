@@ -86,6 +86,7 @@ async def upload_property_documents(
     await redis_delete_data(cache_key)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+    
     return result
 
 
@@ -552,7 +553,7 @@ async def get_property_info(
         # ✅ Cache key
         cache_key = f"property:{property_id}:info"
 
-        # 🔹 Step 1: Try to fetch from Redis
+
         cached_data = await redis_get_data(cache_key)
         if cached_data:
             print(("hit"))
@@ -598,12 +599,12 @@ async def get_property_info(
         # 🔹 S3 photos
         objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
         data['property_photos'] = [get_image("/" + images) for images in objects]
-
+        # print(data['property_photos'])
         # 🔹 Legal photo
         object_key = f'property/{property_id}/legal_documents/property_photo.png'
         is_exists = await check_object_exists(object_key)
         if is_exists:
-            data['property_photo'] = get_image("/" + object_key + f"?v={time.time()}")
+            data['property_photo'] = get_image("/" + object_key)
         else:
             data['property_photo'] = settings.DEFAULT_IMG_URL
 
@@ -665,7 +666,7 @@ async def get_reference_documents(
         cache_key="property:{property_id}:documents"
         cached_data = await redis_get_data(cache_key)
         if cached_data:
-            print(("hit"))
+            # print(("hit"))
             return cached_data       
         # Authenticate user
         user = await get_current_user(token, db)
@@ -700,10 +701,7 @@ async def get_reference_documents(
 
     except UnidentifiedImageError:
         raise HTTPException(status_code=400, detail="Invalid image format found in S3")
-
-    except HTTPException as e:
-        raise e
-
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected Error: {str(e)}")
 

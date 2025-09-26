@@ -6,8 +6,8 @@ from datetime import date
 import botocore.exceptions
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import date
-from app.user.models import redis,get_redis,redis_set_data,redis_get_data
-
+from app.user.models import redis,get_redis,redis_set_data,redis_get_data,redis_delete_data
+from app.user.controllers.forms.utils import get_image 
 
 surveillance=APIRouter(prefix='/surveillance',tags=['surveillance'])
 
@@ -25,6 +25,7 @@ async def get_monthly_photos(
     try:
         user = await get_current_user(token, db)
         cache_key=f"property:{property_id}:monthly-photos:{year}:{month}"
+        # await redis_delete_data(cache_data)
         cache_data=await redis_get_data(cache_key)
         if cache_data:
             return cache_data
@@ -33,6 +34,8 @@ async def get_monthly_photos(
 
         # Get list of objects
         data = await list_s3_objects(prefix=object_key)
+        data=list(map(get_image,map(lambda x:"/"+x,data)))
+        # print(data)
         await redis_set_data(cache_key,data)
         return {"photos": data}
 
