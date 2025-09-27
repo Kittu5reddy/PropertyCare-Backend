@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PropCare Monthly Subscription Invoice</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f7f9fc;
+        margin: 0;
+        padding: 20px;
+      }
+      .invoice-container {
+        max-width: 700px;
+        margin: auto;
+        background: #fff;
+        padding: 20px 40px;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+      }
+      .header h2 {
+        margin: 0;
+        color: #2d6a4f;
+      }
+      .logo {
+        max-height: 150px;
+        width: auto;
+      }
+      .invoice-details {
+        margin-bottom: 20px;
+      }
+      .invoice-details p {
+        margin: 4px 0;
+        font-size: 14px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+        font-size: 14px;
+      }
+      th {
+        background: #2d6a4f;
+        color: #fff;
+      }
+      .total-row td {
+        font-weight: bold;
+        background: #f1f5f9;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        font-size: 13px;
+        color: #555;
+      }
+      .signature-qr {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 40px;
+        align-items: center;
+      }
+      .signature {
+        text-align: center;
+        font-size: 12px;
+      }
+      .qr-code {
+        max-width: 100px;
+        max-height: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="invoice-container">
+      <!-- Header with Logo and Title -->
+      <div class="header">
+        <img src="./image.png" alt="PropCare Logo" class="logo" />
+        <div>
+          <h2>Subscription Invoice</h2>
+          <p>Invoice #: INV-2025-001 | Date: September 27, 2025</p>
+        </div>
+      </div>
+
+      <!-- User Details -->
+      <div class="invoice-details">
+        <p><b>Billed To:</b> Palvai Kaushik Reddy</p>
+        <p><b>User ID:</b> U12345</p>
+        <p><b>Email:</b> kaushikpalvai2004@gmail.com</p>
+        <p><b>Subscription Plan:</b> Premium Monthly</p>
+      </div>
+
+      <!-- Property Details -->
+      <div class="invoice-details">
+        <p><b>Property Name:</b> Sunshine Residency</p>
+        <p><b>Property ID:</b> PC2025P005</p>
+      </div>
+
+      <!-- Invoice Table -->
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Period</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>PropCare Premium Subscription</td>
+            <td>Sep 27, 2025 – Oct 26, 2025</td>
+            <td>₹499.00</td>
+          </tr>
+          <tr class="total-row">
+            <td colspan="2" align="right">Total</td>
+            <td>₹499.00</td>
+          </tr>
+        </tbody>
+      </table>
+
+
+        <div class="signature">
+          <p>Authorized Signature</p>
+          <img
+            src="./sig.png"
+            alt="Signature"
+            style="max-width: 150px; width: auto"
+          />
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p>Thank you for choosing PropCare 💚</p>
+        <p>This is a system-generated invoice. No signature required.</p>
+        <p>
+          For support, reach us at:
+          <a href="mailto:support@vibhoospropcare.com"
+            >support@vibhoospropcare.com</a
+          >
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
