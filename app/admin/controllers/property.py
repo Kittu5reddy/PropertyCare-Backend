@@ -1,14 +1,14 @@
 
 from fastapi import Depends,Request,Response,APIRouter,HTTPException
-from app.user.controllers.auth.main import oauth2_scheme,get_db,AsyncSession
+from app.core.controllers.auth.main import oauth2_scheme,get_db,AsyncSession
 from app.admin.controllers.auth import get_current_admin
 from app.admin.models.admins import Admin
 from sqlalchemy import select
 from app.user.models.users import User
-from app.user.models.property_details import PropertyDetails,PropertyHistory
+from app.core.models.property_details import PropertyDetails,PropertyHistory
 from app.admin.validators.users import UserDynamicUpdate,ChangePassword,ChangeEmail
 from app.admin.validators.property import PropertyDetailsBase
-from app.user.controllers.auth.main import get_password_hash
+from app.core.controllers.auth.main import get_password_hash
 admin_property = APIRouter(prefix="/admin/property", tags=["Admin property"])
 
 

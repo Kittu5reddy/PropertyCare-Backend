@@ -1,16 +1,16 @@
 from fastapi import APIRouter,Depends,BackgroundTasks,HTTPException,Request,Response
-from app.user.models import get_db,AsyncSession
+from app.core.models import get_db,AsyncSession
 from app.admin.models.admins import Admin
 from app.user.validators.auth import User as UserSchema
-from app.user.controllers.auth.main import oauth2_scheme
-from app.user.controllers.auth.utils import create_access_token,create_refresh_token,verify_password,verify_refresh_token,get_password_hash
+from app.core.controllers.auth.main import oauth2_scheme
+from app.core.controllers.auth.utils import create_access_token,create_refresh_token,verify_password,verify_refresh_token,get_password_hash
 from sqlalchemy import select
 from config import settings
 from jose import jwt,JWTError
 from fastapi import status
-from app.user.controllers.auth.email import send_admin_login_alert_email
+from app.core.controllers.auth.email import send_admin_login_alert_email
 from fastapi.responses import HTMLResponse,JSONResponse
-from app.user.controllers.auth.main import  pwd_context
+from app.core.controllers.auth.main import  pwd_context
 
 ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN=settings.ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN
 REFRESH_TOKEN_EXPIRE_DAYS_ADMIN=settings.REFRESH_TOKEN_EXPIRE_DAYS_ADMIN

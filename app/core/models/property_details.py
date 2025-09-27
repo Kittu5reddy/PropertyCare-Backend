@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import String, Integer, DateTime, func, ForeignKey, Text, JSON,Boolean
 from sqlalchemy.orm import Mapped, mapped_column
-from app.user.models import Base
+from app.core.models import Base
 from config import settings
 
 

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.user.controllers.auth.main import auth
+from app.core.controllers.auth.main import auth
 from app.user.controllers.forms.main import form
 from app.user.controllers.surveillance.main import surveillance
 from app.user.controllers.subscrptions.main import sub

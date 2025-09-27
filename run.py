@@ -1,7 +1,7 @@
 from app import create_app
-from app.user.models import engine, Base
+from app.core.models import engine, Base
 import uvicorn
-from app.user.models import init_models
+from app.core.models import init_models
 
 app=create_app()
 import asyncio

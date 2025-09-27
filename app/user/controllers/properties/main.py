@@ -1,16 +1,16 @@
 from fastapi import APIRouter,Depends,HTTPException,Form, Body
 from jose import JWTError
 import time
-from app.user.controllers.auth.main import oauth2_scheme,AsyncSession,get_db,get_current_user
+from app.core.controllers.auth.main import oauth2_scheme,AsyncSession,get_db,get_current_user
 from app.user.controllers.surveillance.main import  get_current_month_photos
 from app.user.validators.propertydetails import  PropertyDetailForm,UpdatePropertyNameRequest
 from app.user.models.users import User
-from app.user.models import get_redis,redis,redis_get_data,redis_set_data,redis_update_data,redis_delete_data
+from app.core.models import get_redis,redis,redis_get_data,redis_set_data,redis_update_data,redis_delete_data
 import json
-from app.user.models.documents import PropertyDocuments
+from app.core.models.property_documents import PropertyDocuments
 from .utils import generate_property_id
 from sqlalchemy import select,func,and_
-from app.user.models.property_details import PropertyDetails
+from app.core.models.property_details import PropertyDetails
 prop=APIRouter(prefix='/property',tags=['user property'])
 from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,create_property_directory,property_delete_document,invalidate_files,property_delete_single_document
 from fastapi import APIRouter, Depends, UploadFile, File
@@ -692,16 +692,11 @@ async def get_reference_documents(
             }
         await redis_set_data(cache_key=cache_key,data=response)
         return response
-
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Invalid Token")
     except ClientError as e:
         raise HTTPException(status_code=502, detail=f"S3 Error: {str(e)}")
-
     except SQLAlchemyError as e:
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
-
-    except UnidentifiedImageError:
-        raise HTTPException(status_code=400, detail="Invalid image format found in S3")
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Unexpected Error: {str(e)}")
 

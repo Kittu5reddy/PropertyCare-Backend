@@ -1,10 +1,10 @@
 from fastapi import APIRouter,Depends
-from app.user.controllers.auth.main import oauth2_scheme
+from app.core.controllers.auth.main import oauth2_scheme
 from app.user.controllers.forms.utils import get_image
-from app.user.controllers.auth.main import get_current_user
-from app.user.models.property_details import PropertyDetails
+from app.core.controllers.auth.main import get_current_user
+from app.core.models.property_details import PropertyDetails
 from .utils import get_property_details
-from app.user.models import AsyncSession,get_db,redis_get_data,redis_set_data
+from app.core.models import AsyncSession,get_db,redis_get_data,redis_set_data
 from sqlalchemy import select
 from app.user.controllers.forms.utils import list_s3_objects
 dash=APIRouter(prefix='/dash',tags=['/dash'])

@@ -1,7 +1,7 @@
-from app.user.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,get_is_pd_filled
-from app.user.controllers.auth.email import create_verification_token,send_verification_email
+from app.core.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,get_is_pd_filled
+from app.core.controllers.auth.email import create_verification_token,send_verification_email
 from fastapi import APIRouter,Request,status
-from app.user.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
+from app.core.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
 from app.user.validators.auth import User as LoginSchema 
 from app.user.models.users import User,UserNameUpdate
 from app.user.models.personal_details import PersonalDetails
@@ -12,7 +12,7 @@ from jose import JWTError,jwt
 from fastapi.responses import HTMLResponse
 from fastapi import Response
 from passlib.context import CryptContext
-from app.user.models import get_db,AsyncSession,redis_set_data,redis_get_data,redis_update_data,redis_delete_data,redis_client
+from app.core.models import get_db,AsyncSession,redis_set_data,redis_get_data,redis_update_data,redis_delete_data,redis_client
 from fastapi import Depends,File,UploadFile
 from sqlalchemy import select, desc
 from fastapi import BackgroundTasks

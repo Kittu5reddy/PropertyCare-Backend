@@ -1,16 +1,16 @@
 from fastapi import APIRouter,Depends,HTTPException,status
 from jose import JWTError
 from app.user.validators.forms import get_personal_details
-from app.user.controllers.auth.main import oauth2_scheme
+from app.core.controllers.auth.main import oauth2_scheme
 from app.user.models.personal_details import PersonalDetails
-from app.user.models import get_db
+from app.core.models import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.user.models.personal_details import PersonalDetails
-from app.user.controllers.auth.utils import  get_current_user
+from app.core.controllers.auth.utils import  get_current_user
 from fastapi import Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.user.models import PersonalDetails
+from app.user.models.personal_details import PersonalDetails
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 form=APIRouter(prefix="/form",tags=['form'])

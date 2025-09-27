@@ -1,12 +1,12 @@
 from fastapi import APIRouter,Depends,HTTPException
-from app.user.controllers.auth.main import oauth2_scheme,get_db,AsyncSession,JWTError
-from app.user.controllers.auth.utils import get_current_user
+from app.core.controllers.auth.main import oauth2_scheme,get_db,AsyncSession,JWTError
+from app.core.controllers.auth.utils import get_current_user
 from app.user.controllers.forms.utils import list_s3_objects
 from datetime import date
 import botocore.exceptions
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import date
-from app.user.models import redis,get_redis,redis_set_data,redis_get_data,redis_delete_data
+from app.core.models import redis,get_redis,redis_set_data,redis_get_data,redis_delete_data
 from app.user.controllers.forms.utils import get_image 
 
 surveillance=APIRouter(prefix='/surveillance',tags=['surveillance'])
