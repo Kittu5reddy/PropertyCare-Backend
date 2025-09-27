@@ -5,7 +5,7 @@ from app.core.controllers.auth.main import oauth2_scheme,AsyncSession,get_db,get
 from app.user.controllers.surveillance.main import  get_current_month_photos
 from app.user.validators.propertydetails import  PropertyDetailForm,UpdatePropertyNameRequest
 from app.user.models.users import User
-from app.core.models import get_redis,redis,redis_get_data,redis_set_data,redis_update_data,redis_delete_data
+from app.core.models import get_redis,redis,redis_get_data,redis_set_data,redis_update_data,redis_delete_data,redis_delete_data,redis_delete_pattern
 import json
 from app.core.models.property_documents import PropertyDocuments
 from .utils import generate_property_id
@@ -113,7 +113,7 @@ async def add_reference_photo(
             }
             result = await property_upload_image_as_png(file_data, category, property_id)
             results.append(result)
-        await redis_delete_data(cache_key)
+        await redis_delete_pattern(f"property:{property_id}:*")
         return {"status": "success", "files": results}
 
     except HTTPException as e:
@@ -165,7 +165,8 @@ async def user_add_property(
             sub_type=form.sub_type_property.strip() if form.sub_type_property else None,
             description=form.additional_notes,
         )
-
+        
+        await redis_delete_pattern(f"user:{user.user_id}:*")
         documents = PropertyDocuments(property_id=property_id)
         db.add(property)
         await db.commit()

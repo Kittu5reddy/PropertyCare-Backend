@@ -97,7 +97,12 @@ async def redis_update_data(
 
 
 async def redis_delete_data(
-    cache_key: str
+    cache_key: list
 ):
     result = await redis_client.delete(cache_key)
     return result > 0   # returns True if key was deleted
+
+async def redis_delete_pattern(pattern: str):
+    # scan_iter returns an async iterator over keys matching the pattern
+    async for key in redis_client.scan_iter(match=pattern):
+        await redis_client.delete(key)

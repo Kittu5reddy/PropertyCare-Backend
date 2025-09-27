@@ -22,6 +22,7 @@ from app.user.controllers.forms.utils import get_image,get_current_time
 from datetime import datetime,timedelta
 from app.user.controllers.forms.utils import upload_image_as_png
 import time
+from app.core.models.property_details import PropertyDetails
 auth=APIRouter(prefix='/auth',tags=['auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -169,35 +170,53 @@ async def get_user_id(token: str = Depends(oauth2_scheme), db: AsyncSession = De
         raise HTTPException(status_code=404, detail="User not found")
     return {"user_id": user.user_id}
 
-
 @auth.get("/get-personal-data")
-async def get_personal_details(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+async def get_personal_details(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
     user = await get_current_user(token, db)
-    cache_key=f"user:{user.user_id}:personal-data"
-    cache_data=await redis_get_data(cache_key)
+    cache_key = f"user:{user.user_id}:personal-data"
+
+    cache_data = await redis_get_data(cache_key)
     if cache_data:
         print("hit")
-        # print(cache_data)
         return cache_data
-    result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_id == user.user_id))
+
+    # Get personal details
+    result = await db.execute(
+        select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
+    )
     data = result.scalar_one_or_none()
     if not data:
         raise HTTPException(status_code=404, detail="Personal details not found")
 
-    profile_url = get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}")
-    data= {
+    # Get properties
+    result = await db.execute(
+        select(PropertyDetails).where(PropertyDetails.user_id == user.user_id)
+    )
+    property_data = result.scalars().all()  # no await here!
+    total_properties = len(property_data)
+
+    # Build profile URL
+    profile_url = get_image(
+        f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"
+    )
+
+    response = {
         "full_name": f"{data.first_name} {data.last_name}",
         "user_name": data.user_name,
         "contact_number": data.contact_number,
         "location": f"{data.city}, {data.state}",
-        "member_from":  data.created_at.isoformat(),
-        "total_properties": 200,
+        "member_from": data.created_at.isoformat(),
+        "total_properties": total_properties,
         "with_plans": 20,
         "no_plans": 180,
-        "profile_photo_url": profile_url
+        "profile_photo_url": profile_url,
     }
-    await redis_set_data(cache_key,data)
-    return data
+
+    await redis_set_data(cache_key, response)
+    return response
 
 
 @auth.get('/get-subscription-details')
