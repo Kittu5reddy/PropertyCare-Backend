@@ -14,7 +14,7 @@ admin_property = APIRouter(prefix="/admin/property", tags=["Admin property"])
 
 
 
-
+from uuid import uuid4
 
 @admin_property.post('/create-property/{user_id}')
 async def admin_create_property(
