@@ -5,9 +5,9 @@ from app.user.controllers.forms.main import form
 from app.user.controllers.surveillance.main import surveillance
 from app.user.controllers.subscrptions.main import sub
 from app.user.controllers.dashboard.main import dash
-from app.admin.controllers.auth import admin
-from app.admin.controllers.user import admin_user
+from app.admin.controllers.auth.main import admin_auth
 from app.user.controllers.properties.main import prop
+from app.user.controllers.services.main import services
 
 def create_app():
     app = FastAPI()
@@ -28,8 +28,8 @@ def create_app():
 
     app.include_router(auth)
     app.include_router(sub)
-    app.include_router(admin) 
-    app.include_router(admin_user) 
+    app.include_router(services)
+    app.include_router(admin_auth) 
     app.include_router(dash)
     app.include_router(form)
     app.include_router(prop)

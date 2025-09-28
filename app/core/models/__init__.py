@@ -61,7 +61,7 @@ async def get_redis():
 
 
 
-async def redis_set_data(cache_key: str, data: Any):
+async def redis_set_data(cache_key: str, data: Any,time:int=REDIS_EXPIRE_TIME):
 
     value = json.dumps(data)  # serialize
     await redis_client.setex(

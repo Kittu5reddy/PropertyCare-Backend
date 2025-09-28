@@ -19,12 +19,15 @@ class Settings(BaseSettings):
     # ==================================   
     REFRESH_TOKEN_SECRET_KEY: str
     ACCESS_TOKEN_SECRET_KEY: str
+    REFRESH_TOKEN_SECRET_KEY_ADMIN: str
+    ACCESS_TOKEN_SECRET_KEY_ADMIN: str
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN: int
     REFRESH_TOKEN_EXPIRE_DAYS_ADMIN: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
-
+    ADMINS_EMAILS:list[str]
+    OTP_EXPIRY_MINUTES:int
 
 
     
