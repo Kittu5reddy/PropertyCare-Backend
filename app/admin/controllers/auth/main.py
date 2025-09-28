@@ -71,7 +71,7 @@ async def admin_verify(payload: OTP, response: Response):
 
         # Generate tokens
         access_token = create_access_token({"email": email})
-        refresh_token = await create_refresh_token(email=email)
+        refresh_token =  create_refresh_token(email=email)
 
         # Set refresh token in secure cookie
         response.set_cookie(
