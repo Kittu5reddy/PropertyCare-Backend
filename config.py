@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int
     ADMINS_EMAILS:list[str]
     OTP_EXPIRY_MINUTES:int
-
+    BLACK_LIST_TIME:int
 
     
     # ==================================

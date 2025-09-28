@@ -6,3 +6,6 @@ class AdminLogin(BaseModel):
 class OTP(BaseModel):
     email:str
     otp:str
+
+class BlackListOTP(BaseModel):
+    email:str
