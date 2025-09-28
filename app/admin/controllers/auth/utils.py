@@ -9,18 +9,15 @@ from app.core.controllers.auth.email import SMTP_PORT,SMTP_SERVER,EMAIL_ADDRESS,
 from app.core.models import redis_set_data
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-# admin/login->email-> 200,401,404(not found)
-# admin/verfify-login-> otp==otp-->(access_token),refresh_token
-# admin/block-admin-email-> 3mins
 
 # ======================
 # CONFIG
 # ======================
-ACCESS_TOKEN_SECRET_KEY_ADMIN = settings.ACCESS_TOKEN_SECRET_KEY_ADMIN          # change this!         # change this!
-REFRESH_TOKEN_SECRET_KEY_ADMIN = settings.REFRESH_TOKEN_SECRET_KEY_ADMIN          # change this!         # change this!
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN    # short life
-REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS_ADMIN       # longer life
+ACCESS_TOKEN_SECRET_KEY_ADMIN = settings.ACCESS_TOKEN_SECRET_KEY_ADMIN         
+REFRESH_TOKEN_SECRET_KEY_ADMIN = settings.REFRESH_TOKEN_SECRET_KEY_ADMIN          
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN    
+REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS_ADMIN      
 ADMIN_EMAILS=settings.ADMINS_EMAILS
 OTP_EXPIRY_MINUTES=settings.OTP_EXPIRY_MINUTES
 BLACK_LIST_TIME=settings.BLACK_LIST_TIME

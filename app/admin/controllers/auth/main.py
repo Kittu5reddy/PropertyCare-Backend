@@ -24,7 +24,12 @@ async def admin_login(payload: AdminLogin, background_tasks: BackgroundTasks):
 
     if email not in ADMIN_EMAILS:
         raise HTTPException(status_code=404, detail="Email is not registered")
-
+    blacklist_key = f"black-list:email:{email}"
+    if await redis_get_data(blacklist_key):
+        raise HTTPException(
+                status_code=403,
+                detail=f"Email is blacklisted. Wait for {BLACK_LIST_TIME} mins"
+            )
     try:
         # Generate OTP and store in Redis
         otp, expire = generate_otp(email)
