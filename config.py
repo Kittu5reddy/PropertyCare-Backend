@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN: int
     REFRESH_TOKEN_EXPIRE_DAYS_ADMIN: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
-    ADMINS_EMAILS:list[str]
+    ADMINS_EMAILS:dict[str,str]
     OTP_EXPIRY_MINUTES:int
     BLACK_LIST_TIME:int
 

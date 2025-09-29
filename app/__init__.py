@@ -6,6 +6,7 @@ from app.user.controllers.surveillance.main import surveillance
 from app.user.controllers.subscrptions.main import sub
 from app.user.controllers.dashboard.main import dash
 from app.admin.controllers.auth.main import admin_auth
+from app.admin.controllers.services.main import admin_services
 from app.user.controllers.properties.main import prop
 from app.user.controllers.services.main import services
 
@@ -30,6 +31,7 @@ def create_app():
     app.include_router(sub)
     app.include_router(services)
     app.include_router(admin_auth) 
+    app.include_router(admin_services) 
     app.include_router(dash)
     app.include_router(form)
     app.include_router(prop)

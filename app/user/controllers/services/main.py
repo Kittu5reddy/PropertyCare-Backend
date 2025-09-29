@@ -23,23 +23,26 @@ async def get_services_list(db: AsyncSession = Depends(get_db)):
         )
         services_list = result.scalars().all() 
 
+        from datetime import datetime
+
         data = []
         for service in services_list:
             data.append({
-                "id": service.id,
-                "service_id": service.service_id,
-                "service_name": service.service_name,
-                "services": service.services,
-                "is_active": service.is_active,
-                "approx_cost_usd": service.approx_cost_usd,
-                "approx_cost_inr": service.approx_cost_inr,
-                "durations": service.durations,
-                "applicable_to": service.applicable_to,
-                "comments": service.comments,
-                "created_by": service.created_by,
-                "created_at": service.created_at,
-                "updated_at": service.updated_at,
-            })
+        "id": service.id,
+        "service_id": service.service_id,
+        "service_name": service.service_name,
+        "services": service.services,
+        "is_active": service.is_active,
+        "approx_cost_usd": service.approx_cost_usd,
+        "approx_cost_inr": service.approx_cost_inr,
+        "durations": service.durations,
+        "applicable_to": service.applicable_to,
+        "comments": service.comments,
+        "created_by": service.created_by,
+        "created_at": service.created_at.isoformat() if service.created_at else None,
+        "updated_at": service.updated_at.isoformat() if service.updated_at else None,
+        })
+
 
 
         await redis_set_data(cache_key, data)
@@ -52,4 +55,5 @@ async def get_services_list(db: AsyncSession = Depends(get_db)):
         print("Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-
+# @services.post('/add-services')
+# async def add_services(payload:):
