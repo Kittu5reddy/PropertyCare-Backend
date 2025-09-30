@@ -1,3 +1,4 @@
+from app.admin.models.admins import Admin
 from app.core.models.property_details import PropertyDetails
 from app.core.models.subscriptions import Subscription,SubscriptionHistory
 from app.core.models.transactions import Transaction

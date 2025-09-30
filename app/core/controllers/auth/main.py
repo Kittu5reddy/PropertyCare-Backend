@@ -135,25 +135,58 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
     
     if not user:
         return HTMLResponse(
-            content="<h2>Invalid or expired token</h2><p>Please check your verification link or try signing up again.</p>",
+            content="""
+            <div style='font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 40px; text-align: center;'>
+                <div style='max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>
+                    <h2 style='color: #dc2626;'>Invalid or Expired Token</h2>
+                    <p style='color: #374151;'>Please check your verification link or try signing up again.</p>
+                </div>
+            </div>
+            """,
             status_code=400
         )
+    
     if user.is_verified:
         return HTMLResponse(
-            content="<h2>Email already verified</h2><p>You can now log in to your account.</p>",
+            content="""
+            <div style='font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 40px; text-align: center;'>
+                <div style='max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>
+                    <h2 style='color: #16a34a;'>Email Already Verified</h2>
+                    <p style='color: #374151;'>You can now log in to your account.</p>
+                    <a href="https://propertycare-nine.vercel.app/login" 
+                       style='display: inline-block; margin-top: 15px; background-color: #4CAF50; 
+                              color: white; padding: 12px 24px; text-decoration: none; 
+                              border-radius: 6px; font-weight: bold;'>
+                        Go to Login
+                    </a>
+                </div>
+            </div>
+            """,
             status_code=200
         )
+    
     user.is_verified = True
     user.verification_token = None
     await db.commit()
     await create_user_directory(user.user_id)
 
     return HTMLResponse(
-        content='<h2>Email verification successful</h2><p>Your email has been verified. You can now log in to your account.</p>'
-                '<a href="https://propertycare-nine.vercel.app/login">Click Here</a>',
+        content="""
+        <div style='font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 40px; text-align: center;'>
+            <div style='max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>
+                <h2 style='color: #16a34a;'>Email Verification Successful</h2>
+                <p style='color: #374151;'>Your email has been verified. You can now log in to your account.</p>
+                <a href="https://propertycare-nine.vercel.app/login" 
+                   style='display: inline-block; margin-top: 15px; background-color: #4CAF50; 
+                          color: white; padding: 12px 24px; text-decoration: none; 
+                          border-radius: 6px; font-weight: bold;'>
+                    Click Here to Login
+                </a>
+            </div>
+        </div>
+        """,
         status_code=200
     )
-
 
 @auth.get('/user-registration-status')
 async def user_registration_status(token: str = Depends(oauth2_scheme)):
