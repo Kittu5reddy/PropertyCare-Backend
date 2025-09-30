@@ -22,7 +22,7 @@ dist/
 
 # Logs
 *.log
-
+myenv
 # OS files
 .DS_Store
 Thumbs.db
