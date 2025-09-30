@@ -8,7 +8,7 @@ try:
         host="31.97.228.13",
         port="5432"
     )
-    print("✅ Connected successfully")
+    print("✅ Connected successfdcscsully")
 
     cur = conn.cursor()
 
