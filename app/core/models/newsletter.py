@@ -10,7 +10,11 @@ class NewsLetter(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     property_id: Mapped[str] = mapped_column(String(50), unique=True, index=True)  # was just Column()
     status: Mapped[str] = mapped_column(Boolean,default=True)  # was just Column()
-    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 
 
 

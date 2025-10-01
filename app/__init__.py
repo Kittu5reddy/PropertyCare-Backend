@@ -9,6 +9,7 @@ from app.admin.controllers.auth.main import admin_auth
 from app.admin.controllers.services.main import admin_services
 from app.user.controllers.properties.main import prop
 from app.user.controllers.services.main import services
+from app.core.controllers.emails.main import email
 
 def create_app():
     app = FastAPI()
@@ -35,5 +36,6 @@ def create_app():
     app.include_router(dash)
     app.include_router(form)
     app.include_router(prop)
+    app.include_router(email)
     app.include_router(surveillance)
     return app
