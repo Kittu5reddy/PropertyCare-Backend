@@ -93,7 +93,7 @@ async def unsubscribe_news_letter(email: str, db: AsyncSession = Depends(get_db)
     <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
     <h2>Email not found</h2>
     <p>The email <strong>{email}</strong> was not found in our subscription list.</p>
-    <a href="/" style="color: #0C4A6E; text-decoration: none;">Back to Home</a>
+    <a href="https://www.vibhoospropcare.com/" style="color: #0C4A6E; text-decoration: none;">Back to Home</a>
     </body>
     </html>
     """
