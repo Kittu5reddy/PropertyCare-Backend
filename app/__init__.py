@@ -18,13 +18,13 @@ def create_app():
                    "https://user.vibhoospropcare.com",
                    "https://admin.vibhoospropcare.com",
                    "https://vibhoospropcare.com",
-                   
+                   "https://www.vibhoospropcare.com",
                    "https://propertycare-nine.vercel.app"]
 
     # CORS configuration
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=allow_origins,  # Change to specific domains in production
+        allow_origins=allow_origins,  
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
