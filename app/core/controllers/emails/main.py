@@ -31,6 +31,7 @@ async def news_letter_subscribe(payload: NewsLetterSchema, db: AsyncSession = De
             db.add(record)
             await db.commit()
             await db.refresh(record)
+            return {"message": "subscribed successfully"}
         return {"message": "already subscribed"}
 
 
