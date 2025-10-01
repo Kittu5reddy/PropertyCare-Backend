@@ -20,7 +20,7 @@ async def news_letter_subscribe(payload: NewsLetterSchema, db: AsyncSession = De
         await db.refresh(record)
 
         # Send newsletter email
-        unsubscribe_url = f"https://api.vibhoospropcare.com/unsubscribe-news-letters/{payload.email}"
+        unsubscribe_url = f"https://api.vibhoospropcare.com/email/unsubscribe-news-letters/{payload.email}"
         send_newsletter_email(payload.email, unsubscribe_url)
 
         return {"message": "subscribed successfully"}
