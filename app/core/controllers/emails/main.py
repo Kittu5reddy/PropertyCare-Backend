@@ -3,7 +3,7 @@ from app.core.validators.emails import NewsLetter as NewsLetterSchema
 from app.core.models.newsletter import NewsLetter 
 from app.core.models.consultation import Consultation  
 from app.core.validators.consultation import Consultation as ConsultationSchema 
-email=APIRouter(prefix="email",tags=['emails'])
+email=APIRouter(prefix="/email",tags=['emails'])
 from sqlalchemy import select
 from app.core.models import get_db,AsyncSession
 
