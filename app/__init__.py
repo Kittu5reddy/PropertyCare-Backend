@@ -17,6 +17,8 @@ def create_app():
                    "http://localhost:5173",
                    "https://user.vibhoospropcare.com",
                    "https://admin.vibhoospropcare.com",
+                   "https://vibhoospropcare.com",
+                   
                    "https://propertycare-nine.vercel.app"]
 
     # CORS configuration
