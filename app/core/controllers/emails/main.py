@@ -8,6 +8,7 @@ email=APIRouter(prefix="/email",tags=['emails'])
 from sqlalchemy import select
 from app.core.models import get_db,AsyncSession
 
+
 @email.post('/subscribe-news-letters')
 async def news_letter_subscribe(payload: NewsLetterSchema, db: AsyncSession = Depends(get_db)):
     data = await db.execute(select(NewsLetter).where(NewsLetter.email == payload.email).limit(1))
@@ -25,7 +26,13 @@ async def news_letter_subscribe(payload: NewsLetterSchema, db: AsyncSession = De
 
         return {"message": "subscribed successfully"}
     else:
+        if not isavailable.status:
+            isavailable.status=True
+            db.add(record)
+            await db.commit()
+            await db.refresh(record)
         return {"message": "already subscribed"}
+
 
 
 from fastapi.responses import HTMLResponse
