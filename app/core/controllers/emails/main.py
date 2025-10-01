@@ -55,6 +55,7 @@ async def booking_consulting(
         preferred_time=payload.preferred_time,
         reason_for_consultation=payload.reason_for_consultation
     )
+    
     db.add(record)
     await db.commit()
     await db.refresh(record)
