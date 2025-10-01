@@ -3,7 +3,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 
-class ConsultationBase(BaseModel):
+class Consultation(BaseModel):
     name: str
     email: EmailStr
     phone: Optional[str] = None
