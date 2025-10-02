@@ -77,7 +77,7 @@ def send_consultation_email(name: str, email: str, preferred_date=None, preferre
 
     try:
         msg = MIMEMultipart()
-        msg['From'] = EMAIL_ADDRESS
+        msg['From'] =  f"VPC Consultation Request <{EMAIL_ADDRESS}>"
         msg['To'] = email
         msg['Subject'] = "Your Consultation Request - Vibhoos PropCare"
         msg.attach(MIMEText(html_content, 'html'))
@@ -124,10 +124,9 @@ def send_newsletter_email(to_email: str, unsubscribe_url: str):
         </p>
     </div>
     """
-
     try:
         msg = MIMEMultipart()
-        msg['From'] = EMAIL_ADDRESS
+        msg['From'] = f"VPC NEWS LETTER <{EMAIL_ADDRESS}>"
         msg['To'] = to_email
         msg['Subject'] = "Welcome to Vibhoos PropCare Newsletter"
         msg.attach(MIMEText(html_content, 'html'))

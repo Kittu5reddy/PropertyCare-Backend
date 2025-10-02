@@ -1,3 +1,4 @@
+from fastapi.responses import HTMLResponse
 from fastapi import APIRouter,Depends
 from app.core.validators.emails import NewsLetter as NewsLetterSchema
 from app.core.models.newsletter import NewsLetter 
@@ -10,6 +11,8 @@ from app.core.models import get_db,AsyncSession
 
 
 from fastapi import BackgroundTasks
+from email_validator import validate_email, EmailNotValidError
+import dns.resolver
 
 @email.post('/subscribe-news-letters')
 async def news_letter_subscribe(
@@ -17,13 +20,24 @@ async def news_letter_subscribe(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
+    # Validate email format and domain
+    try:
+        v = validate_email(payload.email)
+        email_normalized = v.email
+        domain = email_normalized.split("@")[1]
+        try:
+            dns.resolver.resolve(domain, 'MX')
+        except Exception:
+            return {"error": "Email domain does not accept mail"}
+    except EmailNotValidError as e:
+        return {"error": str(e)}
     # Check if email exists
-    data = await db.execute(select(NewsLetter).where(NewsLetter.email == payload.email).limit(1))
+    data = await db.execute(select(NewsLetter).where(NewsLetter.email == email_normalized).limit(1))
     record = data.scalar_one_or_none()
 
     if not record:
         # Create new subscription
-        record = NewsLetter(email=payload.email, status=True)
+        record = NewsLetter(email=email_normalized, status=True)
         db.add(record)
         await db.commit()
         await db.refresh(record)
@@ -40,13 +54,12 @@ async def news_letter_subscribe(
             return {"message": "already subscribed", "status": "active"}
 
     # Send newsletter email in background
-    unsubscribe_url = f"https://api.vibhoospropcare.com/email/unsubscribe-news-letters/{payload.email}"
-    background_tasks.add_task(send_newsletter_email, payload.email, unsubscribe_url)
+    unsubscribe_url = f"https://api.vibhoospropcare.com/email/unsubscribe-news-letters/{email_normalized}"
+    background_tasks.add_task(send_newsletter_email, email_normalized, unsubscribe_url)
 
     return {"message": message, "status": "active"}
 
 
-from fastapi.responses import HTMLResponse
 
 @email.get('/unsubscribe-news-letters/{email}', response_class=HTMLResponse)
 async def unsubscribe_news_letter(email: str, db: AsyncSession = Depends(get_db)):
@@ -93,21 +106,36 @@ async def unsubscribe_news_letter(email: str, db: AsyncSession = Depends(get_db)
     <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 50px;">
     <h2>Email not found</h2>
     <p>The email <strong>{email}</strong> was not found in our subscription list.</p>
-    <a href="https://www.vibhoospropcare.com/" style="color: #0C4A6E; text-decoration: none;">Back to Home</a>
+    <a href="https://www.vibhoospropcare.com" style="color: #0C4A6E; text-decoration: none;">Back to Home</a>
     </body>
     </html>
     """
     return HTMLResponse(content=html_not_found, status_code=404)
 
 
+from fastapi import BackgroundTasks
+
 @email.post('/book-consulting')
 async def booking_consulting(
     payload: ConsultationSchema, 
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
+    # Validate email format and domain
+    try:
+        v = validate_email(payload.email)
+        email_normalized = v.email
+        domain = email_normalized.split("@")[1]
+        try:
+            dns.resolver.resolve(domain, 'MX')
+        except Exception:
+            return {"error": "Email domain does not accept mail"}
+    except EmailNotValidError as e:
+        return {"error": str(e)}
+
     record = Consultation(
         name=payload.name,
-        email=payload.email,
+        email=email_normalized,
         phone=payload.phone,
         preferred_date=payload.preferred_date,
         preferred_time=payload.preferred_time,
@@ -118,9 +146,10 @@ async def booking_consulting(
     await db.commit()
     await db.refresh(record)
 
-    send_consultation_email(
+    background_tasks.add_task(
+        send_consultation_email,
         name=payload.name,
-        email=payload.email,
+        email=email_normalized,
         preferred_date=payload.preferred_date,
         preferred_time=payload.preferred_time
     )
