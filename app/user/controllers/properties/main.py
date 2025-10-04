@@ -654,8 +654,7 @@ async def get_property_info(
                 PropertyDetails.longitude,
                 PropertyDetails.gmap_url,
                 PropertyDetails.land_mark,
-                PropertyDetails.description,
-                PropertyDetails.reference_images
+                PropertyDetails.description
             ).where(PropertyDetails.property_id == property_id).limit(1)
         )
 
