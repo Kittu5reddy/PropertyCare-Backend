@@ -39,6 +39,9 @@ async def get_monthly_photos(
         await redis_set_data(cache_key,data)
         return {"photos": data}
 
+    except HTTPException:
+        # Re-raise FastAPI HTTPExceptions (e.g., from get_current_user)
+        raise
     except botocore.exceptions.ClientError as e:
         # AWS S3 error
         raise HTTPException(status_code=502, detail=f"S3 error: {str(e)}")
@@ -47,9 +50,6 @@ async def get_monthly_photos(
         # Database-related error
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-    except HTTPException:
-        # Re-raise FastAPI HTTPExceptions (e.g., from get_current_user)
-        raise
 
     except Exception as e:
         # Fallback for unexpected errors
@@ -81,6 +81,9 @@ async def get_current_month_photos(
         await redis_set_data(cache_key,data)
         return {"photos": data}
 
+    except HTTPException:
+        # Re-raise FastAPI HTTPExceptions (e.g., from get_current_user)
+        raise
     except botocore.exceptions.ClientError as e:
         # AWS S3 error
         raise HTTPException(status_code=502, detail=f"S3 error: {str(e)}")
@@ -89,9 +92,6 @@ async def get_current_month_photos(
         # Database-related error
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-    except HTTPException:
-        # Re-raise FastAPI HTTPExceptions (e.g., from get_current_user)
-        raise
 
     except Exception as e:
         # Fallback for unexpected errors
@@ -118,6 +118,8 @@ async def property_surveillance_data(
 
         return {"photos": data}
 
+    except HTTPException:
+        raise
     except JWTError as e:
         raise HTTPException(status_code=401 ,details="Unauthorized")
     except botocore.exceptions.ClientError as e:
@@ -126,8 +128,6 @@ async def property_surveillance_data(
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-    except HTTPException:
-        raise
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")

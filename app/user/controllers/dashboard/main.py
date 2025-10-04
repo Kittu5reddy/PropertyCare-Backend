@@ -1,4 +1,5 @@
-from fastapi import APIRouter,Depends
+from fastapi import APIRouter,Depends,HTTPException
+from jose import JWTError
 from app.core.controllers.auth.main import oauth2_scheme
 from app.user.controllers.forms.utils import get_image
 from app.core.controllers.auth.main import get_current_user
@@ -15,37 +16,51 @@ async def get_property_data(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
-    user = await get_current_user(token, db)
-    cache_key=f"user:{user.user_id}:property-details"
-    cache_data=await redis_get_data(cache_key)
-    if cache_data:
-        print('hit')
-        return cache_data
-    data = await get_property_details(user.user_id, db,5)
-    # print(data)
-    data={"data":data}
-    await redis_set_data(cache_key,data)
-    print('miss')
-    return data
-
+    try:
+        user = await get_current_user(token, db)
+        cache_key=f"user:{user.user_id}:property-details"
+        cache_data=await redis_get_data(cache_key)
+        if cache_data:
+            print('hit')
+            return cache_data
+        data = await get_property_details(user.user_id, db,5)
+        # print(data)
+        data={"data":data}
+        await redis_set_data(cache_key,data)
+        print('miss')
+        return data
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 @dash.get("/monthly-photos")
 async def get_property_data(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
-    user = await get_current_user(token, db)
-    cache_key=f"user:{user.user_id}:property-details"
-    cache_data=await redis_get_data(cache_key)
-    if cache_data:
-        print('hit')
-        return cache_data
-    data = await get_property_details(user.user_id, db,5)
-    # print(data)
-    data={"data":data}
-    await redis_set_data(cache_key,data)
-    print('miss')
-    return data
-
+    try:
+        user = await get_current_user(token, db)
+        cache_key=f"user:{user.user_id}:property-details"
+        cache_data=await redis_get_data(cache_key)
+        if cache_data:
+            print('hit')
+            return cache_data
+        data = await get_property_details(user.user_id, db,5)
+        # print(data)
+        data={"data":data}
+        await redis_set_data(cache_key,data)
+        print('miss')
+        return data
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 
 

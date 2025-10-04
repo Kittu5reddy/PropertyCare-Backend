@@ -208,107 +208,128 @@ async def get_personal_details(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
-    user = await get_current_user(token, db)
-    cache_key = f"user:{user.user_id}:personal-data"
+    try:
+        user = await get_current_user(token, db)
+        cache_key = f"user:{user.user_id}:personal-data"
 
-    cache_data = await redis_get_data(cache_key)
-    if cache_data:
-        print("hit")
-        return cache_data
+        cache_data = await redis_get_data(cache_key)
+        if cache_data:
+            print("hit")
+            return cache_data
 
-    # Get personal details
-    result = await db.execute(
-        select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
-    )
-    data = result.scalar_one_or_none()
-    if not data:
-        raise HTTPException(status_code=404, detail="Personal details not found")
+        # Get personal details
+        result = await db.execute(
+            select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
+        )
+        data = result.scalar_one_or_none()
+        if not data:
+            raise HTTPException(status_code=404, detail="Personal details not found")
 
-    # Get properties
-    result = await db.execute(
-        select(PropertyDetails).where(PropertyDetails.user_id == user.user_id)
-    )
-    property_data = result.scalars().all()  # no await here!
-    total_properties = len(property_data)
+        # Get properties
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.user_id == user.user_id)
+        )
+        property_data = result.scalars().all()  # no await here!
+        total_properties = len(property_data)
 
-    # Build profile URL
-    profile_url = get_image(
-        f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"
-    )
+        # Build profile URL
+        profile_url = get_image(
+            f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"
+        )
 
-    response = {
-        "full_name": f"{data.first_name} {data.last_name}",
-        "user_name": data.user_name,
-        "contact_number": data.contact_number,
-        "location": f"{data.city}, {data.state}",
-        "member_from": data.created_at.isoformat(),
-        "total_properties": total_properties,
-        "with_plans": 20,
-        "no_plans": 180,
-        "profile_photo_url": profile_url,
-    }
+        response = {
+            "full_name": f"{data.first_name} {data.last_name}",
+            "user_name": data.user_name,
+            "contact_number": data.contact_number,
+            "location": f"{data.city}, {data.state}",
+            "member_from": data.created_at.isoformat(),
+            "total_properties": total_properties,
+            "with_plans": 20,
+            "no_plans": 180,
+            "profile_photo_url": profile_url,
+        }
 
-    await redis_set_data(cache_key, response)
-    return response
-
+        await redis_set_data(cache_key, response)
+        return response
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.get('/get-subscription-details')
 async def get_subscription_details(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user = await get_current_user(token, db)
-    return [
-        {
-            "plan_type": "Basic",
-            "property_covered": [
-                {"property_name": "Ramanthapur House", "property_id": "1010101", "location": "Hyderabad", "property_type": "Residential"},
-                {"property_name": "Kukatpally Flat", "property_id": "1010102", "location": "Hyderabad", "property_type": "Apartment"}
-            ]
-        },
-        {
-            "plan_type": "Premium",
-            "property_covered": [
-                {"property_name": "Jubilee Hills Villa", "property_id": "2020202", "location": "Hyderabad", "property_type": "Villa"},
-                {"property_name": "Madhapur Studio", "property_id": "2020203", "location": "Hyderabad", "property_type": "Studio"}
-            ]
-        }
-    ]
-
+    try:
+        user = await get_current_user(token, db)
+        return [
+            {
+                "plan_type": "Basic",
+                "property_covered": [
+                    {"property_name": "Ramanthapur House", "property_id": "1010101", "location": "Hyderabad", "property_type": "Residential"},
+                    {"property_name": "Kukatpally Flat", "property_id": "1010102", "location": "Hyderabad", "property_type": "Apartment"}
+                ]
+            },
+            {
+                "plan_type": "Premium",
+                "property_covered": [
+                    {"property_name": "Jubilee Hills Villa", "property_id": "2020202", "location": "Hyderabad", "property_type": "Villa"},
+                    {"property_name": "Madhapur Studio", "property_id": "2020203", "location": "Hyderabad", "property_type": "Studio"}
+                ]
+            }
+        ]
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.get("/edit-profile")
 async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user = await get_current_user(token, db)
-    result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_id == user.user_id))
-    data = result.scalar_one_or_none()
-    if not data:
-        raise HTTPException(status_code=404, detail="Personal details not found")
+    try:
+        user = await get_current_user(token, db)
+        result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_id == user.user_id))
+        data = result.scalar_one_or_none()
+        if not data:
+            raise HTTPException(status_code=404, detail="Personal details not found")
 
-    result = await db.execute(select(UserNameUpdate).where(UserNameUpdate.user_id == user.user_id).limit(1))
-    username_update = result.scalar_one_or_none()
-    
-    is_username_changable = True
-    if username_update:
-        last_updated = username_update.last_updated
-        delta = datetime.now(tz=last_updated.tzinfo) - last_updated
-        if delta <= timedelta(days=30):
-            is_username_changable = False
+        result = await db.execute(select(UserNameUpdate).where(UserNameUpdate.user_id == user.user_id).limit(1))
+        username_update = result.scalar_one_or_none()
 
-    return {
-        "first_name": data.first_name,
-        "last_name": data.last_name,
-        "email": user.email,
-        "user_name": data.user_name,
-        "contact_number": data.contact_number,
-        "house_number": data.house_number,
-        "street": data.street,
-        "city": data.city,
-        "state": data.state,
-        "pin_code": data.pin_code,
-        "country": data.country,
-        "image_url": get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"),
-        "aadhaar_number": data.aadhaar_number,
-        "pan_number": data.pan_number,
-        "can_change_username": is_username_changable
-    }
+        is_username_changable = True
+        if username_update:
+            last_updated = username_update.last_updated
+            delta = datetime.now(tz=last_updated.tzinfo) - last_updated
+            if delta <= timedelta(days=30):
+                is_username_changable = False
 
+        return {
+            "first_name": data.first_name,
+            "last_name": data.last_name,
+            "email": user.email,
+            "user_name": data.user_name,
+            "contact_number": data.contact_number,
+            "house_number": data.house_number,
+            "street": data.street,
+            "city": data.city,
+            "state": data.state,
+            "pin_code": data.pin_code,
+            "country": data.country,
+            "image_url": get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"),
+            "aadhaar_number": data.aadhaar_number,
+            "pan_number": data.pan_number,
+            "can_change_username": is_username_changable
+        }
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 
 #=========================
@@ -328,6 +349,8 @@ async def change_password(payload: ChangePassword, token: str = Depends(oauth2_s
         cache_key=f"user:{user.user_id}:personal-data"
         await redis_delete_data(cache_key)
         return {"message": "Password changed successfully"}
+    except HTTPException as e:
+        raise e 
     except JWTError as e:
         raise HTTPException(status_code=401,detail="Token Expired")
     except Exception as e:
@@ -338,141 +361,219 @@ async def change_password(payload: ChangePassword, token: str = Depends(oauth2_s
 
 @auth.put('/change-first-name')
 async def change_first_name(form: ChangeFirstName, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user: PersonalDetails = await get_current_user_personal_details(token, db)
-    user.first_name = form.first_name.strip()
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "First name updated successfully."}
-
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.first_name = form.first_name.strip()
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "First name updated successfully."}
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.put('/change-last-name')
 async def change_last_name(form: ChangeLastName, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user: PersonalDetails = await get_current_user_personal_details(token, db)
-    user.last_name = form.last_name.strip()
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "Last name updated successfully."}
-
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.last_name = form.last_name.strip()
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "Last name updated successfully."}
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.put('/change-username')
 async def change_username(form: ChangeUsername, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user = await get_current_user(token, db)
-    existing_username = await db.execute(select(PersonalDetails).where(PersonalDetails.user_name == form.user_name))
-    if existing_username.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="Username already exists")
+    try:
+        user = await get_current_user(token, db)
+        existing_username = await db.execute(select(PersonalDetails).where(PersonalDetails.user_name == form.user_name))
+        if existing_username.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="Username already exists")
 
-    personal_details_result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_id == user.user_id))
-    personal_details = personal_details_result.scalar_one_or_none()
-    personal_details.user_name = form.user_name
-    db.add(personal_details)
-    await db.commit()
-    await db.refresh(personal_details)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "Username updated successfully."}
-
+        personal_details_result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_id == user.user_id))
+        personal_details = personal_details_result.scalar_one_or_none()
+        personal_details.user_name = form.user_name
+        db.add(personal_details)
+        await db.commit()
+        await db.refresh(personal_details)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "Username updated successfully."}
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.put('/change-contact-number')
 async def change_contact_number(form: ChangeContactNumber, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PersonalDetails).where(PersonalDetails.contact_number == form.contact_number))
-    if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Number already exists")
+    try:
+        result = await db.execute(select(PersonalDetails).where(PersonalDetails.contact_number == form.contact_number))
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Number already exists")
 
-    user: PersonalDetails = await get_current_user_personal_details(token, db)
-    user.contact_number = form.contact_number.strip()
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "Contact number updated successfully."}
-
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.contact_number = form.contact_number.strip()
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "Contact number updated successfully."}
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.put('/change-house-number')
 async def change_house_number(form: ChangeHouseNumber, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user: PersonalDetails = await get_current_user_personal_details(token, db)
-    user.house_number = form.house_number.strip()
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "House number updated successfully."}
-
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.house_number = form.house_number.strip()
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "House number updated successfully."}
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.put("/change-profile-photo")
 async def change_profile_photo(profile_photo: UploadFile = File(...), token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user = await get_current_user(token, db)
-    file_data = await profile_photo.read()
-    result = await upload_image_as_png(file={"bytes": file_data}, category="profile_photo", user_id=user.user_id)
-    if "error" in result:
-        raise HTTPException(status_code=400, detail=result["error"])
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return result
-
+    try:
+        user = await get_current_user(token, db)
+        file_data = await profile_photo.read()
+        result = await upload_image_as_png(file={"bytes": file_data}, category="profile_photo", user_id=user.user_id)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return result
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.put('/change-street')
 async def change_street(form: ChangeStreet, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user: PersonalDetails = await get_current_user_personal_details(token, db)
-    user.street = form.street.strip()
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "Street updated successfully."}
-
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.street = form.street.strip()
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "Street updated successfully."}
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.put('/change-city')
 async def change_city(form: ChangeCity, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user: PersonalDetails = await get_current_user_personal_details(token, db)
-    user.city = form.city.strip()
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "City updated successfully."}
-
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.city = form.city.strip()
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "City updated successfully."}
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.put('/change-state')
 async def change_state(form: ChangeState, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user: PersonalDetails = await get_current_user_personal_details(token, db)
-    user.state = form.state.strip()
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "State updated successfully."}
-
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.state = form.state.strip()
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "State updated successfully."}
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.put('/change-pin-code')
 async def change_pin_code(form: ChangePinCode, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user: PersonalDetails = await get_current_user_personal_details(token, db)
-    user.pin_code = form.pin_code
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "Pin code updated successfully."}
-
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.pin_code = form.pin_code
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "Pin code updated successfully."}
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 @auth.put('/change-country')
 async def change_country(form: ChangeCountry, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user: PersonalDetails = await get_current_user_personal_details(token, db)
-    user.country = form.country.strip()
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "Country updated successfully."}
+    try:
+        user: PersonalDetails = await get_current_user_personal_details(token, db)
+        user.country = form.country.strip()
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "Country updated successfully."}
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
