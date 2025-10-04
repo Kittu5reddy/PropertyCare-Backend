@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, func, ForeignKey, Text, JSON,Boolean
+from sqlalchemy import String, Integer, DateTime, func, ForeignKey, Text, JSON,Boolean,Float
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.models import Base
 from config import settings
@@ -22,7 +22,7 @@ class PropertyDetails(Base):
     mandal: Mapped[str] = mapped_column(String(50), nullable=False)
     country: Mapped[str] = mapped_column(String(50), nullable=False, default="India")
     pin_code: Mapped[int] = mapped_column(Integer, nullable=False)
-    size: Mapped[int] = mapped_column(Integer, nullable=False)
+    size: Mapped[float] = mapped_column(Float, nullable=False)
     phone_number: Mapped[str] = mapped_column(String(10), nullable=False)
     land_mark: Mapped[str] = mapped_column(Text, nullable=True)
     latitude: Mapped[str] = mapped_column(String(20), nullable=True)
@@ -34,9 +34,7 @@ class PropertyDetails(Base):
     admin_id: Mapped[str] = mapped_column(String(50), ForeignKey("admin.admin_id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    reference_images: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
-
-
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 class PropertyHistory(Base):
     __tablename__ = "property_history"
 
