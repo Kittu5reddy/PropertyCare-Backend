@@ -317,16 +317,23 @@ async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: Asyn
 
 @auth.put("/change-password")
 async def change_password(payload: ChangePassword, token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    user = await get_current_user(token, db)
-    if not verify_password(payload.current_password, user.hashed_password):
-        raise HTTPException(status_code=403, detail="Wrong password")
-    user.hashed_password = get_password_hash(payload.new_password)
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    cache_key=f"user:{user.user_id}:personal-data"
-    await redis_delete_data(cache_key)
-    return {"message": "Password changed successfully"}
+    try:
+        user = await get_current_user(token, db)
+        if not verify_password(payload.current_password, user.hashed_password):
+            raise HTTPException(status_code=403, detail="Wrong password")
+        user.hashed_password = get_password_hash(payload.new_password)
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return {"message": "Password changed successfully"}
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
+
 
 
 @auth.put('/change-first-name')

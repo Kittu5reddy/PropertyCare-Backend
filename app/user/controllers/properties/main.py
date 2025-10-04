@@ -7,7 +7,7 @@ from app.user.models.users import User
 from app.core.models import get_redis,redis,redis_get_data,redis_set_data,redis_delete_data,redis_delete_data,redis_delete_pattern
 import json
 from app.core.models.property_documents import PropertyDocuments
-from .utils import generate_property_id
+from .utils import generate_property_id,is_property_details_changable
 from sqlalchemy import select,func,and_
 from app.core.models.property_details import PropertyDetails
 from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,property_delete_document,invalidate_files,property_delete_single_document
@@ -360,11 +360,10 @@ class UpdatePropertyDetailsRequest(BaseModel):
     details: Dict[str, Any]
 from typing import Dict, Any
 from fastapi import Body
-
 @prop.put("/update-property-details/{property_id}")
 async def update_property_details(
     property_id: str,
-    payload: Dict[str, Any] = Body(...),   # accepts raw JSON as dict
+    payload: dict = Body(...),   # accepts raw JSON as dict
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
@@ -376,11 +375,14 @@ async def update_property_details(
             select(PropertyDetails).where(PropertyDetails.property_id == property_id)
         )
         property_obj = result.scalar_one_or_none()
-
         if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
-        if property_obj.is_verified:
-            raise HTTPException(status_code=400, detail="Property is verfied contact to admin team")
+
+        # ✅ Check if property can be changed
+        can_change = await is_property_details_changable(property_id, user.user_id, db)
+        if not can_change:
+            raise HTTPException(status_code=403, detail="Property cannot be changed after verification. Contact admin.")
+
         # Dynamically update fields from JSON
         for key, value in payload.items():
             if hasattr(property_obj, key):
@@ -388,19 +390,25 @@ async def update_property_details(
 
         await db.commit()
         await db.refresh(property_obj)
+
         cache_key = f"property:{property_id}:info"
         await redis_delete_data(cache_key)
+
         return {
             "message": "Property details updated successfully",
             "property": property_obj
         }
-    except JWTError as e:
-        raise HTTPException(status_code=401,detail="Token as Expired")
+
+    except HTTPException:
+        # Let FastAPI handle already raised HTTPExceptions properly
+        raise
+    except JWTError:
+        # Explicit handling for JWT expiry
+        raise HTTPException(status_code=401, detail="Token has expired")
     except Exception as e:
         await db.rollback()
-        print(str(e))
+        print(f"[update_property_details] Unexpected Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating property: {str(e)}")
-
 
 
 
@@ -436,7 +444,7 @@ async def delete_document(
 @prop.delete("/delete-reference-image/{property_id}")
 async def delete_reference_photo(
     property_id: str,
-    property_photos: str = Body(..., embed=True),  # now expects { "property_photos": "..." }
+    property_photos: str = Body(..., embed=True),  
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):

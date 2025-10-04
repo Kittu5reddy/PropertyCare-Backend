@@ -6,7 +6,7 @@ from app.core.models import Base
 class Discounts(Base):
     __tablename__ = "discounts" 
     id = Column(Integer, primary_key=True)
-    discount_id=Column(Integer, primary_key=True, index=True)
+    discount_id=Column(Integer, unique=True, index=True)
     code = Column(String(50), unique=True, nullable=False)  
     description = Column(String(255), nullable=True)
     discount_type = Column(String(20), nullable=False, default="percentage")  

@@ -12,6 +12,7 @@ from jose import JWTError,jwt
 from config import settings
 from app.user.models.users import User
 from app.user.models.personal_details import PersonalDetails
+from app.core.models.property_details import PropertyDetails
 from fastapi import status
 # =================
 #   settingsuration
@@ -96,7 +97,6 @@ async def get_user_by_email(db: AsyncSession, email: EmailStr) -> User:
 async def get_user_by_verification_token(db: AsyncSession, token: str) -> User:
     result = await db.execute(select(User).where(User.verification_token == token))
     return result.scalar_one_or_none()
-
 
 
 
