@@ -15,6 +15,20 @@ class Settings(BaseSettings):
 
 
     # ==================================
+    #  CORS
+    # ==================================  
+
+
+    
+    allow_origins:list[str]
+
+
+
+
+
+
+
+    # ==================================
     #  J W T AUTH KEYS
     # ==================================   
     REFRESH_TOKEN_SECRET_KEY: str

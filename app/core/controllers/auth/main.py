@@ -288,12 +288,13 @@ async def get_subscription_details(token: str = Depends(oauth2_scheme), db: Asyn
         raise HTTPException(status_code=500,detail=str(e))
 
 @auth.get("/edit-profile")
-async def get_edit_profile_details(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+async def get_edit_profile_details(response:Response,token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     try:
         user = await get_current_user(token, db)
         result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_id == user.user_id))
         data = result.scalar_one_or_none()
         if not data:
+            await logout(response,token,db)
             raise HTTPException(status_code=404, detail="Personal details not found")
 
         result = await db.execute(select(UserNameUpdate).where(UserNameUpdate.user_id == user.user_id).limit(1))

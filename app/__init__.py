@@ -11,15 +11,13 @@ from app.user.controllers.properties.main import prop
 from app.user.controllers.services.main import services
 from app.core.controllers.emails.main import email
 from app.admin.controllers.dashboard.main import admin_dash
+from config import settings
+
+ALLOW_ORIGINS=settings.allow_origins
+
 def create_app():
     app = FastAPI()
-    allow_origins=["http://localhost:3000",
-                   "http://localhost:5173",
-                   "https://user.vibhoospropcare.com",
-                   "https://admin.vibhoospropcare.com",
-                   "https://vibhoospropcare.com",
-                   "https://www.vibhoospropcare.com",
-                   "https://propertycare-nine.vercel.app"]
+    allow_origins=ALLOW_ORIGINS
 
     # CORS configuration
     app.add_middleware(
