@@ -75,10 +75,7 @@ async def get_current_month_photos(
         if cache_data:
             return cache_data
         user = await get_current_user(token, db)
-        # Construct S3 prefix
-        # object_key = f"property/{property_id}/monthly-photos/{year}/{month}/"
-
-        # Get list of objects
+        data=list(map(get_image,map(lambda x:"/"+x,data)))
         data = await list_s3_objects(prefix=object_key)
         data={"photos": data}
         await redis_set_data(cache_key, data)
