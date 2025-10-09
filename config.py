@@ -21,8 +21,8 @@ class Settings(BaseSettings):
 
     
     allow_origins:list[str]
-
-
+    API_BASE_URL:str
+    BASE_USER_URL:str
 
 
 

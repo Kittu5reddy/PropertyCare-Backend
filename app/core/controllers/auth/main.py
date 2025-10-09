@@ -23,6 +23,7 @@ from datetime import datetime,timedelta
 from app.user.controllers.forms.utils import upload_image_as_png
 import time
 from app.core.models.property_details import PropertyDetails
+from config import settings
 auth=APIRouter(prefix='/auth',tags=['auth'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -148,12 +149,12 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
     
     if user.is_verified:
         return HTMLResponse(
-            content="""
+            content=f"""
             <div style='font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 40px; text-align: center;'>
                 <div style='max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>
                     <h2 style='color: #16a34a;'>Email Already Verified</h2>
                     <p style='color: #374151;'>You can now log in to your account.</p>
-                    <a href="https://propertycare-nine.vercel.app/login" 
+                    <a href="{settings.BASE_USER_URL}/login" 
                        style='display: inline-block; margin-top: 15px; background-color: #4CAF50; 
                               color: white; padding: 12px 24px; text-decoration: none; 
                               border-radius: 6px; font-weight: bold;'>
@@ -171,12 +172,12 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
     await create_user_directory(user.user_id)
 
     return HTMLResponse(
-        content="""
+        content=f"""
         <div style='font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 40px; text-align: center;'>
             <div style='max-width: 500px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);'>
                 <h2 style='color: #16a34a;'>Email Verification Successful</h2>
                 <p style='color: #374151;'>Your email has been verified. You can now log in to your account.</p>
-                <a href="https://propertycare-nine.vercel.app/login" 
+                <a href="{settings.BASE_USER_URL}/login" 
                    style='display: inline-block; margin-top: 15px; background-color: #4CAF50; 
                           color: white; padding: 12px 24px; text-decoration: none; 
                           border-radius: 6px; font-weight: bold;'>
