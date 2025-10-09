@@ -617,16 +617,21 @@ async def get_property_info(
     db: AsyncSession = Depends(get_db),
     redis_client: redis.Redis = Depends(get_redis)
 ):
-    data = None  # ✅ Declare upfront
+    # ✅ define it before any async or try block
+    data: dict = {}
+
     try:
         cache_key = f"property:{property_id}:info"
+
         cached_data = await redis_get_data(cache_key)
         if cached_data:
-            print("hit")
+            print("Cache hit")
             return cached_data
 
+        # ✅ validate user before doing anything else
         user = await get_current_user(token, db)
 
+        # ✅ get property info
         result = await db.execute(
             select(
                 PropertyDetails.property_id,
@@ -649,7 +654,7 @@ async def get_property_info(
                 PropertyDetails.longitude,
                 PropertyDetails.gmap_url,
                 PropertyDetails.land_mark,
-                PropertyDetails.description
+                PropertyDetails.description,
             ).where(PropertyDetails.property_id == property_id).limit(1)
         )
 
@@ -657,18 +662,35 @@ async def get_property_info(
         if not row:
             raise HTTPException(status_code=404, detail="Property not found")
 
-        data = dict(row)
+        # ✅ assign once here
+        data.update(dict(row))
 
-        objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
-        data['property_photos'] = [get_image("/" + images) for images in objects]
+        # Property photos
+        try:
+            objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
+            data["property_photos"] = [get_image("/" + images) for images in objects]
+        except Exception as e:
+            print("S3 property photo error:", e)
+            data["property_photos"] = []
 
-        object_key = f'property/{property_id}/legal_documents/property_photo.png'
-        is_exists = await check_object_exists(object_key)
-        data['property_photo'] = get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
+        # Legal photo
+        try:
+            object_key = f"property/{property_id}/legal_documents/property_photo.png"
+            is_exists = await check_object_exists(object_key)
+            data["property_photo"] = get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
+        except Exception as e:
+            print("S3 legal photo error:", e)
+            data["property_photo"] = settings.DEFAULT_IMG_URL
 
-        monthly_photos = await get_current_month_photos(property_id, token, db)
-        data['monthly-photos'] = monthly_photos.get('photos')
+        # Monthly photos
+        try:
+            monthly_photos = await get_current_month_photos(property_id, token, db)
+            data["monthly_photos"] = monthly_photos.get("photos", [])
+        except Exception as e:
+            print("Monthly photos error:", e)
+            data["monthly_photos"] = []
 
+        # Cache the response
         await redis_set_data(cache_key, data)
         return data
 
@@ -677,9 +699,9 @@ async def get_property_info(
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {str(e)}")
-
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {e}")
 
 @prop.get("/get-reference-images/{property_id}")
 async def get_reference_images(
