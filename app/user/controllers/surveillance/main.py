@@ -13,8 +13,8 @@ surveillance=APIRouter(prefix='/surveillance',tags=['surveillance'])
 
 
 
-@surveillance.get('/get-month-photos/{property_id}/{year}/{month}')
-async def get_monthly_photos(
+@surveillance.get('/get-month-details/{property_id}/{year}/{month}')
+async def get_monthly_details(
     property_id: str,
     year: str,
     month: str,
@@ -37,7 +37,7 @@ async def get_monthly_photos(
         data=list(map(get_image,map(lambda x:"/"+x,data)))
         # print(data)
         await redis_set_data(cache_key,data)
-        return {"photos": data}
+        return {"photos": data,"Location":"Location","Inspection Date":"Inspection","Inspector Name":"Inspector Name","Report":"Report","Total Photos":len(data),"Subscription Ends":"Subscription Ends","Subscription Status":"Subscription Status"}
 
     except HTTPException:
         # Re-raise FastAPI HTTPExceptions (e.g., from get_current_user)
