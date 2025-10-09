@@ -610,28 +610,23 @@ async def get_property_list(
     return properties
 
 
-
 @prop.get("/get-property-info/{property_id}")
 async def get_property_info(
     property_id: str,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
-    redis_client:redis.Redis=Depends(get_redis)
+    redis_client: redis.Redis = Depends(get_redis)
 ):
+    data = None  # ✅ Declare upfront
     try:
-        # ✅ Cache key
         cache_key = f"property:{property_id}:info"
-
-
         cached_data = await redis_get_data(cache_key)
         if cached_data:
-            print(("hit"))
+            print("hit")
             return cached_data
 
-        # 🔹 Step 2: Validate token
         user = await get_current_user(token, db)
 
-        # 🔹 Step 3: Query DB
         result = await db.execute(
             select(
                 PropertyDetails.property_id,
@@ -664,24 +659,17 @@ async def get_property_info(
 
         data = dict(row)
 
-        # 🔹 S3 photos
         objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
         data['property_photos'] = [get_image("/" + images) for images in objects]
-        # print(data['property_photos'])
-        # 🔹 Legal photo
+
         object_key = f'property/{property_id}/legal_documents/property_photo.png'
         is_exists = await check_object_exists(object_key)
-        if is_exists:
-            data['property_photo'] = get_image("/" + object_key)
-        else:
-            data['property_photo'] = settings.DEFAULT_IMG_URL
+        data['property_photo'] = get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
 
-        # 🔹 Monthly photos
         monthly_photos = await get_current_month_photos(property_id, token, db)
         data['monthly-photos'] = monthly_photos.get('photos')
 
-        # 🔹 Step 4: Save to Redis with TTL (5 min)
-        await redis_set_data(cache_key,data)
+        await redis_set_data(cache_key, data)
         return data
 
     except HTTPException as http_exc:
@@ -691,6 +679,7 @@ async def get_property_info(
     except Exception as e:
         print(str(e))
         raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {str(e)}")
+
 
 @prop.get("/get-reference-images/{property_id}")
 async def get_reference_images(
