@@ -36,8 +36,9 @@ async def get_monthly_details(
         data = await list_s3_objects(prefix=object_key)
         data=list(map(get_image,map(lambda x:"/"+x,data)))
         # print(data)
+        data= {"photos": data,"Location":"Location","Inspection Date":"Inspection","Inspector Name":"Inspector Name","Report":"Report","Total Photos":len(data),"Subscription Ends":"Subscription Ends","Subscription Status":True}
         await redis_set_data(cache_key,data)
-        return {"photos": data,"Location":"Location","Inspection Date":"Inspection","Inspector Name":"Inspector Name","Report":"Report","Total Photos":len(data),"Subscription Ends":"Subscription Ends","Subscription Status":"Subscription Status"}
+        return data
 
     except HTTPException:
         # Re-raise FastAPI HTTPExceptions (e.g., from get_current_user)
@@ -53,6 +54,7 @@ async def get_monthly_details(
 
     except Exception as e:
         # Fallback for unexpected errors
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
     
 
@@ -78,8 +80,9 @@ async def get_current_month_photos(
 
         # Get list of objects
         data = await list_s3_objects(prefix=object_key)
-        await redis_set_data(cache_key,data)
-        return {"photos": data}
+        data={"photos": data}
+        await redis_set_data(cache_key, data)
+        return data
 
     except HTTPException:
         # Re-raise FastAPI HTTPExceptions (e.g., from get_current_user)
@@ -95,6 +98,7 @@ async def get_current_month_photos(
 
     except Exception as e:
         # Fallback for unexpected errors
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
@@ -130,4 +134,5 @@ async def property_surveillance_data(
 
 
     except Exception as e:
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
