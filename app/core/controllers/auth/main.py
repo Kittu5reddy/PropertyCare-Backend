@@ -579,3 +579,32 @@ async def change_country(form: ChangeCountry, token: str = Depends(oauth2_scheme
     except Exception as e:
         print(str(e))
         raise HTTPException(status_code=500,detail=str(e))
+    
+
+
+
+
+def get_client_ip_from_headers(request: Request) -> str | None:
+    # X-Forwarded-For may contain a comma-separated list: client, proxy1, proxy2
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    if x_forwarded_for:
+        # take the first IP (left-most) — the original client
+        ip = x_forwarded_for.split(",")[0].strip()
+        if ip:
+            return ip
+
+    # fallback to X-Real-IP header
+    x_real_ip = request.headers.get("x-real-ip")
+    if x_real_ip:
+        return x_real_ip.strip()
+
+    # last fallback: starlette Request.client
+    if request.client:
+        return request.client.host
+
+    return None
+
+@auth.get("/whoami")
+async def whoami(request: Request):
+    ip = get_client_ip_from_headers(request)
+    return {"client_ip": ip}
