@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     ADMINS_EMAILS:dict[str,str]
     OTP_EXPIRY_MINUTES:int
     BLACK_LIST_TIME:int
-
+    FORGOT_PASSWORD_TIME_LIMIT:int
     
     # ==================================
     #  F I L E  S I Z E 

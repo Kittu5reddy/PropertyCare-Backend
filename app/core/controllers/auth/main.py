@@ -1,5 +1,5 @@
-from app.core.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,get_is_pd_filled
-from app.core.controllers.auth.email import create_verification_token,send_verification_email
+from app.core.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,BASE_USER_URL,FORGOT_PASSWORD_TIME_LIMIT,get_is_pd_filled
+from app.core.controllers.auth.email import create_verification_token,send_verification_email,send_forgot_password_email
 from fastapi import APIRouter,Request,status
 from app.core.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
 from app.user.validators.auth import User as LoginSchema 
@@ -22,6 +22,7 @@ from app.user.controllers.forms.utils import get_image,get_current_time
 from datetime import datetime,timedelta
 from app.user.controllers.forms.utils import upload_image_as_png
 import time
+from app.core.validators.forgotpassword import ForgotPasswordRequest,ResetPasswordRequest
 from app.core.models.property_details import PropertyDetails
 from config import settings
 auth=APIRouter(prefix='/auth',tags=['auth'])
@@ -94,6 +95,75 @@ async def signup(user: LoginSchema, background_tasks: BackgroundTasks, db: Async
     return {"message": "User created successfully. Please check your email to verify your account.", "email": new_user.email}
 
 
+
+
+
+
+# ===== 1️⃣ Forgot Password - Send Email =====
+@auth.post("/forgot-password")
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(User).where(User.email == payload.email))
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Generate token and store in Redis
+    token = create_verification_token()
+    cache_key = f"user:forgot-password:{user.email}"
+    await redis_set_data(cache_key, token, FORGOT_PASSWORD_TIME_LIMIT)
+
+    # Send Email (background)
+    reset_link = f"{BASE_USER_URL}/reset-password?email={user.email}&token={token}"
+    background_tasks.add_task(send_forgot_password_email, user.email, reset_link)
+
+    return {"message": "Password reset link sent to your email"}
+
+
+# ===== 2️⃣ Reset Password =====
+@auth.post("/reset-password")
+async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        cache_key = f"user:forgot-password:{payload.email}"
+        stored_token = await redis_get_data(cache_key)
+
+        if not stored_token:
+            raise HTTPException(status_code=400, detail="Token expired or invalid")
+
+        if stored_token != payload.token:
+            raise HTTPException(status_code=400, detail="Invalid token")
+
+        result = await db.execute(select(User).where(User.email == payload.email))
+        user = result.scalars().first()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Update password
+        user.hashed_password = get_password_hash(payload.new_password)
+        db.add(user)
+        await db.commit()
+
+        # Clear token and user cache
+        await redis_delete_data(cache_key)
+        await redis_delete_data(f"user:{user.user_id}:personal-data")
+
+        return {"message": "Password reset successful"}
+
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+
+    
 @auth.post("/refresh")
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
@@ -584,27 +654,3 @@ async def change_country(form: ChangeCountry, token: str = Depends(oauth2_scheme
 
 
 
-def get_client_ip_from_headers(request: Request) -> str | None:
-    # X-Forwarded-For may contain a comma-separated list: client, proxy1, proxy2
-    x_forwarded_for = request.headers.get("x-forwarded-for")
-    if x_forwarded_for:
-        # take the first IP (left-most) — the original client
-        ip = x_forwarded_for.split(",")[0].strip()
-        if ip:
-            return ip
-
-    # fallback to X-Real-IP header
-    x_real_ip = request.headers.get("x-real-ip")
-    if x_real_ip:
-        return x_real_ip.strip()
-
-    # last fallback: starlette Request.client
-    if request.client:
-        return request.client.host
-
-    return None
-
-@auth.get("/whoami")
-async def whoami(request: Request):
-    ip = get_client_ip_from_headers(request)
-    return {"client_ip": ip}

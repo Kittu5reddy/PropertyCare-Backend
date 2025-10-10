@@ -8,11 +8,29 @@ from .utils import send_consultation_email,send_newsletter_email
 email=APIRouter(prefix="/email",tags=['emails'])
 from sqlalchemy import select
 from app.core.models import get_db,AsyncSession
-
+from .utils import *
+from email.message import EmailMessage
 
 from fastapi import BackgroundTasks
 from email_validator import validate_email, EmailNotValidError
 import dns.resolver
+
+
+
+def send_newsletter(recipient_email, html_body):
+    msg = EmailMessage()
+    msg['Subject'] = 'Vibhoos PropCare Newsletter'
+    msg['From'] = 'news@vibhoospropcare.com'
+    msg['To'] = recipient_email
+    # List-Unsubscribe headers for Gmail manage subscription
+    msg['List-Unsubscribe'] = f'<https://api.vibhoospropcare.com/email/unsubscribe-news-letters/{recipient_email}>'
+    msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
+    msg.set_content(html_body, subtype='html')
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.starttls()
+        server.login('your_username', 'your_password')
+        server.send_message(msg)
 
 @email.post('/subscribe-news-letters')
 async def news_letter_subscribe(
@@ -60,7 +78,6 @@ async def news_letter_subscribe(
     return {"message": message, "status": "active"}
 
 
-
 @email.get('/unsubscribe-news-letters/{email}', response_class=HTMLResponse)
 async def unsubscribe_news_letter(email: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -69,7 +86,7 @@ async def unsubscribe_news_letter(email: str, db: AsyncSession = Depends(get_db)
     record = result.scalar_one_or_none()
 
     if record:
-        record.status = False  
+        record.status = False
         db.add(record)
         await db.commit()
         await db.refresh(record)
@@ -90,7 +107,7 @@ async def unsubscribe_news_letter(email: str, db: AsyncSession = Depends(get_db)
         <p style="color: #6b7280; line-height: 1.5;">We're sorry to see you go. You can resubscribe anytime by visiting our website.</p>
         <div style="margin-top: 30px;">
         <a href="/" style="background-color: #0C4A6E; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 500;">
-                  Back to Home
+            Back to Home
         </a>
         </div>
         </div>

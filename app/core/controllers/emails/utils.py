@@ -80,6 +80,7 @@ def send_consultation_email(name: str, email: str, preferred_date=None, preferre
         msg['From'] =  f"VPC Consultation Request <{EMAIL_ADDRESS}>"
         msg['To'] = email
         msg['Subject'] = "Your Consultation Request - Vibhoos PropCare"
+
         msg.attach(MIMEText(html_content, 'html'))
 
         server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT)
@@ -129,6 +130,8 @@ def send_newsletter_email(to_email: str, unsubscribe_url: str):
         msg['From'] = f"VPC NEWS LETTER <{EMAIL_ADDRESS}>"
         msg['To'] = to_email
         msg['Subject'] = "Welcome to Vibhoos PropCare Newsletter"
+        msg['List-Unsubscribe'] = f'<https://api.vibhoospropcare.com/email/unsubscribe-news-letters/{to_email}>'
+        msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
         msg.attach(MIMEText(html_content, 'html'))
 
         server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT)
