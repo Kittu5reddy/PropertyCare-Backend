@@ -13,10 +13,12 @@ from app.core.controllers.emails.main import email
 from app.admin.controllers.dashboard.main import admin_dash
 from config import settings
 
+
 ALLOW_ORIGINS=settings.allow_origins
 
 def create_app():
-    app = FastAPI()
+    app = FastAPI(title="Vibhoos PropCare")
+
     allow_origins=ALLOW_ORIGINS
 
     # CORS configuration

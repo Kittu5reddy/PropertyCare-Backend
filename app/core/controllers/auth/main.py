@@ -118,7 +118,7 @@ async def forgot_password(
     await redis_set_data(cache_key, token, FORGOT_PASSWORD_TIME_LIMIT)
 
     # Send Email (background)
-    reset_link = f"{BASE_USER_URL}/reset-password?email={user.email}&token={token}"
+    reset_link = f"{BASE_USER_URL}/reset-password/{user.email}/{token}"
     background_tasks.add_task(send_forgot_password_email, user.email, reset_link)
 
     return {"message": "Password reset link sent to your email"}
@@ -163,7 +163,7 @@ async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depen
 
 
 
-    
+
 @auth.post("/refresh")
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
