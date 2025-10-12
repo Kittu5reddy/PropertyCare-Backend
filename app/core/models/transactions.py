@@ -6,11 +6,6 @@ from datetime import datetime
 from typing import Optional
 
 
-class TransactionStatus(enum.Enum):
-    PENDING = "PENDING"
-    SUCCESS = "SUCCESS"
-    FAILED = "FAILED"
-    CANCELLED = "CANCELLED"
 
 # -----------------------------
 # Transactions (payment details)
@@ -39,7 +34,7 @@ class Transaction(Base):
     cash_receipt_number: Mapped[Optional[str]] = mapped_column(String(100), unique=True, nullable=True)
 
     # Status
-    status: Mapped[TransactionStatus] = mapped_column(Enum(TransactionStatus), default=TransactionStatus.PENDING)
+    status: Mapped[str] = mapped_column(String, default="PENDING")
 
     # Audit
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

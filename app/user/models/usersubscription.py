@@ -5,11 +5,6 @@ import enum
 from datetime import datetime
 from typing import Optional
 # Enum for transaction status
-class TransactionStatus(enum.Enum):
-    PENDING = "PENDING"
-    SUCCESS = "SUCCESS"
-    FAILED = "FAILED"
-    CANCELLED = "CANCELLED"
 
 # -----------------------------
 # User Subscription (who chose what plan)

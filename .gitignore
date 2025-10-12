@@ -18,6 +18,8 @@ build/
 dist/
 *.egg-info/
 
+
+run.py
 # VSCode
 .vscode/
 logs/

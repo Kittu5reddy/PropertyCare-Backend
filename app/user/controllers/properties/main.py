@@ -3,6 +3,7 @@ from jose import JWTError
 from app.core.controllers.auth.main import oauth2_scheme,AsyncSession,get_db,get_current_user
 from app.user.controllers.surveillance.main import  get_current_month_photos
 from app.user.validators.propertydetails import  PropertyDetailForm,UpdatePropertyNameRequest
+from app.user.validators.changeproperty import PropertyDetailsUpdate as ChangePropertySchema
 from app.user.models.users import User
 from app.core.models import get_redis,redis,redis_get_data,redis_set_data,redis_delete_data,redis_delete_data,redis_delete_pattern
 import json
@@ -361,15 +362,10 @@ async def change_property_photo(
 
 from pydantic import BaseModel
 from typing import Dict, Any
-
-class UpdatePropertyDetailsRequest(BaseModel):
-    details: Dict[str, Any]
-from typing import Dict, Any
-from fastapi import Body
 @prop.put("/update-property-details/{property_id}")
 async def update_property_details(
     property_id: str,
-    payload: dict = Body(...),   # accepts raw JSON as dict
+    payload: ChangePropertySchema,  # Pydantic model
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
@@ -384,19 +380,29 @@ async def update_property_details(
         if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
 
-        # ✅ Check if property can be changed
+        # Check if property can be changed
         can_change = await is_property_details_changable(property_id, user.user_id, db)
         if not can_change:
-            raise HTTPException(status_code=403, detail="Property cannot be changed after verification. Contact admin.")
+            raise HTTPException(
+                status_code=403,
+                detail="Property cannot be changed after verification. Contact admin."
+            )
 
-        # Dynamically update fields from JSON
-        for key, value in payload.items():
-            if hasattr(property_obj, key):
-                setattr(property_obj, key, value)
+                # Dynamically update fields with type safety
+        for key, value in payload.dict(exclude_unset=True).items():
+            if hasattr(property_obj, key) and value is not None:
+                print("22222222222",key)
+                if key == "size":
+                    setattr(property_obj, key, float(value))
+                elif key == "pin_code":
+                    setattr(property_obj, key, int(value))
+                else:
+                    setattr(property_obj, key, value)
 
         await db.commit()
         await db.refresh(property_obj)
 
+        # Clear cache
         cache_key = f"property:{property_id}:info"
         await redis_delete_data(cache_key)
 
@@ -406,17 +412,13 @@ async def update_property_details(
         }
 
     except HTTPException:
-        # Let FastAPI handle already raised HTTPExceptions properly
         raise
     except JWTError:
-        # Explicit handling for JWT expiry
         raise HTTPException(status_code=401, detail="Token has expired")
     except Exception as e:
         await db.rollback()
         print(f"[update_property_details] Unexpected Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error updating property: {str(e)}")
-
-
 
 
 # ==================================
