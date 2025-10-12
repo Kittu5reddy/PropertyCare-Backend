@@ -20,7 +20,7 @@ dist/
 
 # VSCode
 .vscode/
-
+logs/
 # Logs
 *.log
 myenv

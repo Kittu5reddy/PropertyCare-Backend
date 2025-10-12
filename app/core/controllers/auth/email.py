@@ -381,7 +381,7 @@ def send_admin_login_alert_email(email: str, ip_address: str = None, user_agent:
 
 
 
-async def send_forgot_password_email(email: str, reset_link: str):
+async def send_forgot_password_email(email: str, reset_link: str,context:dict=None):
     """Send forgot password email with Vibhoos PropCare theme."""
     from datetime import datetime
     subject = "Reset Your Vibhoos PropCare Password"
@@ -436,7 +436,7 @@ async def send_forgot_password_email(email: str, reset_link: str):
                     </p>
 
                     <p style="color:#374151;font-size:16px;line-height:24px;margin-top:20px;">
-                      This link will expire in <strong>30 minutes</strong>.
+                      This link will expire in <strong>{context.get('link_expire',0)}</strong>.
                     </p>
 
                     <hr style="border:0;border-top:1px solid #e5e7eb;margin:30px 0;">
@@ -468,12 +468,12 @@ async def send_forgot_password_email(email: str, reset_link: str):
     </html>
     """
 
-    send_email(to=email, subject=subject, html_content=html_content)
+    send_email(to=email, subject=subject, html_content=html_content,to_sender="Forgot-Password")
 
 
 
 
-def send_email(to: str, subject: str, html_content: str) -> bool:
+def send_email(to: str, subject: str, html_content: str,to_sender="") -> bool:
     """
     Send an email using GoDaddy SMTP.
     Args:
@@ -486,7 +486,7 @@ def send_email(to: str, subject: str, html_content: str) -> bool:
     try:
         # Create the message
         msg = MIMEMultipart()
-        msg["From"] = EMAIL_ADDRESS
+        msg["From"] = f"VPC {to_sender} <{EMAIL_ADDRESS}>"
         msg["To"] = to
         msg["Subject"] = subject
         msg.attach(MIMEText(html_content, "html"))

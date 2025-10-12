@@ -17,6 +17,7 @@ from config import settings
 from datetime import datetime,date
 from botocore.exceptions import ClientError
 from sqlalchemy.exc import SQLAlchemyError
+from app.user.controllers.forms.utils import generate_presigned_url
 prop=APIRouter(prefix='/property',tags=['user property'])
 
 
@@ -71,7 +72,7 @@ async def upload_property_documents(
 ):
     try:
         user = await get_current_user(token, db)
-        cache_key="property:{property_id}:documents"
+        cache_key=f"property:{property_id}:documents"
         # Convert UploadFile → dict
         contents = await file.read()
         file_data = {
@@ -305,9 +306,16 @@ async def update_property_name(
         cache_key = f"property:{property_id}:info"
         await redis_delete_data(cache_key)
         return {"message": "Property name updated successfully", "property": property_obj.property_name}
-
+    except HTTPException as http_exc:
+        raise http_exc
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
     except Exception as e:
         await db.rollback()
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Error updating property: {str(e)}")
 
 
@@ -343,15 +351,13 @@ async def change_property_photo(
         await redis_delete_data(cache_key)
         return result
 
-    except HTTPException as e:
-        raise e   # re-raise FastAPI HTTP errors
-
+    except HTTPException as http_exc:
+        raise http_exc
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
-        # Log it if needed
-        print(f"Unexpected error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal Server Error{str(e)}")
-
-
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
 
 from pydantic import BaseModel
 from typing import Dict, Any
@@ -426,20 +432,26 @@ async def delete_document(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
-    
-    user = await get_current_user(token, db)
-    cache_key="property:{property_id}:documents"
-    data=await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id==property_id).limit(1))
-    data=data.scalar_one_or_none()
-    is_verified=getattr(data,category,None)
-    if is_verified:
-        raise HTTPException(status_code=400,detail="Document is verifed contact admin team")
-    result = await property_delete_document(category, property_id)
-    if "error" in result:
-        raise HTTPException(status_code=404, detail=result["error"])
-    await redis_delete_data(cache_key)
-    return result
-
+    try:
+        user = await get_current_user(token, db)
+        cache_key=f"property:{property_id}:documents"
+        data=await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id==property_id).limit(1))
+        data=data.scalar_one_or_none()
+        is_verified=getattr(data,category,None)
+        if is_verified:
+            raise HTTPException(status_code=400,detail="Document is verifed contact admin team")
+        result = await property_delete_document(category, property_id)
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+        await redis_delete_data(cache_key)
+        return {"deleted":f"{category} is deleted sucessfully"}
+    except HTTPException as http_exc:
+        raise http_exc
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
 
 @prop.delete("/delete-reference-image/{property_id}")
 async def delete_reference_photo(
@@ -466,12 +478,13 @@ async def delete_reference_photo(
         cache_key = f"property:{property_id}:reference-images"
         await redis_delete_data(cache_key)
         return {"status": "success", "deleted_file": result["deleted_file"]}
-
+    except HTTPException as http_exc:
+        raise http_exc
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
         print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to delete reference photo: {str(e)}")
-
-
+        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
 
 
 
@@ -729,11 +742,13 @@ async def get_reference_images(
         await redis_set_data(cache_key=cache_key,data=data)
         print("miss")
         return data
+    except HTTPException as http_exc:
+        raise http_exc
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
         print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to fetch reference images: {str(e)}")
-    
-
+        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
 
 @prop.get("/get-property-documents/{property_id}")
 async def get_reference_documents(
@@ -742,17 +757,16 @@ async def get_reference_documents(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        cache_key="property:{property_id}:documents"
+        cache_key = f"property:{property_id}:documents"
         cached_data = await redis_get_data(cache_key)
         if cached_data:
-            # print(("hit"))
             return cached_data       
+
         # Authenticate user
         user = await get_current_user(token, db)
 
-        # List objects from S3
+        # List S3 objects
         objects = await list_s3_objects(prefix=f"property/{property_id}/legal_documents/")
-        image_urls = list(map(get_image, map(lambda x:"/"+x,objects)))
 
         # Fetch DB record
         result = await db.execute(
@@ -760,22 +774,23 @@ async def get_reference_documents(
         )
         data = result.scalar_one_or_none()
 
-        # Construct response
+        # Construct response with presigned URLs
         response = {}
-        for image in image_urls:
-            print((image))
-            key = image.split("/")[-1].split('.')[0]
-            response[key] = {
-                "url": image,
-                "isverified": getattr(data, key, False) if data else False
+        for key in objects:
+            presigned_url = await generate_presigned_url(key, expires_in=300)  # 5 minutes
+            file_name = key.split("/")[-1].split(".")[0]
+            response[file_name] = {
+                "url": presigned_url,
+                "isverified": getattr(data, file_name, False) if data else False
             }
-        await redis_set_data(cache_key=cache_key,data=response)
+
+        # Cache for faster retrieval
+        await redis_set_data(cache_key=cache_key, data=response)
         return response
-    except JWTError as e:
-        raise HTTPException(status_code=401,detail="Invalid Token")
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid Token")
     except ClientError as e:
         raise HTTPException(status_code=502, detail=f"S3 Error: {str(e)}")
     except SQLAlchemyError as e:
-        print(str(e))
         raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
-

@@ -9,6 +9,7 @@ from datetime import datetime
 import uuid
 from fastapi import HTTPException
 import time
+from app.core.models import REDIS_EXPIRE_TIME
 # Config values
 AWS_ACCESS_KEY_ID = settings.AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY = settings.AWS_SECRET_ACCESS_KEY
@@ -385,3 +386,26 @@ async def property_delete_single_document(
             if error_code == "404":
                 return {"error": f"File '{filename}' not found in category '{category}'"}
             return {"error": str(e)}
+        
+
+
+
+
+# Generate presigned URL (valid for 3–5 minutes)
+async def generate_presigned_url(key: str, expires_in:int= REDIS_EXPIRE_TIME):  # 300s = 5min
+    async with session.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
+    ) as s3:
+        try:
+            url = await s3.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": S3_BUCKET, "Key": key},
+                ExpiresIn=expires_in
+            )
+            return url
+        except ClientError as e:
+            print(f"Presigned URL Error: {e}")
+            raise HTTPException(status_code=500, detail="Failed to generate presigned URL")

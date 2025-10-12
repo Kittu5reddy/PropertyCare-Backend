@@ -119,7 +119,7 @@ async def forgot_password(
 
     # Send Email (background)
     reset_link = f"{BASE_USER_URL}/reset-password/{user.email}/{token}"
-    background_tasks.add_task(send_forgot_password_email, user.email, reset_link)
+    background_tasks.add_task(send_forgot_password_email, user.email, reset_link,{"link_expire":FORGOT_PASSWORD_TIME_LIMIT})
 
     return {"message": "Password reset link sent to your email"}
 
