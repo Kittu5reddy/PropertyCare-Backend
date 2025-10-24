@@ -31,12 +31,50 @@ async def get_monthly_details(
             return cache_data
         # Construct S3 prefix
         object_key = f"property/{property_id}/monthly-photos/{year}/{month}/"
+        object_key = f"property/{property_id}/monthly-photos/{year}/{month}/"
 
         # Get list of objects
         data = await list_s3_objects(prefix=object_key)
         data=list(map(get_image,map(lambda x:"/"+x,data)))
         # print(data)
-        data= {"photos": data,"Location":"Location","Inspection Date":"Inspection","Inspector Name":"Inspector Name","Report":"Report","Total Photos":len(data),"Subscription Ends":"Subscription Ends","Subscription Status":True}
+        data= {
+          "inspection_date": "2024-06-15",
+          "inspector_id": "INS12345",
+          "summary": "Property is well maintained. Minor repairs suggested.",
+          "subscription_ends": "2024-12-31",
+          "subscription_status": True,
+          "physical_verification": True,
+          "phases": [
+            {
+              "phase": 1,
+              "total_photos": 3,
+              "total_videos": 1,
+              "photos": [
+                "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&q=80%22",
+                "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&q=80%22",
+                "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80%22",
+                "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80%22",
+                "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80%22",
+                "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80%22",
+              ],
+              "videos": ["https://www.w3schools.com/html/mov_bbb.mp4"],
+            },
+            {
+              "phase": 2,
+              "total_photos": 2,
+              "total_videos": 2,
+              "photos": [
+                "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80%22",
+                "https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?auto=format&fit=crop&w=400&q=80%22",
+              ],
+              "videos": [
+                "https://www.w3schools.com/html/movie.mp4",
+                "https://www.w3schools.com/html/mov_bbb.mp4",
+              ],
+            },
+          ],
+        };
+ 
         await redis_set_data(cache_key,data)
         return data
 

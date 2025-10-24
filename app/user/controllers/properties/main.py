@@ -629,56 +629,35 @@ async def get_property_list(
 async def get_property_info(
     property_id: str,
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
-    redis_client: redis.Redis = Depends(get_redis)
+    db: AsyncSession = Depends(get_db)
 ):
-    # ✅ define it before any async or try block
     data: dict = {}
 
     try:
-        cache_key = f"property:{property_id}:info"
-
-        cached_data = await redis_get_data(cache_key)
-        if cached_data:
-            print("Cache hit")
-            return cached_data
-
-        # ✅ validate user before doing anything else
         user = await get_current_user(token, db)
+        cache_key = f"property:{property_id}:info"
+        cached_data = await redis_get_data(cache_key)        
+        if cached_data:
+            if cached_data.get("user_id") == user.user_id:
+                print("Cache hit")
+                return cached_data
+            else:
+                raise HTTPException(status_code=404, detail="Property not found")
 
-        # ✅ get property info
+        # ✅ Fetch property info from DB
         result = await db.execute(
-            select(
-                PropertyDetails.property_id,
-                PropertyDetails.property_name,
-                PropertyDetails.survey_number,
-                PropertyDetails.plot_number,
-                PropertyDetails.project_name_or_venture,
-                PropertyDetails.house_number,
-                PropertyDetails.street,
-                PropertyDetails.mandal,
-                PropertyDetails.district,
-                PropertyDetails.city,
-                PropertyDetails.pin_code,
-                PropertyDetails.state,
-                PropertyDetails.size,
-                PropertyDetails.facing,
-                PropertyDetails.type,
-                PropertyDetails.sub_type,
-                PropertyDetails.latitude,
-                PropertyDetails.longitude,
-                PropertyDetails.gmap_url,
-                PropertyDetails.land_mark,
-                PropertyDetails.description,
-            ).where(PropertyDetails.property_id == property_id).limit(1)
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id).limit(1)
         )
+        property_obj = result.scalar_one_or_none()
 
-        row = result.mappings().one_or_none()
-        if not row:
+        if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
 
-        # ✅ assign once here
-        data.update(dict(row))
+        # ✅ Convert SQLAlchemy model to dict
+        data = {
+            c.name: getattr(property_obj, c.name)
+            for c in property_obj.__table__.columns
+        }
 
         # Property photos
         try:
@@ -692,7 +671,9 @@ async def get_property_info(
         try:
             object_key = f"property/{property_id}/legal_documents/property_photo.png"
             is_exists = await check_object_exists(object_key)
-            data["property_photo"] = get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
+            data["property_photo"] = (
+                get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
+            )
         except Exception as e:
             print("S3 legal photo error:", e)
             data["property_photo"] = settings.DEFAULT_IMG_URL
@@ -705,8 +686,17 @@ async def get_property_info(
             print("Monthly photos error:", e)
             data["monthly_photos"] = []
 
-        # Cache the response
-        await redis_set_data(cache_key, data)
+        # ✅ Cache only JSON-serializable data
+        import json
+        from datetime import datetime
+
+        def default(o):
+            if isinstance(o, datetime):
+                return o.isoformat()
+            return str(o)
+
+        await redis_set_data(cache_key, json.loads(json.dumps(data, default=default)))
+
         return data
 
     except HTTPException as http_exc:
@@ -717,6 +707,40 @@ async def get_property_info(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {e}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @prop.get("/get-reference-images/{property_id}")
 async def get_reference_images(

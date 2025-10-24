@@ -8,7 +8,47 @@ from .utils import get_property_details
 from app.core.models import AsyncSession,get_db,redis_get_data,redis_set_data
 from sqlalchemy import select
 from app.user.controllers.forms.utils import list_s3_objects
+from app.user.models.required_actions import RequiredAction
 dash=APIRouter(prefix='/dash',tags=['/dash'])
+
+
+
+from fastapi import Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from jose import JWTError
+from app.core.controllers.auth.main import get_current_user, oauth2_scheme
+from app.user.models.required_actions import RequiredAction
+
+
+@dash.get("/get_required_actions")
+async def get_required_actions(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)
+
+        result = await db.execute(
+            select(RequiredAction)
+            .where(
+                RequiredAction.user_id == user.user_id,
+                RequiredAction.status.ilike("pending")  
+            )
+        )
+
+        required_actions = result.scalars().all()
+
+        return {"required_actions": required_actions}
+
+    except HTTPException as e:
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
+    except Exception as e:
+        print(f"Error fetching required actions: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 
 
 @dash.get("/property-details")

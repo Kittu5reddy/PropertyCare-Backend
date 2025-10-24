@@ -12,7 +12,8 @@ from fastapi import Depends, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.user.models.personal_details import PersonalDetails
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-
+from app.user.models.required_actions import RequiredAction
+from app.user.controllers.dashboard.utils import create_property_document_action_data,create_user_action_data
 form=APIRouter(prefix="/form",tags=['form'])
 
 
@@ -25,9 +26,8 @@ async def submit(
 ):
     try:
         current_user = await get_current_user(token, db)
-        current_user_id = current_user.user_id  
 
-        # Save user details to DB
+        # Save user details
         user = PersonalDetails(
             first_name=data["first_name"],
             last_name=data["last_name"],
@@ -44,20 +44,38 @@ async def submit(
             pin_code=int(data["address"]["pincode"]),
             pan_number=data["govt_ids"]["pan_number"],
             aadhaar_number=data["govt_ids"]["aadhaar_number"],
-            user_id=current_user_id
+            user_id=current_user.user_id
         )
 
         current_user.is_pdfilled = True
 
+        # Add user and current_user first to DB
         db.add(user)
-        db.add(current_user)  
+        db.add(current_user)
         await db.commit()
         await db.refresh(user)
         await db.refresh(current_user)
 
+        # Create required actions for missing documents
+        if not data["govt_ids"]["aadhaar_number"]:
+            aadhar_data = create_user_action_data("aadhaar_document")
+            aadhar_record = RequiredAction(user_id=user.user_id, **aadhar_data, action_for="user")
+            db.add(aadhar_record)
+
+        if not data["govt_ids"]["pan_number"]:
+            pan_data = create_user_action_data("pan_document")
+            pan_record = RequiredAction(user_id=user.user_id, **pan_data, action_for="user")
+            db.add(pan_record)
+
+        await db.commit()
+        if 'aadhar_record' in locals():
+            await db.refresh(aadhar_record)
+        if 'pan_record' in locals():
+            await db.refresh(pan_record)
+
         return {
             "message": "Data received and processed successfully",
-            "user_id": current_user_id
+            "user_id": current_user.user_id
         }
 
     except IntegrityError as e:

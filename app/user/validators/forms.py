@@ -5,10 +5,9 @@ from app.core.controllers.auth.utils import get_current_user
 from typing import Annotated, Optional
 from app.core.controllers.auth.main import oauth2_scheme
 from app.core.models import get_db
-from PIL import Image
-from io import BytesIO
-
+from app.user.controllers.dashboard.utils import create_user_action_data,create_property_document_action_data
 from fastapi import Form, File, UploadFile,Depends
+from app.user.models.required_actions import RequiredAction
 from enum import Enum
 
 class Gender(str, Enum):
@@ -55,7 +54,6 @@ async def get_personal_details(
         documents["pan_document"] = await upload_and_store(pan_document, category="pan")
     if aadhaar_document:
         documents["aadhaar_document"] = await upload_and_store(aadhaar_document, category="aadhaar")
-
     return {
         "first_name": first_name,
         "last_name": last_name,

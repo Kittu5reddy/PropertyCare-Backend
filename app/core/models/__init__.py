@@ -75,7 +75,7 @@ async def redis_get_data(cache_key: str):
 
     value = await redis_client.get(cache_key)
     if value is None:
-        return None
+        return {}
     return json.loads(value)  # deserialize
 
 

@@ -39,3 +39,61 @@ async def get_property_details(
             "image_url": get_image(f"/property/{row.property_id}/legal_documents/property_photo.png") if photos else settings.DEFAULT_IMG_URL
         })
     return data
+
+
+
+from datetime import date
+from typing import Dict, Any, Optional
+
+
+def create_user_action_data(
+    document_name: str,
+) -> Dict[str, Any]:
+    """
+    Create JSON structure for user-related required actions.
+    Example: Uploading EC or KYC documents.
+    """
+    return {
+        "document_name": document_name,
+    }
+
+
+def create_subscription_action_data(
+    property_id: str,
+    sub_type: str,
+    document_name: str,
+    property_name: str,
+    location:str,
+    end_date: date
+) -> Dict[str, Any]:
+    """
+    Create JSON structure for subscription-related required actions.
+    Example: Subscription renewals or expiry reminders.
+    """
+    return {
+        "property_id":property_id,
+        "property_name":property_name,
+        "location":location,
+        "document_name": document_name,
+        "subscription_type": sub_type,
+        "end_date": end_date.isoformat()  # store date as string for JSON
+    }
+
+
+def create_property_document_action_data(
+    document_name: str,
+    property_name: str,
+    property_id:str,
+    location:str,
+) -> Dict[str, Any]:
+    """
+    Create JSON structure for document-related required actions.
+    Example: Verification or expiry tracking.
+    """
+    data = {
+        "property_id":property_id,
+        "property_name":property_name,
+        "location":location,
+        "document_name": document_name
+    }
+    return data
