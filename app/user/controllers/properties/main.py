@@ -650,7 +650,7 @@ async def get_property_info(
         )
         property_obj = result.scalar_one_or_none()
 
-        if not property_obj:
+        if not property_obj or property_obj.user_id==user.user_id:
             raise HTTPException(status_code=404, detail="Property not found")
 
         # ✅ Convert SQLAlchemy model to dict
