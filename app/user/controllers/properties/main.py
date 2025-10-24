@@ -624,45 +624,47 @@ async def get_property_list(
         # print("miss")
     return properties
 
-
 @prop.get("/get-property-info/{property_id}")
 async def get_property_info(
     property_id: str,
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    redis_client: redis.Redis = Depends(get_redis)
 ):
-    data: dict = {}
-
     try:
+        # Get current user
         user = await get_current_user(token, db)
+
+        # Check cache
         cache_key = f"property:{property_id}:info"
-        cached_data = await redis_get_data(cache_key)        
+        cached_data = await redis_get_data(cache_key)
         if cached_data:
             if cached_data.get("user_id") == user.user_id:
-                print("Cache hit")
                 return cached_data
             else:
-                raise HTTPException(status_code=404, detail="Property not found")
+                raise HTTPException(status_code=403, detail="You do not have access to this property")
 
-        # ✅ Fetch property info from DB
+        # Fetch property from DB
         result = await db.execute(
             select(PropertyDetails).where(PropertyDetails.property_id == property_id).limit(1)
         )
         property_obj = result.scalar_one_or_none()
-
-        if not property_obj or property_obj.user_id==user.user_id:
+        if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
+        if property_obj.user_id != user.user_id:
+            raise HTTPException(status_code=403, detail="You do not have access to this property")
 
-        # ✅ Convert SQLAlchemy model to dict
-        data = {
-            c.name: getattr(property_obj, c.name)
-            for c in property_obj.__table__.columns
-        }
+        # Convert property object to dict
+        data = {c.name: getattr(property_obj, c.name) for c in property_obj.__table__.columns}
+        # Convert datetime fields to ISO
+        for k, v in data.items():
+            if isinstance(v, datetime):
+                data[k] = v.isoformat()
 
         # Property photos
         try:
             objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
-            data["property_photos"] = [get_image("/" + images) for images in objects]
+            data["property_photos"] = [get_image("/" + obj) for obj in objects]
         except Exception as e:
             print("S3 property photo error:", e)
             data["property_photos"] = []
@@ -671,9 +673,7 @@ async def get_property_info(
         try:
             object_key = f"property/{property_id}/legal_documents/property_photo.png"
             is_exists = await check_object_exists(object_key)
-            data["property_photo"] = (
-                get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
-            )
+            data["property_photo"] = get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
         except Exception as e:
             print("S3 legal photo error:", e)
             data["property_photo"] = settings.DEFAULT_IMG_URL
@@ -686,16 +686,8 @@ async def get_property_info(
             print("Monthly photos error:", e)
             data["monthly_photos"] = []
 
-        # ✅ Cache only JSON-serializable data
-        import json
-        from datetime import datetime
-
-        def default(o):
-            if isinstance(o, datetime):
-                return o.isoformat()
-            return str(o)
-
-        await redis_set_data(cache_key, json.loads(json.dumps(data, default=default)))
+        # Cache response
+        await redis_set_data(cache_key, json.loads(json.dumps(data, default=str)))
 
         return data
 
@@ -707,11 +699,6 @@ async def get_property_info(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {e}")
-
-
-
-
-
 
 
 
