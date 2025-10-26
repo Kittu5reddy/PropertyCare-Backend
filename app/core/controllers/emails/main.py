@@ -156,7 +156,9 @@ async def booking_consulting(
         phone=payload.phone,
         preferred_date=payload.preferred_date,
         preferred_time=payload.preferred_time,
-        reason_for_consultation=payload.reason_for_consultation
+        type=payload.type,
+        comment=payload.comment
+        
     )
     
     db.add(record)

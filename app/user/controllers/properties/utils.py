@@ -5,6 +5,12 @@ from sqlalchemy import select
 from fastapi import HTTPException
 
 
+def check_property_access(property_obj, user_id: str):
+    """
+    Raise 403 HTTPException if the property does not belong to the user.
+    """
+    if property_obj.user_id != user_id:
+        raise HTTPException(status_code=403, detail="You do not have access to this property")
 
 
 async def is_property_details_changable(property_id: str, user_id: str, db: AsyncSession) -> bool:
