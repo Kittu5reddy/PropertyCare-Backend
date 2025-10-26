@@ -97,7 +97,7 @@ def send_consultation_email(name: str, email: str, preferred_date=None, preferre
             <!-- Header with logo -->
             <div class="header">
                 <a href="https://www.vibhoospropcare.com">
-                    <img src="https://www.vibhoospropcare.com/static/logo.png" alt="Vibhoos PropCare Logo"/>
+                    <img src="https://www.vibhoospropcare.com/logo.png" alt="Vibhoos PropCare Logo"/>
                 </a>
                 <h1>Consultation Request Received!</h1>
                 <p>Thank you for reaching out to Vibhoos PropCare</p>
