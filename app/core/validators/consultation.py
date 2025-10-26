@@ -9,5 +9,5 @@ class Consultation(BaseModel):
     phone: str 
     preferred_date: date
     preferred_time: time
-    type:str
+    subject:str
     comment:Optional[str]=None

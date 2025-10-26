@@ -156,7 +156,7 @@ async def booking_consulting(
         phone=payload.phone,
         preferred_date=payload.preferred_date,
         preferred_time=payload.preferred_time,
-        type=payload.type,
+        subject=payload.subject,
         comment=payload.comment
         
     )
