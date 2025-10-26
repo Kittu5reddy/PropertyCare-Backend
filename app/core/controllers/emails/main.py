@@ -170,7 +170,8 @@ async def booking_consulting(
         name=payload.name,
         email=email_normalized,
         preferred_date=payload.preferred_date,
-        preferred_time=payload.preferred_time
+        preferred_time=payload.preferred_time,
+        subject=payload.subject
     )
 
     return {"message": "consultation booked successfully", "id": record.id}
