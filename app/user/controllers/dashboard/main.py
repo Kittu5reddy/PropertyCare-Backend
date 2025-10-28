@@ -50,6 +50,9 @@ async def get_required_actions(
         print(f"Error fetching required actions: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
+
+
 @dash.post("/upload-required-documents")
 async def upload_required_documents(
     category: str = Form(...),
@@ -62,16 +65,43 @@ async def upload_required_documents(
     try:
         user = await get_current_user(token, db)
 
+        # --- For user documents ---
         if category.lower() == "user":
             contents = await file.read()
             file_data = {
-                         "filename": file.filename,
-                         "bytes": contents,
-                         "content_type": file.content_type,
-                     }
-            await upload_documents(file=file_data, category=file_name, user_id=user.user_id)
-            return {"users documents uploaded:":True}
-        elif category.lower() == "property":   
+                "filename": file.filename,
+                "bytes": contents,
+                "content_type": file.content_type,
+            }
+
+            await upload_documents(
+                file=file_data,
+                category=file_name,
+                user_id=user.user_id
+            )
+
+            # ✅ Fetch and update RequiredAction
+            record = await db.execute(
+                select(RequiredAction)
+                .where(
+                    RequiredAction.category == category,
+                    RequiredAction.user_id == user.user_id
+                )
+                .limit(1)
+            )
+            record = record.scalar_one_or_none()
+
+            if record:
+                record.status = "completed"
+                await db.commit()
+                await db.refresh(record)
+            else:
+                raise HTTPException(status_code=404, detail="Required action not found")
+
+            return {"user_documents_uploaded": True}
+
+        # --- For property documents ---
+        elif category.lower() == "property":
             is_auth = await db.execute(
                 select(PropertyDetails)
                 .where(
@@ -81,27 +111,53 @@ async def upload_required_documents(
             )
             is_auth = is_auth.scalar_one_or_none()
 
-            if is_auth:
-                contents = await file.read()
-                file_data = {
-                             "filename": file.filename,
-                             "bytes": contents,
-                             "content_type": file.content_type,
-                         }
-                await property_upload_documents(
-                    file=file_data, category=file_name, property_id=property_id
-                )
-                return {"property documents uploaded:":True}
-            else:
+            if not is_auth:
                 raise HTTPException(status_code=403, detail="UnAuthorized")
+
+            contents = await file.read()
+            file_data = {
+                "filename": file.filename,
+                "bytes": contents,
+                "content_type": file.content_type,
+            }
+
+            await property_upload_documents(
+                file=file_data,
+                category=file_name,
+                property_id=property_id
+            )
+
+            # ✅ Update property RequiredAction
+            record = await db.execute(
+                select(RequiredAction)
+                .where(
+                    RequiredAction.information["property_id"].astext == property_id,
+                    RequiredAction.category == category,
+                    RequiredAction.user_id == user.user_id
+                )
+                .limit(1)
+            )
+            record = record.scalar_one_or_none()
+
+            if record:
+                record.status = "completed"
+                await db.commit()
+                await db.refresh(record)
+            else:
+                raise HTTPException(status_code=404, detail="Required action not found")
+
+            return {"property_documents_uploaded": True}
+
+        else:
+            raise HTTPException(status_code=400, detail="Invalid category")
+
     except HTTPException as e:
-        raise e 
-    except JWTError as e:
-        raise HTTPException(status_code=401,detail="Token Expired")
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token Expired")
     except Exception as e:
         print(str(e))
-        raise HTTPException(status_code=500,detail=str(e))
-    
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
@@ -130,6 +186,8 @@ async def get_property_data(
     except Exception as e:
         print(str(e))
         raise HTTPException(status_code=500,detail=str(e))
+    
+
 @dash.get("/monthly-photos")
 async def get_property_data(
     token: str = Depends(oauth2_scheme),
