@@ -5,7 +5,6 @@ from app.core.controllers.auth.utils import get_current_user
 from typing import Annotated, Optional
 from app.core.controllers.auth.main import oauth2_scheme
 from app.core.models import get_db
-from app.user.controllers.dashboard.utils import create_user_action_data,create_property_document_action_data
 from fastapi import Form, File, UploadFile,Depends
 from app.user.models.required_actions import RequiredAction
 from enum import Enum

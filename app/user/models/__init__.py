@@ -9,3 +9,4 @@ from .users import User,UserNameUpdate
 from .usersubscription import UserSubscription,UserSubscriptionTransactionHistory
 from app.core.models.newsletter import NewsLetter
 from app.core.models.consultation import Consultation
+from .required_actions import RequiredAction

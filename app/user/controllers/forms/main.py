@@ -13,8 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.user.models.personal_details import PersonalDetails
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.user.models.required_actions import RequiredAction
-from app.user.controllers.dashboard.utils import create_property_document_action_data,create_user_action_data
+from app.user.controllers.dashboard.utils import create_property_document_action_data
 form=APIRouter(prefix="/form",tags=['form'])
+
+
+
+
+
+
 
 
 
@@ -49,25 +55,28 @@ async def submit(
 
         current_user.is_pdfilled = True
 
-        # Add user and current_user first to DB
+        # Add user + user record
         db.add(user)
         db.add(current_user)
         await db.commit()
         await db.refresh(user)
         await db.refresh(current_user)
 
-        # Create required actions for missing documents
-        if not data["govt_ids"]["aadhaar_number"]:
-            aadhar_data = create_user_action_data("aadhaar_document")
-            aadhar_record = RequiredAction(user_id=user.user_id, **aadhar_data, action_for="user")
+        # ✅ Create required actions for missing documents
+        if not data["documents"].get('aadhaar_document'):
+            information=None
+            aadhar_record = RequiredAction(user_id=user.user_id, category="User",file_name="aadhaar")
+            print("Aadhaar document required — action created.")
             db.add(aadhar_record)
 
-        if not data["govt_ids"]["pan_number"]:
-            pan_data = create_user_action_data("pan_document")
-            pan_record = RequiredAction(user_id=user.user_id, **pan_data, action_for="user")
+        if not data["documents"].get('pan_document'):
+            information=None
+            print("PAN document required — action created.")
+            pan_record = RequiredAction(user_id=user.user_id, category="User",file_name="pan")
             db.add(pan_record)
 
         await db.commit()
+
         if 'aadhar_record' in locals():
             await db.refresh(aadhar_record)
         if 'pan_record' in locals():
@@ -92,18 +101,17 @@ async def submit(
             detail=f"Database error: {str(e)}"
         )
 
-    except KeyError as e:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Missing required field: {e.args[0]}"
-        )
-
     except Exception as e:
         await db.rollback()
+        print("Unexpected Error:", repr(e))  # 🔍 helpful for debugging
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Unexpected error: {str(e)}"
         )
+
+
+
+
 
 @form.get("/check-username/{username}")
 async def check_username(

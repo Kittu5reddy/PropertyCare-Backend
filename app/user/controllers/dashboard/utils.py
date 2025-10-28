@@ -46,17 +46,6 @@ from datetime import date
 from typing import Dict, Any, Optional
 
 
-def create_user_action_data(
-    document_name: str,
-) -> Dict[str, Any]:
-    """
-    Create JSON structure for user-related required actions.
-    Example: Uploading EC or KYC documents.
-    """
-    return {
-        "document_name": document_name,
-    }
-
 
 def create_subscription_action_data(
     property_id: str,
