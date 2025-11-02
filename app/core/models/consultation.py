@@ -1,5 +1,5 @@
 from datetime import datetime, date, time
-from sqlalchemy import String, Integer, DateTime, Date, Time, func, Text,Boolean,JSON
+from sqlalchemy import String, Integer, DateTime, Date, Time, func, Text,JSON
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.models import Base
 
@@ -10,7 +10,7 @@ class Consultation(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
-    phone: Mapped[str] = mapped_column(String(20), nullable=True)
+    phone: Mapped[str] = mapped_column(String(10), nullable=True)
     preferred_date: Mapped[date] = mapped_column(Date, nullable=False)
     preferred_time: Mapped[time] = mapped_column(Time, nullable=False)
     subject: Mapped[str] = mapped_column(String, nullable=True)

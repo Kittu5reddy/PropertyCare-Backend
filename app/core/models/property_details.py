@@ -10,7 +10,7 @@ class PropertyDetails(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     property_id: Mapped[str] = mapped_column(String(50), unique=True, index=True)  # was just Column()
     property_name: Mapped[str] = mapped_column(String(50), nullable=False)
-    survey_number: Mapped[str] = mapped_column(String(50), nullable=False)
+    survey_number: Mapped[str] = mapped_column(String(50), nullable=True)
     plot_number: Mapped[str] = mapped_column(String(50), nullable=False)
     user_id: Mapped[str] = mapped_column(String(50), ForeignKey("users.user_id"), nullable=False)
     house_number: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -30,11 +30,17 @@ class PropertyDetails(Base):
     gmap_url: Mapped[str] = mapped_column(String(225), nullable=True)
     facing: Mapped[str] = mapped_column(String(20), nullable=False)
     type: Mapped[str] = mapped_column(String(100), nullable=False)
+    others:Mapped[str]=mapped_column(String(100), nullable=True)
     sub_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    scale:Mapped[str]=mapped_column(String(100), nullable=False)
     admin_id: Mapped[str] = mapped_column(String(50), ForeignKey("admin.admin_id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     description: Mapped[str] = mapped_column(Text, nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+
+
 class PropertyHistory(Base):
     __tablename__ = "property_history"
 

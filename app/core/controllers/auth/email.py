@@ -84,7 +84,7 @@ def send_verification_email(email: str, token: str):
                 "
               >
                 <img
-                  src="https://uploadthingy.s3.us-west-1.amazonaws.com/uCmrv4YNGkminyPEBDKiSe/WhatsApp_Image_2025-09-26_at_19.07.02_626da1d9.jpg"
+                  src="https://www.vibhoospropcare.com/logo.png"
                   alt="PropertyCare Logo"
                   width="120"
                   height="auto"

@@ -4,7 +4,7 @@ from fastapi import Form
 
 class PropertyDetailForm(BaseModel):
     name: str
-    survey_number: str
+    survey_number:Optional[str]=""
     plot_number: str
     house_number: str
     city: str
@@ -18,6 +18,7 @@ class PropertyDetailForm(BaseModel):
     owner_contact: str
     type_of_property: str
     sub_type_property: str
+    units:str
     project_name: Optional[str] = ""
     street:Optional[str] = ""
     gmaps_url: Optional[str] = ""

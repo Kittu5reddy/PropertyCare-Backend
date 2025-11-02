@@ -164,6 +164,7 @@ async def user_add_property(
             state=form.state,
             district=form.district,
             mandal=form.mandal,
+            scale=form.units,
             country="India",
             pin_code=int(form.pin_code) if form.pin_code else None,
             size=int(form.size) if form.size else None,

@@ -3,9 +3,6 @@ from sqlalchemy import JSON, Column, Integer, String, Boolean, DateTime, func,Fo
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
-from sqlalchemy import (
-    Integer, String, Boolean, DateTime, ForeignKey, Text, func
-)
 
 
 
@@ -18,10 +15,9 @@ class Services(Base):
     category: Mapped[str] = mapped_column(String(50), nullable=False) 
     services: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
-    approx_cost_usd: Mapped[int] = mapped_column(Integer, nullable=False)
-    approx_cost_inr: Mapped[int] = mapped_column(Integer, nullable=False)
+    starting_price: Mapped[int] = mapped_column(Integer, nullable=False)
     durations: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
-    applicable_to: Mapped[dict] = mapped_column(JSON, nullable=True)
+    applicable_to: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=True)
     comments: Mapped[str] = mapped_column(Text, nullable=True)
     created_by: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -35,18 +31,3 @@ class ServicesHistory(Base):
     changes_made = Column(JSON, nullable=True)  # Store diff/changes as JSON
     action = Column(String(50), nullable=False)  # e.g., CREATED, UPDATED, DELETED
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-# {
-#   "service_name": "Full Home Cleaning",
-#   "category": "CLEANING",
-#   "services": ["Dusting", "Mopping", "Window Cleaning", "Carpet Vacuuming"],
-#   "is_active": true,
-#   "approx_cost_usd": {1:4000,2:8000,6:24000},
-#   "approx_cost_inr":  {1:4000,2:8000,6:24000},
-#   "durations": "1-2 weeks",
-#   "applicable_to": {
-#     "land": ["DTCP", "HMDA","FARM LAND"],
-#     "Building": ["Apartment","Independent","Commerceal"]
-#   },
-#   "comments": "Includes eco-friendly cleaning supplies",
-# }

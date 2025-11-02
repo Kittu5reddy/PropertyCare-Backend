@@ -1,10 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON, func,Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 from app.core.models import Base
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column
-from typing import Optional
+from sqlalchemy import Boolean,  DateTime, ForeignKey, Integer, String, func
 
 class PropertyDocuments(Base):
     __tablename__ = "property_documents"   

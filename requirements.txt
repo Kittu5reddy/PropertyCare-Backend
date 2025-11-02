@@ -5,6 +5,7 @@ aiohappyeyeballs==2.6.1
 aiohttp==3.12.14
 aioitertools==0.12.0
 aiosignal==1.4.0
+amqp==5.3.1
 annotated-types==0.7.0
 anyio==4.9.0
 async-timeout==5.0.1
@@ -12,14 +13,19 @@ asyncpg==0.29.0
 attrs==25.3.0
 bcrypt==3.2.0
 bidict==0.23.1
+billiard==4.2.2
 blinker==1.9.0
 boto3==1.38.27
 botocore==1.38.27
 Brotli==1.1.0
+celery==5.5.3
 certifi==2025.4.26
 cffi==1.17.1
 charset-normalizer==3.4.2
 click==8.2.1
+click-didyoumean==0.3.1
+click-plugins==1.1.1.2
+click-repl==0.3.0
 colorama==0.4.6
 ConfigArgParse==1.7.1
 coverage==7.10.1
@@ -47,6 +53,7 @@ iniconfig==2.1.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
 jmespath==1.0.1
+kombu==5.5.4
 locust==2.40.2
 locust-cloud==1.26.3
 markdown-it-py==3.0.0
@@ -60,6 +67,7 @@ passlib==1.7.4
 pillow==11.2.1
 platformdirs==4.4.0
 pluggy==1.6.0
+prompt_toolkit==3.0.52
 propcache==0.3.2
 psutil==7.0.0
 psycopg2-binary==2.9.10
@@ -99,10 +107,13 @@ starlette==0.46.2
 typer==0.16.0
 typing-inspection==0.4.1
 typing_extensions==4.14.0
+tzdata==2025.2
 ujson==5.10.0
 urllib3==1.26.20
 uvicorn==0.34.3
+vine==5.1.0
 watchfiles==1.0.5
+wcwidth==0.2.14
 websocket-client==1.8.0
 websockets==15.0.1
 Werkzeug==3.1.3

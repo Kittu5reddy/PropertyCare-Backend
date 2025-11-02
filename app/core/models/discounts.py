@@ -15,7 +15,7 @@ class Discounts(Base):
     is_active = Column(Boolean, default=True)
     start_date = Column(DateTime, default=datetime.utcnow)
     end_date = Column(DateTime, nullable=True)
-    product_id = Column(Integer, ForeignKey("products.id"), nullable=True)
+    product_id = Column(String, ForeignKey("subscription.sub_id"), nullable=True)
     count=Column(Integer, nullable=True,default=-1)  
-    
+    created_by=Column(String,ForeignKey("admin.admin_id"))
 
