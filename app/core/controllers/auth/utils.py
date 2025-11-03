@@ -32,13 +32,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 #   Token Generator
 # =================
 
-def create_access_token(payload: dict, expires_delta: timedelta = None) -> str:
+def create_access_token(payload: dict, expires_delta: timedelta = None,ACCES_TOKEN_SECRET_KEY=ACCES_TOKEN_SECRET_KEY) -> str:
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     payload.update({"exp": expire})
     return jwt.encode(payload, ACCES_TOKEN_SECRET_KEY, algorithm=ALGORITHM)
 
 
-def create_refresh_token(payload: dict, expires_delta: timedelta = None) -> str:
+def create_refresh_token(payload: dict, expires_delta: timedelta = None,REFRESH_TOKEN_SECRET_KEY=REFRESH_TOKEN_SECRET_KEY) -> str:
     expire = datetime.utcnow() + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
     payload.update({"exp": expire})
     return jwt.encode(payload, REFRESH_TOKEN_SECRET_KEY, algorithm=ALGORITHM)
@@ -78,14 +78,44 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ======================
 #   User Validations
 # ======================
-def generate_user_id(id):
-    return f'PC{datetime.utcnow().year}U{str(id).zfill(3)}'
-def generate_employee_id(id):
-    return f'PC{datetime.utcnow().year}E{str(id).zfill(3)}'
-def generate_employee_superviser_id(id):
-    return f'PC{datetime.utcnow().year}S{str(id).zfill(3)}'
-def generate_employee_admin_id(id):
-    return f'PC{datetime.utcnow().year}A{str(id).zfill(3)}'
+from datetime import datetime
+
+# ===========================
+# ID Generators
+# ===========================
+
+def generate_user_id(id: int) -> str:
+    return f'VPCUSR{str(id).zfill(4)}'
+
+def generate_employee_id(id: int) -> str:
+    return f'VPC{datetime.utcnow().year}E{str(id).zfill(3)}'
+
+def generate_employee_supervisor_id(id: int) -> str:
+    return f'VPC{datetime.utcnow().year}S{str(id).zfill(3)}'
+
+def generate_subscription_id(id: int) -> str:
+    return f'VPC{datetime.utcnow().year}SUB{str(id).zfill(3)}'
+
+def generate_service_id(id: int) -> str:
+    return f'VPC{datetime.utcnow().year}SRV{str(id).zfill(3)}'
+
+def generate_transaction_id(id: int) -> str:
+    return f'VPC{datetime.utcnow().year}T{str(id).zfill(3)}'
+
+def generate_property_id(id: int) -> str:
+    return f'VPCPT{str(id).zfill(4)}'
+
+def generate_admin_id(id: int) -> str:
+    return f'VPCADMIN{str(id).zfill(2)}'
+
+def generate_plan_id(id: int) -> str:
+    return f'VPC{datetime.utcnow().year}PLN{str(id).zfill(3)}'
+
+def generate_invoice_id(id: int) -> str:
+    return f'VPC{datetime.utcnow().year}INV{str(id).zfill(3)}'
+
+def generate_support_ticket_id(id: int) -> str:
+    return f'VPC{datetime.utcnow().year}SUP{str(id).zfill(3)}'
 
 
 async def get_user_by_email(db: AsyncSession, email: EmailStr) -> User:

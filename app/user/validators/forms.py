@@ -28,6 +28,7 @@ async def get_personal_details(
     state: Annotated[str, Form(...)],
     country: Annotated[str, Form(...)],
     pin_code: Annotated[str, Form(...)],
+    nri:Annotated[str,Form(...)],
     pan_number: Annotated[str, Form(...)],
     aadhaar_number: Annotated[str, Form(...)],
     description: Annotated[str, Form(...)],

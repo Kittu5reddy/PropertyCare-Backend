@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, Integer, Date, DateTime, func, Text
+from sqlalchemy import String, ForeignKey, Integer, Date, DateTime, func, Text,Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.models import Base
 
@@ -20,6 +20,7 @@ class PersonalDetails(Base):
     city: Mapped[str] = mapped_column(String(50), nullable=False)
     state: Mapped[str] = mapped_column(String(50), nullable=False)
     country: Mapped[str] = mapped_column(String(50), nullable=False)
+    nri:Mapped[bool]=mapped_column(Boolean,default=False)
     pin_code: Mapped[int] = mapped_column(Integer, nullable=False)
     pan_number: Mapped[str] = mapped_column(String(10), nullable=True)
     aadhaar_number: Mapped[str] = mapped_column(String(20), nullable=True)

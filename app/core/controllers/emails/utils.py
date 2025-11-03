@@ -167,8 +167,6 @@ def send_newsletter_email(to_email: str, unsubscribe_url: str):
         <p>Thank you for subscribing to our newsletter!</p>
         <p>You'll now receive the latest updates about:</p>
         <ul style="margin: 20px 0; padding-left: 20px;">
-            <li>Latest property listings and market trends</li>
-            <li>Investment opportunities and tips</li>
             <li>Property management insights</li>
             <li>Exclusive offers and promotions</li>
             <li>Industry news and updates</li>

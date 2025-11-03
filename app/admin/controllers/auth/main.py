@@ -1,16 +1,12 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, Body
-from app.core.models import redis_set_data, redis_get_data
-from app.admin.validators.admins import AdminLogin, OTP, BlackListOTP
-from .utils import (
-    ADMIN_EMAILS,
-    generate_otp,
-    send_otp_email,
-    create_access_token,
-    create_refresh_token,
-    REFRESH_TOKEN_EXPIRE_DAYS,
-    verify_refresh_token,
-    BLACK_LIST_TIME
-)
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, Body,Request
+from fastapi.responses import JSONResponse
+from app.admin.models.admins import Admin
+from app.core.models import AsyncSession,get_db
+from app.core.controllers.auth.main import pwd_context
+from app.admin.validators.admins import AdminLogin
+from .utils import create_access_token,create_refresh_token,REFRESH_TOKEN_EXPIRE_DAYS
+from sqlalchemy import select
+from app.core.controllers.auth.utils import create_access_token,create_refresh_token,ACCES_TOKEN_SECRET_KEY,ACCESS_TOKEN_EXPIRE_MINUTES,REFRESH_TOKEN_EXPIRE_DAYS,REFRESH_TOKEN_SECRET_KEY
 
 admin_auth = APIRouter(prefix="/admin-auth",tags=["admin-auth"])
 
@@ -18,113 +14,61 @@ admin_auth = APIRouter(prefix="/admin-auth",tags=["admin-auth"])
 # ----------------------
 # ADMIN LOGIN - SEND OTP
 # ----------------------
+
 @admin_auth.post("/login")
-async def admin_login(payload: AdminLogin, background_tasks: BackgroundTasks):
-    email = payload.email
+async def admin_login(
+    payload: AdminLogin,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    # 1️⃣ Get admin by email
+    query = await db.execute(select(Admin).where(Admin.email == payload.email))
+    admin = query.scalar_one_or_none()
 
-    if email not in ADMIN_EMAILS:
-        raise HTTPException(status_code=404, detail="Email is not registered")
-    blacklist_key = f"black-list:email:{email}"
-    if await redis_get_data(blacklist_key):
-        raise HTTPException(
-                status_code=403,
-                detail=f"Email is blacklisted. Wait for {BLACK_LIST_TIME} mins"
-            )
-    try:
-        # Generate OTP and store in Redis
-        otp, expire = generate_otp(email)
-        cache_key = f"admin:{email}:otp"
-        await redis_set_data(cache_key, otp, time=expire)
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
 
-        # Send OTP asynchronously via email
-        background_tasks.add_task(send_otp_email, email, otp)
+    # 2️⃣ Verify password
+    if not pwd_context.verify(payload.password, admin.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-        return {"message": "OTP sent to your email"}
+    # 3️⃣ If MFA is enabled — send verification code
+    # if admin.MFA:
+    #     # Example MFA handling (optional)
+    #     background_tasks.add_task(send_mfa_email, admin.email)
+    #     return JSONResponse(
+    #         content={"message": "MFA enabled. Verification code sent to email."},
+    #         status_code=200
+    #     )
 
-    except Exception as e:
-        print(f"Error sending OTP: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to send OTP")
+    # 4️⃣ Generate tokens
+    payload_data = {"sub": admin.email, "role": "admin", "admin_id": admin.admin_id}
+    access_token = create_access_token(payload_data,ACCES_TOKEN_SECRET_KEY=ACCES_TOKEN_SECRET_KEY,expires_delta=ACCESS_TOKEN_EXPIRE_MINUTES)
+    refresh_token = create_refresh_token(payload_data,REFRESH_TOKEN_SECRET_KEY=REFRESH_TOKEN_SECRET_KEY,REFRESH_TOKEN_EXPIRE_DAYS=REFRESH_TOKEN_EXPIRE_DAYS)
+    
+    # 5️⃣ Send tokens via response + cookies
+    response = JSONResponse(content={
+        "message": "Admin login successful",
+        "access_token": access_token,
+        "token_type": "Bearer"
+    })
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,
+        path="/admin-auth/refresh"
+    )
+
+    return response
 
 
-# -------------------------------
-# VERIFY LOGIN - OTP & TOKEN ISSUING
-# -------------------------------
-@admin_auth.post("/verify-login")
-async def admin_verify(payload: OTP, response: Response):
-    email = payload.email
-    otp = payload.otp
 
-    try:
-        # Check if email is blacklisted
-        blacklist_key = f"black-list:email:{email}"
-        if await redis_get_data(blacklist_key):
-            raise HTTPException(
-                status_code=403,
-                detail=f"Email is blacklisted. Wait for {BLACK_LIST_TIME} mins"
-            )
-
-        # Fetch OTP from Redis
-        otp_key = f"admin:{email}:otp"
-        stored_otp = await redis_get_data(otp_key)
-        if not stored_otp or stored_otp != otp:
-            raise HTTPException(status_code=401, detail="Invalid or expired OTP")
-
-        # Generate tokens
-        access_token = create_access_token({"email": email})
-        refresh_token =  create_refresh_token(email=email)
-
-        # Set refresh token in secure cookie
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            secure=True,
-            samesite="None",
-            max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
-        )
-
-        return {"login": "success", "access_token": access_token}
-
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        print(f"Error verifying login: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
 # --------------------------------
 # REFRESH ACCESS TOKEN ENDPOINT
 # --------------------------------
-@admin_auth.post("/admin-refresh")
-async def admin_refresh_token(response: Response, refresh_token: str = Body(...)):
-    try:
-        email = verify_refresh_token(refresh_token)
-        if not email or email not in ADMIN_EMAILS:
-            raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
-
-        # Generate new access token
-        access_token = create_access_token({"email": email})
-
-        return {"access_token": access_token, "message": "Access token refreshed successfully"}
-
-    except HTTPException as e:
-        raise e
-    except Exception as e:
-        print(f"Error refreshing token: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal Server Error")
-
-
-# -----------------------
-# BLACKLIST ADMIN EMAIL
-# -----------------------
-@admin_auth.post("/black-list-admin")
-async def black_list_admin(payload: BlackListOTP):
-    email = payload.email
-    try:
-        cache_key = f"black-list:email:{email}"
-        await redis_set_data(cache_key, True, time=BLACK_LIST_TIME)
-        return {"message": "Email has been blacklisted"}
-
-    except Exception as e:
-        print(f"Error blacklisting email: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to blacklist email")

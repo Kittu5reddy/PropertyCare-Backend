@@ -21,7 +21,7 @@ def send_verification_email(email: str, token: str):
     """Send verification email to user"""
     try:
         msg = MIMEMultipart()
-        msg['From'] = EMAIL_ADDRESS
+        msg['From'] =  f"VPC <{EMAIL_ADDRESS}>"
         msg['To'] = email
         msg['Subject'] = "Verify Your Email Address"
 
@@ -119,7 +119,7 @@ def send_verification_email(email: str, token: str):
                         padding-bottom: 20px;
                       "
                     >
-                      Welcome to PropertyCare! Please verify your email address
+                      Welcome to Vibhoos PropertyCare! Please verify your email address
                     </td>
                   </tr>
                   <tr>
@@ -234,7 +234,7 @@ def send_verification_email(email: str, token: str):
                           font-size: 18px;
                           font-weight: bold;
                         "
-                        >About PropertyCare</span
+                        >About Vibhoos Propcare</span
                       >
                     </td>
                   </tr>
