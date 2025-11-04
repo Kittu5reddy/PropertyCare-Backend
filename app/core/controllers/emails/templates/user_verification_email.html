@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Email Verification - Vibhoos PropCare</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f6f9fc;
+      font-family: Arial, sans-serif;
+    "
+  >
+    <table
+      width="100%"
+      border="0"
+      cellspacing="0"
+      cellpadding="0"
+      bgcolor="#f6f9fc"
+      style="padding: 20px 0"
+    >
+      <tr>
+        <td align="center">
+          <!-- Main Container -->
+          <table
+            width="600"
+            border="0"
+            cellspacing="0"
+            cellpadding="0"
+            bgcolor="#ffffff"
+            style="
+              border-radius: 8px;
+              overflow: hidden;
+              border: 1px solid #e5e7eb;
+            "
+          >
+            <!-- Header -->
+            <tr>
+              <td
+                align="center"
+                style="padding: 30px 40px; border-bottom: 1px solid #e5e7eb"
+              >
+                <img
+                  src="https://uploadthingy.s3.us-west-1.amazonaws.com/vwbuUZfWsNsAq8mFqttP4T/WhatsApp_Image_2025-11-04_at_11.27.56_86514311.jpg"
+                  alt="Vibhoos PropCare"
+                  width="120"
+                  style="display: block"
+                />
+              </td>
+            </tr>
+
+            <!-- Verification Section -->
+            <tr>
+              <td style="padding: 40px 40px 20px">
+                <h1
+                  style="
+                    font-size: 26px;
+                    color: #14b8a6;
+                    text-align: center;
+                    margin: 0 0 20px;
+                    font-weight: bold;
+                  "
+                >
+                  Welcome to Vibhoos PropCare!
+                </h1>
+                <p
+                  style="
+                    font-size: 16px;
+                    color: #4b5563;
+                    line-height: 26px;
+                    text-align: center;
+                    margin: 0 0 10px;
+                  "
+                >
+                  Please verify your email address to activate your account.
+                </p>
+
+                <!-- Verify Button -->
+                <table
+                  align="center"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="margin: 30px auto"
+                >
+                  <tr>
+                    <td
+                      bgcolor="#14b8a6"
+                      style="border-radius: 8px; text-align: center"
+                    >
+                      <a
+                        href="{{ verification_link }}"
+                        style="
+                          display: inline-block;
+                          padding: 14px 36px;
+                          font-size: 16px;
+                          font-weight: 600;
+                          color: #ffffff;
+                          text-decoration: none;
+                          border-radius: 8px;
+                        "
+                        >Verify Email</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Alternative Link -->
+                <p
+                  style="
+                    font-size: 14px;
+                    color: #6b7280;
+                    text-align: center;
+                    margin: 20px 0 8px;
+                  "
+                >
+                  Or copy and paste this link into your browser:
+                </p>
+                <p
+                  style="
+                    font-size: 14px;
+                    color: #14b8a6;
+                    text-align: center;
+                    word-break: break-all;
+                    margin: 0 0 20px;
+                  "
+                >
+                  <a
+                    href="{{ verification_link }}"
+                    style="color: #14b8a6; text-decoration: none"
+                    >{{ verification_link }}</a
+                  >
+                </p>
+              </td>
+            </tr>
+
+            <!-- Expiration Notice -->
+            <tr>
+              <td
+                style="
+                  background-color: #fef3c7;
+                  border-top: 2px solid #fbbf24;
+                  border-bottom: 2px solid #fbbf24;
+                  text-align: center;
+                  padding: 16px 40px;
+                "
+              >
+                <p
+                  style="
+                    font-size: 14px;
+                    color: #92400e;
+                    margin: 0;
+                    font-weight: 500;
+                  "
+                >
+                  ⏳ This verification link will expire in
+                  <strong>{{ expiration_minutes or 60 }} minutes</strong>.
+                </p>
+              </td>
+            </tr>
+
+            <!-- About Vibhoos -->
+            <tr>
+              <td style="padding: 30px 40px; background-color: #f9fafb">
+                <h2
+                  style="
+                    font-size: 20px;
+                    color: #1f2937;
+                    font-weight: 600;
+                    margin-bottom: 12px;
+                  "
+                >
+                  About Vibhoos PropCare
+                </h2>
+                <p
+                  style="
+                    font-size: 15px;
+                    color: #4b5563;
+                    line-height: 24px;
+                    margin: 0 0 12px;
+                  "
+                >
+                  Vibhoos PropCare is your trusted partner in seamless property
+                  management. Whether you're a homeowner, tenant, or agent, our
+                  platform helps you manage maintenance, requests, and
+                  operations — all in one place.
+                </p>
+                <p
+                  style="
+                    font-size: 14px;
+                    color: #4b5563;
+                    line-height: 22px;
+                    margin: 0;
+                  "
+                >
+                  If you didn’t create an account, you can safely ignore this
+                  email.
+                </p>
+              </td>
+            </tr>
+
+            <!-- Support -->
+            <tr>
+              <td
+                style="
+                  padding: 30px 40px;
+                  background-color: #ecfdf5;
+                  border-top: 1px solid #e5e7eb;
+                "
+              >
+                <h2
+                  style="
+                    font-size: 18px;
+                    color: #1f2937;
+                    font-weight: 600;
+                    margin-bottom: 10px;
+                  "
+                >
+                  Need Help?
+                </h2>
+                <p
+                  style="
+                    font-size: 14px;
+                    color: #4b5563;
+                    margin: 0 0 8px;
+                    line-height: 22px;
+                  "
+                >
+                  If you're facing any issues verifying your email, our support
+                  team is here to help:
+                </p>
+                <p style="font-size: 14px; color: #4b5563; margin: 8px 0">
+                  📧 Email:
+                  <a
+                    href="mailto:support@vibhoospropcare.com"
+                    style="
+                      color: #14b8a6;
+                      text-decoration: none;
+                      font-weight: 500;
+                    "
+                    >support@vibhoospropcare.com</a
+                  >
+                </p>
+                <p style="font-size: 14px; color: #4b5563; margin: 8px 0">
+                  📞 Phone: +91 9888545545
+                </p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td
+                align="center"
+                bgcolor="#f3f4f6"
+                style="padding: 25px 40px; border-top: 1px solid #e5e7eb"
+              >
+                <p
+                  style="
+                    font-size: 13px;
+                    color: #6b7280;
+                    margin: 4px 0;
+                    line-height: 18px;
+                  "
+                >
+                  This is an automated message, please do not reply to this
+                  email.
+                </p>
+                <p
+                  style="
+                    font-size: 13px;
+                    color: #6b7280;
+                    margin: 4px 0;
+                    line-height: 18px;
+                  "
+                >
+                  © 2025 Vibhoos PropCare Private Limited. All rights reserved.
+                </p>
+                <p
+                  style="
+                    font-size: 13px;
+                    color: #6b7280;
+                    margin: 4px 0;
+                    line-height: 18px;
+                  "
+                >
+                  Seamless Property Management, Always.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

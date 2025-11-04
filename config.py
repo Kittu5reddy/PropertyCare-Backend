@@ -73,17 +73,22 @@ class Settings(BaseSettings):
     # ==================================
     #  P O S T G R E S  D A T A B A S E
     # ==================================   
-    HOST_NAME: str
-    SCHEMA:str
-    DATABASE_NAME: str
-    USERNAME: str
-    PASSWORD: str
-    PORT_ID: int
+
+
+
+
     POOL_SIZE: int = 10
     MAX_OVERFLOW: int = 20
     POOL_TIME_OUT: int = 30
-    DATABASE_URL: str  
-
+    DB_HOST_NAME:str
+    DB_NAME:str
+    DB_USER:str
+    DB_PASSWORD:str
+    DB_PORT_ID:str
+    DB_SCHEMA:str
+    BACKUP_DIR:str
+    DATABASE_URL:str
+   
 
     # ================================
     #        R E D I S
@@ -111,8 +116,8 @@ class Settings(BaseSettings):
     EMAIL_PASSWORD: str
     EMAIL_URL: str
     EMAIL_TOKEN_VERIFICATION:str
-
-
+    PHONE_NUMBER:str
+    WEB_EMAIL:str
 
 
 

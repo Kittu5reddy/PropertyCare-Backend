@@ -51,7 +51,9 @@ async def login(user: LoginSchema, background_tasks: BackgroundTasks, db: AsyncS
             db_user.verification_token = create_verification_token()
             await db.commit()
             await db.refresh(db_user)
+        
         background_tasks.add_task(send_verification_email, db_user.email, db_user.verification_token)
+        
         raise HTTPException(status_code=403, detail="Email not verified. A new verification email has been sent.")
 
     payload = {"sub": user.email, "is_pdfilled": db_user.is_pdfilled}
@@ -111,7 +113,8 @@ async def forgot_password(
 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
+    data=await db.execute(select(PersonalDetails).where(user.user_id==PersonalDetails.user_id).limit(1))
+    data=data.scalar_one_or_none()
     # Generate token and store in Redis
     token = create_verification_token()
     cache_key = f"user:forgot-password:{user.email}"
@@ -119,7 +122,13 @@ async def forgot_password(
 
     # Send Email (background)
     reset_link = f"{BASE_USER_URL}/reset-password/{user.email}/{token}"
-    background_tasks.add_task(send_forgot_password_email, user.email, reset_link,{"link_expire":FORGOT_PASSWORD_TIME_LIMIT})
+    context={
+        "reset_link":reset_link,
+        "current_year" : datetime.now().year,
+        "name":data.first_name+data.last_name if data else "None"
+    }
+    
+    background_tasks.add_task(send_forgot_password_email, user.email, reset_link,context)
 
     return {"message": "Password reset link sent to your email"}
 

@@ -72,8 +72,16 @@ async def news_letter_subscribe(
             return {"message": "already subscribed", "status": "active"}
 
     # Send newsletter email in background
-    unsubscribe_url = f"https://api.vibhoospropcare.com/email/unsubscribe-news-letters/{email_normalized}"
-    background_tasks.add_task(send_newsletter_email, email_normalized, unsubscribe_url)
+    context={
+    "unsubscribe_url" : f"https://api.vibhoospropcare.com/email/unsubscribe-news-letters/{email_normalized}",
+    "company_profile_url" : f"https://vibhoospropcare.com/vibhoos_propcare_company_profile.pdf",
+    "sop":f"https://vibhoospropcare.com/vibhoos_propcare_standard_operating_procedures.pdf",
+    "service_portfolio":f"https://www.vibhoospropcare.com/services",
+    "email":WEB_EMAIL,
+    "website_url":"www.vibhoospropcare.com",
+    "phone_number":PHONE_NUMBER,
+    }
+    background_tasks.add_task(send_newsletter_email, email_normalized, context)
 
     return {"message": message, "status": "active"}
 
@@ -171,7 +179,8 @@ async def booking_consulting(
         email=email_normalized,
         preferred_date=payload.preferred_date,
         preferred_time=payload.preferred_time,
-        subject=payload.subject
+        subject=payload.subject,
+        comment=payload.comment
     )
 
     return {"message": "consultation booked successfully", "id": record.id}
