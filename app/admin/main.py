@@ -1,26 +1,26 @@
 from sqlalchemy import select
-from app.core.models import async_session  # ✅ import your async session factory
-from app.admin.models.admins import Admin         # adjust the import path to your models
+# from app.core.models import async_session
+from app.admin.models.admins import Admin      
 from app.core.controllers.auth.main import pwd_context
 import uuid
 
-async def create_admin(email: str, password: str):
-    async with async_session() as db:
-        # Check if admin already exists
-        result = await db.execute(select(Admin).where(Admin.email == email))
-        existing_admin = result.scalar_one_or_none()
+# async def create_admin(email: str, password: str):
+#     async with async_session() as db:
+#         # Check if admin already exists
+#         result = await db.execute(select(Admin).where(Admin.email == email))
+#         existing_admin = result.scalar_one_or_none()
 
-        if existing_admin:
-            print(f"⚠️ Admin with email {email} already exists.")
-            return
+#         if existing_admin:
+#             print(f"⚠️ Admin with email {email} already exists.")
+#             return
 
-        admin = Admin(
-            admin_id=str(uuid.uuid4()),
-            email=email,
-            hashed_password=pwd_context.hash(password),
-            MFA=False
-        )
+#         admin = Admin(
+#             admin_id=str(uuid.uuid4()),
+#             email=email,
+#             hashed_password=pwd_context.hash(password),
+#             MFA=False
+#         )
 
-        db.add(admin)
-        await db.commit()
-        print(f"✅ Admin created successfully: {email}")
+#         db.add(admin)
+#         await db.commit()
+#         print(f"✅ Admin created successfully: {email}")
