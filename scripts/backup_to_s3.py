@@ -77,7 +77,7 @@ s3 = boto3.client(
     region_name=AWS_REGION,
 )
 
-s3_key = f"backups/{timestamp}/Propcare.backup"
+s3_key = f"backups/Database/{timestamp}/Propcare.backup"
 try:
     s3.upload_file(backup_file, S3_BUCKET_NAME, s3_key)
     print(f"✅ Successfully uploaded to s3://{S3_BUCKET_NAME}/{s3_key}")
