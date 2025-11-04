@@ -1,1 +1,5 @@
 python-3.11.13
+
+###windows to backup manually
+$timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm"
+pg_dump -U postgres -h localhost -p 5432 -d Propcare -F c -b -v -f "C:\Users\kaush\Desktop\Propcare_$timestamp.backup"
