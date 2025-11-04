@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.user.models.personal_details import PersonalDetails
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.user.models.required_actions import RequiredAction
-from app.user.controllers.dashboard.utils import create_property_document_action_data
+
 form=APIRouter(prefix="/form",tags=['form'])
 
 
@@ -39,6 +39,7 @@ async def submit(
             last_name=data["last_name"],
             user_name=data["user_name"],
             date_of_birth=data["date_of_birth"],
+            nri=data.get('nri',False),
             gender=data["gender"],
             contact_number=str(data["contact_number"]),
             description=data["description"],

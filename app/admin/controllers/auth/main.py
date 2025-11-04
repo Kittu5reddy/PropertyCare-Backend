@@ -4,7 +4,7 @@ from app.admin.models.admins import Admin
 from app.core.models import AsyncSession,get_db
 from app.core.controllers.auth.main import pwd_context
 from app.admin.validators.admins import AdminLogin
-from .utils import create_access_token,create_refresh_token,REFRESH_TOKEN_EXPIRE_DAYS
+from datetime import datetime,timedelta
 from sqlalchemy import select
 from app.core.controllers.auth.utils import create_access_token,create_refresh_token,ACCES_TOKEN_SECRET_KEY,ACCESS_TOKEN_EXPIRE_MINUTES,REFRESH_TOKEN_EXPIRE_DAYS,REFRESH_TOKEN_SECRET_KEY
 
@@ -44,9 +44,18 @@ async def admin_login(
 
     # 4️⃣ Generate tokens
     payload_data = {"sub": admin.email, "role": "admin", "admin_id": admin.admin_id}
-    access_token = create_access_token(payload_data,ACCES_TOKEN_SECRET_KEY=ACCES_TOKEN_SECRET_KEY,expires_delta=ACCESS_TOKEN_EXPIRE_MINUTES)
-    refresh_token = create_refresh_token(payload_data,REFRESH_TOKEN_SECRET_KEY=REFRESH_TOKEN_SECRET_KEY,REFRESH_TOKEN_EXPIRE_DAYS=REFRESH_TOKEN_EXPIRE_DAYS)
-    
+    access_token = create_access_token(
+        payload_data, 
+        ACCES_TOKEN_SECRET_KEY=ACCES_TOKEN_SECRET_KEY,
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    refresh_token = create_refresh_token(
+        payload_data, 
+        REFRESH_TOKEN_SECRET_KEY=REFRESH_TOKEN_SECRET_KEY,
+        expires_delta=timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    )
+
     # 5️⃣ Send tokens via response + cookies
     response = JSONResponse(content={
         "message": "Admin login successful",
