@@ -7,7 +7,7 @@
 
 # === Configuration ===
 PROJECT_DIR="/opt/PropertyCare-Backend"
-BACKUP_DIR="$PROJECT_DIR/Backups"
+BACKUP_DIR="$PROJECT_DIR/Backups/Database"
 LOG_DIR="$PROJECT_DIR/logs/cron"
 LOG_FILE="$LOG_DIR/restore_$(date +'%Y-%m-%d_%H-%M').log"
 
