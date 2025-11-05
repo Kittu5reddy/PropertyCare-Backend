@@ -173,7 +173,7 @@ async def user_add_property(
             latitude=str(form.latitude) if form.latitude else None,
             longitude=str(form.longitude) if form.longitude else None,
             facing=form.facing,
-            associates_id=form.associates_id,
+            associates_id=form.associates_id if form.associates_id else None,
             rental_income=form.rental_income,
             type=form.type_of_property.strip() if form.type_of_property else None,
             sub_type=form.sub_type_property.strip() if form.sub_type_property else None,
