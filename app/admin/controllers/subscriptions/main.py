@@ -17,6 +17,54 @@ from jose import JWTError
 from app.admin.validators.subscriptionplanupdate import SubscriptionPlanUpdate
 
 
+@admin_subscriptions.get("/get-subscriptions")
+async def get_subscription_plans(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    🔍 Fetch all subscription plans (Admin only)
+    """
+    try:
+        # 1️⃣ Verify admin token
+        admin = await get_current_admin(token, db)
+        if not admin:
+            raise HTTPException(status_code=401, detail="Unauthorized admin access")
+
+        # 2️⃣ Fetch all subscription plans
+        result = await db.execute(select(SubscriptionPlans))
+        plans = result.scalars().all()
+
+        if not plans:
+            raise HTTPException(status_code=404, detail="No subscription plans found")
+
+        # 3️⃣ Return formatted response
+        return {
+            "count": len(plans),
+            "plans": [
+                {
+                    "sub_id": plan.sub_id,
+                    "sub_type": plan.sub_type,
+                    "category": plan.category,
+                    "services": plan.services,
+                    "durations": plan.durations,
+                    "rental_percentages": plan.rental_percentages,
+                    "is_active": plan.is_active,
+                    "comments": plan.comments,
+                    "created_at": plan.created_at,
+                    "updated_at": plan.updated_at,
+                }
+                for plan in plans
+            ],
+        }
+
+    except HTTPException as e:
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
+    except Exception as e:
+        print(f"Error fetching required actions: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @admin_subscriptions.post('/add-subscription-plan')
