@@ -13,13 +13,13 @@ class SubscriptionPlans(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     sub_id: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     sub_type: Mapped[str] = mapped_column(String(255), nullable=False)
-    category: Mapped[str] = mapped_column(String(255), nullable=False)
+    category: Mapped[str] = mapped_column(String(255), nullable=False) # flats building
 
     # ✅ JSON and ARRAY properly typed
-    services: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
-    cost: Mapped[dict] = mapped_column(JSON, nullable=False)
-    durations: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
-
+    services: Mapped[list[str] ] = mapped_column(ARRAY(String), nullable=True)
+    durations: Mapped[dict[int,str]] = mapped_column(JSON, nullable=False) #all are months
+    # cost was removed — pricing is handled elsewhere or per-transaction
+    rental_percentages:Mapped[dict[int,int]] = mapped_column(JSON, nullable=False)
     comments: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_by: Mapped[str] = mapped_column(
@@ -39,12 +39,7 @@ class SubscriptionPlans(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    # ✅ Relationship to history
-    history = relationship(
-        "SubscriptionPlansHistory",
-        back_populates="plan",
-        cascade="all, delete-orphan"
-    )
+
 
 
 class SubscriptionPlansHistory(Base):
@@ -61,10 +56,9 @@ class SubscriptionPlansHistory(Base):
     sub_id: Mapped[str] = mapped_column(String(100), index=True)
     sub_type: Mapped[str] = mapped_column(String(255), nullable=False)
     category: Mapped[str] = mapped_column(String(255), nullable=False)
-    services: Mapped[list[str] | None] = mapped_column(ARRAY(String), nullable=True)
-    cost: Mapped[dict] = mapped_column(JSON, nullable=False)
-    durations: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
-    comments: Mapped[str | None] = mapped_column(Text, nullable=True)
+    services: Mapped[list[str] ] = mapped_column(ARRAY(String), nullable=True)
+    durations:Mapped[dict[int,str]] = mapped_column(JSON, nullable=False)
+    comments: Mapped[str] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
     created_by: Mapped[str] = mapped_column(String(50), nullable=False)
 
@@ -79,5 +73,3 @@ class SubscriptionPlansHistory(Base):
         nullable=True
     )
 
-    # ✅ Relationship back to main plan
-    plan = relationship("SubscriptionPlans", back_populates="history")

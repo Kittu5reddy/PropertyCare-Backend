@@ -8,40 +8,61 @@ from app.admin.models.admins import Admin
 #==================
 #    CONSTANTS
 #==================
-ACCES_TOKEN_SECRET_KEY = settings.ACCESS_TOKEN_SECRET_KEY_ADMIN
-REFRESH_TOKEN_SECRET_KEY = settings.REFRESH_TOKEN_SECRET_KEY_ADMIN
+ADMIN_ACCES_TOKEN_SECRET_KEY = settings.ACCESS_TOKEN_SECRET_KEY_ADMIN
+ADMIN_REFRESH_TOKEN_SECRET_KEY = settings.REFRESH_TOKEN_SECRET_KEY_ADMIN
 # SECRET_KEY = settings.SECRET_KEY
-ALGORITHM = settings.ALGORITHM
-ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN
-REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS_ADMIN
+ADMIN_ALGORITHM = settings.ALGORITHM
+ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES_ADMIN
+ADMIN_REFRESH_TOKEN_EXPIRE_DAYS = settings.REFRESH_TOKEN_EXPIRE_DAYS_ADMIN
 
 
-async def get_current_admin(token:str=Depends(oauth2_scheme),
-                            db:AsyncSession=Depends(get_db)):
-        try:
-            payload = jwt.decode(token, ACCES_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
-            email: str = payload.get("sub")
-            if email is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid or expired token"
-                )
-        except ExpiredSignatureError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has expired"
-            )
-        except JWTError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
-            )
-    
-        result = await db.execute(select(Admin).where(Admin.email == email))
-        admin = result.scalar_one_or_none()
-        if admin is None:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        return admin
 
 
+async def get_current_admin(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    ✅ Validate JWT and confirm admin exists & is active.
+    """
+    try:
+        payload = jwt.decode(token, ADMIN_ACCES_TOKEN_SECRET_KEY, algorithms=[ADMIN_ALGORITHM])
+        email: str = payload.get("sub")
+        role: str = payload.get("role")
+        admin_id: str = payload.get("admin_id")
+
+        if not email or role != "admin":
+            raise HTTPException(status_code=401, detail="Invalid token or role")
+
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+
+    result = await db.execute(select(Admin).where(Admin.email == email))
+    admin = result.scalar_one_or_none()
+
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+
+    if hasattr(admin, "is_active") and not admin.is_active:
+        raise HTTPException(status_code=403, detail="Admin account is deactivated")
+
+    return admin
+
+
+def verify_refresh_token_admin(token: str):
+    try:
+        payload = jwt.decode(token, ADMIN_REFRESH_TOKEN_SECRET_KEY, algorithms=[ADMIN_ALGORITHM])
+        email = payload.get("sub")
+        role = payload.get("role")
+
+        if not email or role != "admin":
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+        return payload
+
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")

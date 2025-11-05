@@ -4,10 +4,10 @@ from app.core.controllers.auth.main import auth
 from app.user.controllers.forms.main import form
 from app.user.controllers.subscriptions.main import subscriptions
 from app.user.controllers.surveillance.main import surveillance
-from app.user.controllers.subscrptions.main import sub
 from app.user.controllers.dashboard.main import dash
 from app.admin.controllers.auth.main import admin_auth
-# from app.admin.controllers.services.main import admin_services
+from app.admin.controllers.subscriptions.main import admin_subscriptions
+
 from app.user.controllers.properties.main import prop
 from app.user.controllers.services.main import services
 from app.core.controllers.emails.main import email
@@ -30,15 +30,13 @@ def create_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
     app.include_router(auth)
-    app.include_router(sub)
     app.include_router(services)
     app.include_router(admin_auth) 
-    # app.include_router(admin_services) 
     app.include_router(admin_dash) 
     app.include_router(dash)
     app.include_router(subscriptions)
+    app.include_router(admin_subscriptions)
     app.include_router(form)
     app.include_router(prop)
     app.include_router(email)

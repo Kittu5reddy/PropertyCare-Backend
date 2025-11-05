@@ -2,13 +2,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Integer, String, DateTime, func, ForeignKey, Numeric
 from app.core.models import Base
 from datetime import datetime
-from typing import Optional
+
 
 
 class TransactionSubOffline(Base):
     __tablename__ = "transaction_sub_offline"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    transaction_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
 
     # Link to user and property
     user_id: Mapped[str] = mapped_column(String(50), ForeignKey("users.user_id"), nullable=False)
@@ -16,17 +17,17 @@ class TransactionSubOffline(Base):
 
     # Subscription plan reference
     sub_id: Mapped[str] = mapped_column(String(50), ForeignKey("subscriptions_plans.sub_id"), nullable=False)
+    duration:Mapped[str]=mapped_column(Integer,nullable=False)
+
 
     # Unique transaction reference (internal/external)
-    transaction_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
 
-    # Payment amounts
-    amount_usd: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
-    amount_inr: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    #cost at that time
+    cost: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
 
     # Payment details
     payment_method: Mapped[str] = mapped_column(String(50), nullable=False)  # CASH, CHEQUE, UPI, etc.
-    payment_transaction_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # UPI ref, cheque no., etc.
+    payment_transaction_number: Mapped[str] = mapped_column(String(100),unique=True, nullable=False)  # UPI ref, cheque no., etc.
 
 
     # Status tracking (PENDING → APPROVED/REJECTED)

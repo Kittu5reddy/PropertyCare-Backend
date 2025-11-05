@@ -742,6 +742,7 @@ async def get_reference_images(
     redis_client:redis.Redis=Depends(get_redis)
 ):
     try:
+        user=await get_current_user(token,db)
                 # ✅ Cache key
         cache_key = f"property:{property_id}:reference-images"
         # 🔹 Step 1: Try to fetch from Redis
@@ -753,8 +754,12 @@ async def get_reference_images(
         objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
         # print(objects)
         # Convert S3 keys to signed/public URLs if needed
+        data=await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id==property_id))
+        data=data.scalar_one_or_none()
+        
         image_urls = list(map(get_image,list("/"+images for images in objects)))
         data={
+            "is_verfied":data.property_photos,
             "property_photos": image_urls
         }
         await redis_set_data(cache_key=cache_key,data=data)
@@ -799,7 +804,7 @@ async def get_reference_documents(
             file_name = key.split("/")[-1].split(".")[0]
             response[file_name] = {
                 "url": presigned_url,
-                "isverified": getattr(data, file_name, False) if data else False
+                "is_verified": getattr(data, file_name, False) if data else False
             }
 
         # Cache for faster retrieval
