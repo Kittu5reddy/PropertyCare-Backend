@@ -12,6 +12,7 @@ from app.core.models.subscriptions_plans import SubscriptionPlans
 subscriptions=APIRouter(prefix='/subscriptions',tags=['subscriptions'])
 from datetime import datetime
 import uuid 
+from jose import JWTError
 @subscriptions.get("/get-properties")
 async def get_properties(
     category: str,
@@ -50,12 +51,15 @@ async def get_properties(
             ],
         }
 
+    except HTTPException as e:
+        raise e
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail=f"Token Expired")
     except Exception as e:
-        print(e)
-        raise HTTPException(
-            status_code=401,
-            detail=f"Failed to fetch properties: {str(e)}"
-        )
+        print(f"Upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload reference photo: {str(e)}")
+
+
     
 
 
@@ -135,11 +139,11 @@ async def add_offline_subscriptions(
             "amount": str(record.cost),
         }
 
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise e
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail=f"Token Expired")
     except Exception as e:
-        print(f"❌ Error while creating offline transaction: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to add offline subscription: {str(e)}"
-        )
+        print(f"Upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload reference photo: {str(e)}")
+
