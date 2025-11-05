@@ -38,7 +38,7 @@ class PropertyDetails(Base):
     description: Mapped[str] = mapped_column(Text, nullable=True)
     active_sub:Mapped[bool]=mapped_column(Boolean,default=False)
     rental_income:Mapped[float]=mapped_column(NUMERIC(10,2),nullable=True)
-    associates_id:Mapped[bool]=mapped_column(String(225),ForeignKey("associates.associates_id"),nullable=True)
+    associates_id:Mapped[str]=mapped_column(String(225),ForeignKey("associates.associates_id"),nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
