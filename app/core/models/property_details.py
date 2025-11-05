@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, func, ForeignKey, Text, JSON,Boolean,Float
+from sqlalchemy import String, Integer, DateTime, func, ForeignKey, Text, JSON,Boolean,Float,NUMERIC
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.models import Base
 from config import settings
@@ -37,7 +37,8 @@ class PropertyDetails(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     description: Mapped[str] = mapped_column(Text, nullable=True)
     active_sub:Mapped[bool]=mapped_column(Boolean,default=False)
-    # associates:Mapped[bool]=mapped_column()
+    rental_income:Mapped[float]=mapped_column(NUMERIC(10,2),nullable=True)
+    associates_id:Mapped[bool]=mapped_column(String(225),ForeignKey("associates.associates_id"),nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 

@@ -9,4 +9,5 @@ from app.core.models.services_transactions import ServicesTransactions,ServicesT
 from app.core.models.subscriptions_plans import SubscriptionPlans,SubscriptionPlansHistory
 from app.core.models.subscriptions_transaction_offline import TransactionSubOffline
 from app.core.models.subscriptions import Subscriptions,SubscriptionHistory
+from app.core.models.associates import Associates
 # from app.core.models

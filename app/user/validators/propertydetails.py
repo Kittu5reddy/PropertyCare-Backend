@@ -19,6 +19,7 @@ class PropertyDetailForm(BaseModel):
     type_of_property: str
     sub_type_property: str
     units:str
+    country:Optional[str]="India"
     project_name: Optional[str] = ""
     street:Optional[str] = ""
     gmaps_url: Optional[str] = ""
@@ -26,6 +27,8 @@ class PropertyDetailForm(BaseModel):
     latitude: Optional[str] = ""
     longitude: Optional[str] = ""
     additional_notes: Optional[str] = ""
+    associates_id:Optional[str] = ""
+    rental_income:Optional[float] = 0.0
 
 class UpdatePropertyNameRequest(BaseModel):
     property_name: str
