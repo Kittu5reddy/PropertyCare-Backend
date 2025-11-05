@@ -471,6 +471,10 @@ async def delete_reference_photo(
             filename=filename.split('?')[0]
         print(filename)
         print(filename,property_id)
+        is_removed=await db.execute(select(PropertyDocuments).where(property_id==PropertyDocuments.property_id))
+        is_removed = is_removed.scalar_one_or_none()
+        if is_removed.property_photos==True:
+            raise HTTPException(status_code=403,detail="Reference Images are verified cant be deleted")
         result = await property_delete_single_document(
             category="property_photos",
             property_id=property_id,

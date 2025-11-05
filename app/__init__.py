@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.controllers.auth.main import auth
 from app.user.controllers.forms.main import form
+from app.user.controllers.subscriptions.main import subscriptions
 from app.user.controllers.surveillance.main import surveillance
 from app.user.controllers.subscrptions.main import sub
 from app.user.controllers.dashboard.main import dash
@@ -37,6 +38,7 @@ def create_app():
     # app.include_router(admin_services) 
     app.include_router(admin_dash) 
     app.include_router(dash)
+    app.include_router(subscriptions)
     app.include_router(form)
     app.include_router(prop)
     app.include_router(email)

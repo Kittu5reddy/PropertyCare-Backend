@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, Body,Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, Body,Request,status
 from fastapi.responses import JSONResponse
 from app.admin.models.admins import Admin
 from app.core.models import AsyncSession,get_db
@@ -77,7 +77,33 @@ async def admin_login(
 
 
 
+@admin_auth.post("/logout")
+async def admin_logout(
+    response: Response,
+):
+    """
+    Securely log out the admin by clearing the refresh token cookie.
+    Optionally, add the token to a blacklist if your system uses one.
+    """
+    try:
+        # 🧹 Clear the refresh token cookie
+        response = JSONResponse(
+            content={"message": f"Admin logged out successfully"},
+            status_code=status.HTTP_200_OK
+        )
+        response.delete_cookie(
+            key="refresh_token",
+            httponly=True,
+            secure=True,
+            samesite="none",
+            path="/admin-auth/refresh"
+        )
 
-# --------------------------------
-# REFRESH ACCESS TOKEN ENDPOINT
-# --------------------------------
+
+        return response
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Logout failed: {str(e)}"
+        )
