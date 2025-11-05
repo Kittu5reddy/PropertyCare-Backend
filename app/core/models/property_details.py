@@ -36,6 +36,8 @@ class PropertyDetails(Base):
     admin_id: Mapped[str] = mapped_column(String(50), ForeignKey("admin.admin_id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     description: Mapped[str] = mapped_column(Text, nullable=True)
+    active_sub:Mapped[bool]=mapped_column(Boolean,default=False)
+    # associates:Mapped[bool]=mapped_column()
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 

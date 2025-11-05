@@ -1,4 +1,4 @@
-from app.core.controllers.emails.utils import templates_dir,send_email
+from background_task.tasks.email_tasks import send_email
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
@@ -18,14 +18,50 @@ def create_verification_token():
     return secrets.token_urlsafe(32)
 
 
-def send_verification_email(email: str, token: str):
-    """Send verification email to user"""
-    context={
-    "verification_link":f"{API_BASE_URL}/auth/verify-email?token={token}"
-    }
-    subject = "verification email to user"
+from background_task.tasks.email_tasks import send_email_task
+from config import settings
 
-    send_email(subject=subject,to_email=email,template_name='user_verification_email.html',header="Account Verification",context=context)
+API_BASE_URL = settings.API_BASE_URL
+
+def send_verification_email(email: str, token: str):
+    """Send verification email asynchronously using Celery."""
+    context = {
+        "verification_link": f"{API_BASE_URL}/auth/verify-email?token={token}"
+    }
+
+    subject = "Verify Your Vibhoos PropCare Account"
+
+    # 🔥 Send via Celery (background)
+    send_email_task.delay(
+        subject,
+        email,
+        "user_verification_email.html",
+        context,
+        header="Account Verification"
+    )
+
+    print(f"✅ Verification email queued for {email}")
+
+
+async def send_forgot_password_email(email: str, reset_link: str, context: dict = None):
+    """Send forgot password email asynchronously using Celery."""
+    subject = "Reset Your Vibhoos PropCare Password"
+
+    if context is None:
+        context = {"reset_link": reset_link}
+
+    # 🔥 Send via Celery (background)
+    send_email_task.delay(
+        subject,
+        email,
+        "reset_password_email.html",
+        context,
+        header="RESET-PASSWORD"
+    )
+
+    print(f"✅ Password reset email queued for {email}")
+
+
 def send_admin_login_alert_email(email: str, ip_address: str = None, user_agent: str = None):
     """Send an alert email to admin when a login occurs."""
     from datetime import datetime
@@ -70,15 +106,6 @@ def send_admin_login_alert_email(email: str, ip_address: str = None, user_agent:
         print(f"Failed to send admin login alert email: {e}")
         return False
 
-
-
-async def send_forgot_password_email(email: str, reset_link: str,context:dict=None):
-    """Send forgot password email with Vibhoos PropCare theme."""
-    from datetime import datetime
-
-    subject = "Reset Your Vibhoos PropCare Password"
-    
-    send_email(subject=subject,to_email=email,template_name='reset_password_email.html',header="RESET-PASSWORD",context=context)
 
 
 

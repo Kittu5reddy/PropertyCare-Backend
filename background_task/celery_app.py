@@ -4,7 +4,10 @@ from celery.schedules import crontab
 celery_app = Celery(
     "background_task",
     broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0"
+    backend="redis://localhost:6379/0",
+    include=[
+        "background_task.tasks.email_tasks",  # ✅ Required for Celery to load tasks
+    ],
 )
 
 celery_app.conf.update(
@@ -16,8 +19,8 @@ celery_app.conf.update(
 )
 
 celery_app.conf.beat_schedule = {
-    "update-user-forms-every-midnight": {
-        "task": "cron_jobs.update_user_pd_form_if_any_error_occurs",
-        "schedule": crontab(hour=0, minute=0),  # 12:00 AM IST
+    "cleanup-tasks": {
+        "task": "background_task.tasks.email_tasks.clean_logs_task",
+        "schedule": crontab(hour=0, minute=0),
     },
 }

@@ -10,7 +10,7 @@ from sqlalchemy import select
 from app.core.models import get_db,AsyncSession
 from .utils import *
 from email.message import EmailMessage
-
+from background_task.tasks.email_tasks import send_email_task
 from fastapi import BackgroundTasks
 from email_validator import validate_email, EmailNotValidError
 import dns.resolver
@@ -81,7 +81,9 @@ async def news_letter_subscribe(
     "website_url":"www.vibhoospropcare.com",
     "phone_number":PHONE_NUMBER,
     }
-    background_tasks.add_task(send_newsletter_email, email_normalized, context)
+ 
+    send_email_task.delay("Welcome to Vibhoos PropCare Newsletter", email_normalized, "newsletter_email.html", context,header="NEWS LETTER")
+
 
     return {"message": message, "status": "active"}
 
@@ -138,26 +140,23 @@ async def unsubscribe_news_letter(email: str, db: AsyncSession = Depends(get_db)
     return HTMLResponse(content=html_not_found, status_code=404)
 
 
-from fastapi import BackgroundTasks
-
-@email.post('/book-consulting')
+@email.post("/book-consulting")
 async def booking_consulting(
     payload: ConsultationSchema, 
-    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db)
 ):
-    # Validate email format and domain
+    # ✅ 1. Validate email format and MX record
     try:
         v = validate_email(payload.email)
-        email_normalized = v.email
+        email_normalized = v.email.lower().strip()
         domain = email_normalized.split("@")[1]
-        try:
-            dns.resolver.resolve(domain, 'MX')
-        except Exception:
-            return {"error": "Email domain does not accept mail"}
+        dns.resolver.resolve(domain, "MX")
     except EmailNotValidError as e:
-        return {"error": str(e)}
+        return {"error": f"Invalid email: {str(e)}"}
+    except Exception:
+        return {"error": "Email domain does not accept mail"}
 
+    # ✅ 2. Save booking details to DB
     record = Consultation(
         name=payload.name,
         email=email_normalized,
@@ -165,22 +164,47 @@ async def booking_consulting(
         preferred_date=payload.preferred_date,
         preferred_time=payload.preferred_time,
         subject=payload.subject,
-        comment=payload.comment
-        
+        comment=payload.comment or "-",
     )
-    
+
     db.add(record)
     await db.commit()
     await db.refresh(record)
 
-    background_tasks.add_task(
-        send_consultation_email,
-        name=payload.name,
-        email=email_normalized,
-        preferred_date=payload.preferred_date,
-        preferred_time=payload.preferred_time,
-        subject=payload.subject,
-        comment=payload.comment
+    # ✅ 3. Prepare email context
+    formatted_date = (
+        payload.preferred_date.strftime("%d %b, %Y") 
+        if payload.preferred_date else "your chosen date"
+    )
+    formatted_time = (
+        payload.preferred_time.strftime("%I:%M %p") 
+        if payload.preferred_time else "your preferred time"
     )
 
-    return {"message": "consultation booked successfully", "id": record.id}
+    context = {
+        "name": payload.name,
+        "subject": payload.subject or "General Consultation",
+        "preferred_date": formatted_date,
+        "preferred_time": formatted_time,
+        "unsubscribe_url": f"https://api.vibhoospropcare.com/email/unsubscribe-news-letters/{email_normalized}",
+        "company_profile_url": "https://vibhoospropcare.com/vibhoos_propcare_company_profile.pdf",
+        "sop_url": "https://vibhoospropcare.com/vibhoos_propcare_standard_operating_procedures.pdf",
+        "service_portfolio": "https://www.vibhoospropcare.com/services",
+        "comment": payload.comment or "-",
+    }
+
+  
+
+    send_email_task.delay(
+        subject="Your Consultation Request - Vibhoos PropCare",
+        to_email=email_normalized,
+        template_name="consultation_email.html",
+        context=context,
+        header="Consultation Request"
+    )
+
+    # ✅ 5. Response
+    return {
+        "message": "Consultation booked successfully — confirmation email sent!",
+        "id": record.id,
+    }
