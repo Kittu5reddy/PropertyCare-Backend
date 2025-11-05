@@ -13,7 +13,7 @@ class PropertyDocuments(Base):
         unique=True   # one-to-one with property
     )
     # Match column names with S3 filenames
-    property_photo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # property_photo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     property_photos: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     link_documents: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     encumbrance_certificate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)  # instead of ec

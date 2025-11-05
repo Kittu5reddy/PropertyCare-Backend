@@ -15,56 +15,56 @@ admin_subscriptions=APIRouter(prefix='/admin-subscriptions',tags=["admin subscri
 from .utils import generate_subscription_id
 from jose import JWTError
 from app.admin.validators.subscriptionplanupdate import SubscriptionPlanUpdate
+from app.core.models.subscriptions_transaction_offline import TransactionSubOffline
 
+@admin_subscriptions.get("/get-subscriptions")
+async def get_subscription_plans(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    🔍 Fetch all subscription plans (Admin only)
+    """
+    try:
+        # 1️⃣ Verify admin token
+        admin = await get_current_admin(token, db)
+        if not admin:
+            raise HTTPException(status_code=401, detail="Unauthorized admin access")
 
-# @admin_subscriptions.get("/get-subscriptions")
-# async def get_subscription_plans(
-#     token: str = Depends(oauth2_scheme),
-#     db: AsyncSession = Depends(get_db)
-# ):
-#     """
-#     🔍 Fetch all subscription plans (Admin only)
-#     """
-#     try:
-#         # 1️⃣ Verify admin token
-#         admin = await get_current_admin(token, db)
-#         if not admin:
-#             raise HTTPException(status_code=401, detail="Unauthorized admin access")
+        # 2️⃣ Fetch all subscription plans
+        result = await db.execute(select(SubscriptionPlans))
+        plans = result.scalars().all()
 
-#         # 2️⃣ Fetch all subscription plans
-#         result = await db.execute(select(SubscriptionPlans))
-#         plans = result.scalars().all()
+        if not plans:
+            raise HTTPException(status_code=404, detail="No subscription plans found")
 
-#         if not plans:
-#             raise HTTPException(status_code=404, detail="No subscription plans found")
+        # 3️⃣ Return formatted response
+        return {
+            "count": len(plans),
+            "plans": [
+                {
+                    "sub_id": plan.sub_id,
+                    "sub_type": plan.sub_type,
+                    "category": plan.category,
+                    "services": plan.services,
+                    "durations": plan.durations,
+                    "rental_percentages": plan.rental_percentages,
+                    "is_active": plan.is_active,
+                    "comments": plan.comments,
+                    "created_at": plan.created_at,
+                    "updated_at": plan.updated_at,
+                }
+                for plan in plans
+            ],
+        }
 
-#         # 3️⃣ Return formatted response
-#         return {
-#             "count": len(plans),
-#             "plans": [
-#                 {
-#                     "sub_id": plan.sub_id,
-#                     "sub_type": plan.sub_type,
-#                     "category": plan.category,
-#                     "services": plan.services,
-#                     "durations": plan.durations,
-#                     "rental_percentages": plan.rental_percentages,
-#                     "is_active": plan.is_active,
-#                     "comments": plan.comments,
-#                     "created_at": plan.created_at,
-#                     "updated_at": plan.updated_at,
-#                 }
-#                 for plan in plans
-#             ],
-#         }
-
-#     except HTTPException as e:
-#         raise e
-#     except JWTError:
-#         raise HTTPException(status_code=401, detail="Token expired or invalid")
-#     except Exception as e:
-#         print(f"Error fetching required actions: {e}")
-#         raise HTTPException(status_code=500, detail="Internal server error")
+    except HTTPException as e:
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
+    except Exception as e:
+        print(f"Error fetching required actions: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @admin_subscriptions.post('/add-subscription-plan')
@@ -248,3 +248,123 @@ async def delete_subscription_plan(
     except Exception as e:
         print(f"❌ Error deleting subscription plan: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete subscription plan: {str(e)}")
+
+
+
+
+from sqlalchemy import select, desc
+
+@admin_subscriptions.get("/get-offline-payments")
+async def get_offline_payments(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    🧾 Fetch all offline subscription payments (Admin only)
+    Ordered by latest created_at
+    """
+    try:
+        # 1️⃣ Authenticate admin
+        admin = await get_current_admin(token, db)
+        if not admin:
+            raise HTTPException(status_code=401, detail="Unauthorized admin access")
+
+        # 2️⃣ Fetch and order by latest first
+        result = await db.execute(
+            select(TransactionSubOffline).order_by(desc(TransactionSubOffline.created_at))
+        )
+        offline_payments = result.scalars().all()
+
+        if not offline_payments:
+            raise HTTPException(status_code=404, detail="No offline payments found")
+
+        # 3️⃣ Format and return
+        return {
+            "count": len(offline_payments),
+            "offline_payments": [
+                {
+                    "transaction_id": t.transaction_id,
+                    "user_id": t.user_id,
+                    "property_id": t.property_id,
+                    "sub_id": t.sub_id,
+                    "cost": str(t.cost),
+                    "payment_method": t.payment_method,
+                    "payment_transaction_number": t.payment_transaction_number,
+                    "status": t.status,
+                    "created_at": t.created_at,
+                    "updated_at": t.updated_at,
+                }
+                for t in offline_payments
+            ],
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error fetching offline payments: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch offline payments: {str(e)}"
+        )
+
+
+
+
+@admin_subscriptions.put("/update-offline-payment-status/{transaction_id}")
+async def update_offline_payment_status(
+    transaction_id: str,
+    new_status: str,  # e.g. "APPROVED", "REJECTED"
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    🔄 Update the status of an offline transaction (Admin Only)
+    """
+    try:
+        # 1️⃣ Authenticate admin
+        admin = await get_current_admin(token, db)
+        if not admin:
+            raise HTTPException(status_code=401, detail="Unauthorized admin access")
+
+        # 2️⃣ Validate status value
+        valid_statuses = {"PENDING", "APPROVED", "REJECTED"}
+        if new_status.upper() not in valid_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Must be one of {', '.join(valid_statuses)}"
+            )
+
+        # 3️⃣ Fetch the transaction
+        result = await db.execute(
+            select(TransactionSubOffline).where(TransactionSubOffline.transaction_id == transaction_id)
+        )
+        transaction = result.scalar_one_or_none()
+
+        if not transaction:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+
+        # 4️⃣ Update the record
+        transaction.status = new_status.upper()
+        transaction.updated_at = datetime.utcnow()
+
+        db.add(transaction)
+        await db.commit()
+        await db.refresh(transaction)
+
+        # 5️⃣ Return success response
+        return {
+            "message": f"Transaction {transaction_id} status updated successfully",
+            "transaction_id": transaction.transaction_id,
+            "new_status": transaction.status,
+            "updated_at": transaction.updated_at,
+            "updated_by": admin.admin_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating transaction status: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update transaction status: {str(e)}"
+        )
