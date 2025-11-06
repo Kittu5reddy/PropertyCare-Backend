@@ -17,9 +17,9 @@ class SubscriptionPlans(Base):
 
     # ✅ JSON and ARRAY properly typed
     services: Mapped[list[str] ] = mapped_column(ARRAY(String), nullable=True)
-    durations: Mapped[dict[int,str]] = mapped_column(JSON, nullable=False) #all are months
+    durations: Mapped[dict[str,str]] = mapped_column(JSON, nullable=False) #all are months
     # cost was removed — pricing is handled elsewhere or per-transaction
-    rental_percentages:Mapped[dict[int,int]] = mapped_column(JSON, nullable=False)
+    rental_percentages:Mapped[str] = mapped_column(String, nullable=False)
     comments: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_by: Mapped[str] = mapped_column(
