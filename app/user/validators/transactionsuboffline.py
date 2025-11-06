@@ -7,7 +7,7 @@ class TransactionSubOffline(BaseModel):
     sub_id: str 
     category:str
     cost: float
-    transaction_id: Optional[str] = None
+    duration:int
     payment_method: str 
     payment_transaction_number: str
     status: Optional[str] = Field("PENDING")

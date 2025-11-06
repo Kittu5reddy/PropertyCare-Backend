@@ -1,5 +1,5 @@
 from .utils import PropertyDetails
-from fastapi import APIRouter,Depends,HTTPException
+from fastapi import APIRouter,Depends,HTTPException,status
 from app.core.models import AsyncSession,get_db
 from app.core.controllers.auth.main import oauth2_scheme
 from app.core.controllers.auth.utils import get_current_user
@@ -14,6 +14,52 @@ subscriptions=APIRouter(prefix='/subscriptions',tags=['subscriptions'])
 from datetime import datetime
 import uuid 
 from jose import JWTError
+
+
+
+
+@subscriptions.get("/get-subscriptions/{category}")
+async def get_subscriptions(
+    category: str,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    🔍 Fetch all subscription plans for a specific category (e.g., 'PLOTS', 'FLATS')
+    """
+    try:
+        # ✅ Verify JWT and user
+        # user = await get_current_user(token, db)
+
+        # ✅ Fetch subscriptions by category
+        result = await db.execute(
+            select(SubscriptionPlans).where(SubscriptionPlans.category == category.upper())
+        )
+        subscriptions_list = result.scalars().all()
+
+        # ✅ If no data found
+        if not subscriptions_list:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No subscription plans found for category '{category}'"
+            )
+
+        # ✅ Return the list
+        return {
+            "status": "success",
+            "count": len(subscriptions_list),
+            "data": subscriptions_list
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching subscriptions: {str(e)}"
+        )
+
+
 @subscriptions.get("/get-properties")
 async def get_properties(
     category: str,
@@ -66,6 +112,7 @@ async def get_properties(
 
 
 
+
 @subscriptions.post("/add-offline-subscriptions")
 async def add_offline_subscriptions(
     payload: TransactionSubOfflineSchema,
@@ -76,10 +123,10 @@ async def add_offline_subscriptions(
     Add an offline subscription transaction (cash, cheque, UPI, etc.)
     """
     try:
-        # 1️⃣ Validate and get current user
+        # 1️⃣ Validate user token
         user = await get_current_user(token, db)
 
-        # 2️⃣ Validate property ownership/access
+        # 2️⃣ Validate property ownership
         result = await db.execute(
             select(PropertyDetails).where(PropertyDetails.property_id == payload.property_id)
         )
@@ -88,7 +135,6 @@ async def add_offline_subscriptions(
         if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
 
-        # ✅ Correct: block only non-owners
         if property_obj.user_id != user.user_id:
             raise HTTPException(status_code=403, detail="You are not the owner of this property")
 
@@ -100,39 +146,47 @@ async def add_offline_subscriptions(
 
         if not sub:
             raise HTTPException(status_code=404, detail="Subscription plan not found")
+
+        # ✅ Verify amount matches the chosen duration
+        if sub.durations.get(str(payload.duration)) != str(int(payload.cost)):
+            raise HTTPException(status_code=400, detail="Amount is insufficient for selected duration")
+
+        # 4️⃣ Prevent duplicate payment references
         existing_txn = await db.execute(
-                                        select(TransactionSubOffline).where(
-                                        TransactionSubOffline.payment_transaction_number == payload.payment_transaction_number
-                                        )
-                                        )
+            select(TransactionSubOffline).where(
+                TransactionSubOffline.payment_transaction_number == payload.payment_transaction_number
+            )
+        )
         if existing_txn.scalar_one_or_none():
             raise HTTPException(
-        status_code=400,
-        detail=f"Payment reference '{payload.payment_transaction_number}' already exists. Please use a unique reference."
-        )
-        # 4️⃣ Generate unique transaction_id if not provided
+                status_code=400,
+                detail=f"Payment reference '{payload.payment_transaction_number}' already exists. Please use a unique reference."
+            )
+
+        # 5️⃣ Generate unique transaction ID
         transaction_id = (
-            payload.transaction_id if getattr(payload, 'transaction_id', None) else f"TXOFF-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
+            getattr(payload, 'transaction_id', None)
+            or f"TXOFF-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
         )
 
-        # 5️⃣ Create ORM record
+        # 6️⃣ Create ORM record
         record = TransactionSubOffline(
             user_id=user.user_id,
             property_id=payload.property_id,
             sub_id=payload.sub_id,
             transaction_id=transaction_id,
-            cost=payload.cost,  # use cost from payload
+            cost=payload.cost,
             payment_method=payload.payment_method,
             payment_transaction_number=payload.payment_transaction_number,
             status=payload.status or "PENDING",
         )
 
-        # 6️⃣ Save to DB
+        # 7️⃣ Save to DB
         db.add(record)
         await db.commit()
         await db.refresh(record)
 
-        # 7️⃣ Return success response
+        # 8️⃣ Return success response
         return {
             "message": "Offline subscription transaction created successfully.",
             "transaction_id": transaction_id,
@@ -141,12 +195,24 @@ async def add_offline_subscriptions(
         }
 
     except HTTPException as e:
+        await db.rollback()
         raise e
-    except JWTError as e:
-        raise HTTPException(status_code=401,detail=f"Token Expired")
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
+
     except Exception as e:
+        await db.rollback()
         print(f"Upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload reference photo: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to add offline subscription: {str(e)}")
+
+
+
+
+
+
+
+
 
 @subscriptions.get("/get-all-subscriptions-users")
 async def get_all_subscriptions_users(
