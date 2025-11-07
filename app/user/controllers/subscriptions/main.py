@@ -11,7 +11,7 @@ from app.core.models.subscriptions_transaction_offline import TransactionSubOffl
 from app.core.models.subscriptions_plans import SubscriptionPlans
 from app.core.models.subscriptions import Subscriptions,SubscriptionHistory
 from app.user.models.users import User
-subscriptions=APIRouter(prefix='/subscription',tags=['subscriptions'])
+subscriptions=APIRouter(prefix='/subscriptions',tags=['subscriptions'])
 from datetime import datetime
 import uuid 
 from jose import JWTError
