@@ -71,11 +71,17 @@ async def get_properties(
     try:
         user = await get_current_user(token, db)
         # Query all matching properties
+        from sqlalchemy import select, and_
+
         result = await db.execute(
-            select(PropertyDetails).where(PropertyDetails.type == category.lower())
+            select(PropertyDetails).where(
+                and_(
+                    PropertyDetails.type == category.lower(),
+                    PropertyDetails.user_id == user.user_id
+                )
+            )
         )
         properties = result.scalars().all()
-
         if not properties:
             raise HTTPException(
                 status_code=404,
@@ -148,7 +154,7 @@ async def add_offline_subscriptions(
             raise HTTPException(status_code=404, detail="Subscription plan not found")
 
         # ✅ Verify amount matches the chosen duration
-        if sub.durations.get(str(payload.duration)) != str(int(payload.cost)):
+        if sub.durations.get(str(payload.duration)) < str(int(payload.cost)):
             raise HTTPException(status_code=400, detail="Amount is insufficient for selected duration")
 
         # 4️⃣ Prevent duplicate payment references
@@ -175,6 +181,7 @@ async def add_offline_subscriptions(
             property_id=payload.property_id,
             sub_id=payload.sub_id,
             transaction_id=transaction_id,
+            duration=int(payload.duration),
             cost=payload.cost,
             payment_method=payload.payment_method,
             payment_transaction_number=payload.payment_transaction_number,
@@ -376,4 +383,114 @@ async def get_property_subscriptions(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to fetch property subscriptions: {str(e)}"
+        )
+
+
+
+
+@subscriptions.get("/is-property-eligible")
+async def get_eligible_rental_percentage(
+    property_id: str,
+    sub_id: str,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    ✅ Check if a property is eligible for rental percentage benefits
+    based on the subscription plan and property details.
+    """
+    try:
+        # 1️⃣ Validate user token
+        user = await get_current_user(token, db)
+
+        # 2️⃣ Validate property ownership
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+        )
+        property_obj = result.scalar_one_or_none()
+
+        if not property_obj:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        if property_obj.user_id != user.user_id:
+            raise HTTPException(status_code=403, detail="You are not the owner of this property")
+
+        # 3️⃣ Validate subscription plan
+        sub_query = await db.execute(
+            select(SubscriptionPlans).where(SubscriptionPlans.sub_id == sub_id)
+        )
+        sub = sub_query.scalar_one_or_none()
+
+        if not sub:
+            raise HTTPException(status_code=404, detail="Subscription plan not found")
+
+        # 4️⃣ Check if subscription applies to this property type
+        if sub.category.upper() != property_obj.type.upper():
+            raise HTTPException(status_code=400, detail="Subscription is not applicable for this property")
+
+        # 5️⃣ Logic based on property type
+        if property_obj.type.upper() == "FLATS":
+            if property_obj.rental_income and property_obj.rental_income > 15000:
+                rental_percent = getattr(sub, "rental_percent", 0)
+
+                # Example: using 7% as rental percent if not in plan
+                if not rental_percent:
+                    rental_percent = 7
+
+                # Calculate estimated returns
+                durations = {
+                    "3": round(property_obj.rental_income * (rental_percent / 100) * 3, 2),
+                    "6": round(property_obj.rental_income * (rental_percent / 100) * 6, 2),
+                    "12": round(property_obj.rental_income * (rental_percent / 100) * 12, 2),
+                }
+
+                return {
+                    "status": "eligible",
+                    "extra_amount": rental_percent,
+                    "message":"your rates as been changed as per property",
+                    "estimated_returns": durations
+                }
+            else:
+                return {
+                    "status": "not eligible",
+                    "extra_amount":1000,
+                    "message":False,
+                    "estimated_returns": sub.durations
+                    }
+        
+
+        elif property_obj.type.upper() == "PLOTS":
+            scale_factor = 1
+            if property_obj.scale.upper() == "ACRES":
+                scale_factor = 4840
+            elif property_obj.scale.upper() == "GUNTAS":
+                scale_factor = 120
+
+            extra_amount = ((scale_factor * property_obj.size) / 400) * 1000
+
+            # Ensure durations field exists and is dictionary-like
+            sub_durations = getattr(sub, "durations", {})
+            if not isinstance(sub_durations, dict):
+                raise HTTPException(status_code=500, detail="Invalid subscription duration format")
+
+            durations = {
+                "3": int(sub_durations.get("3", 0)) + int(extra_amount),
+                "6": int(sub_durations.get("6", 0)) + int(extra_amount),
+                "12": int(sub_durations.get("12", 0)) + int(extra_amount),
+            }
+
+            return {
+                "status": "eligible",
+                "estimated_returns": durations
+            }
+
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported property type")
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to check eligibility: {str(e)}"
         )
