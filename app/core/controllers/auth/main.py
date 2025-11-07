@@ -362,34 +362,75 @@ async def get_personal_details(
         print(f"❌ Error in get_personal_details: {e}")
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
-
-@auth.get('/get-subscription-details')
-async def get_subscription_details(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+@auth.get("/get-subscription-details")
+async def get_subscription_details(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    ✅ Get subscription details for all user's properties.
+    Grouped by subscription type (if available) or active status.
+    """
     try:
+        # 1️⃣ Validate token
         user = await get_current_user(token, db)
-        return [
-            {
-                "plan_type": "Basic",
+
+        # 2️⃣ Fetch user's properties
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.user_id == user.user_id)
+        )
+        properties = result.scalars().all()
+
+        if not properties:
+            raise HTTPException(status_code=404, detail="No properties found for this user")
+
+        # 3️⃣ Separate active/inactive
+        active_properties = [p for p in properties if p.active_sub]
+        inactive_properties = [p for p in properties if not p.active_sub]
+
+        # 4️⃣ Build structured response
+        response = []
+
+        if active_properties:
+            response.append({
+                "plan_type": "Active Subscription",
                 "property_covered": [
-                    {"property_name": "Ramanthapur House", "property_id": "1010101", "location": "Hyderabad", "property_type": "Residential"},
-                    {"property_name": "Kukatpally Flat", "property_id": "1010102", "location": "Hyderabad", "property_type": "Apartment"}
+                    {
+                        "property_name": p.property_name,
+                        "property_id": p.property_id,
+                        "location": f"{p.city}, {p.state}",
+                        "property_type": p.type,
+                        "created_at": p.created_at.isoformat()
+                    }
+                    for p in active_properties
                 ]
-            },
-            {
-                "plan_type": "Premium",
+            })
+
+        if inactive_properties:
+            response.append({
+                "plan_type": "No Active Subscription",
                 "property_covered": [
-                    {"property_name": "Jubilee Hills Villa", "property_id": "2020202", "location": "Hyderabad", "property_type": "Villa"},
-                    {"property_name": "Madhapur Studio", "property_id": "2020203", "location": "Hyderabad", "property_type": "Studio"}
+                    {
+                        "property_name": p.property_name,
+                        "property_id": p.property_id,
+                        "location": f"{p.city}, {p.state}",
+                        "property_type": p.type,
+                        "created_at": p.created_at.isoformat()
+                    }
+                    for p in inactive_properties
                 ]
-            }
-        ]
+            })
+
+        return response
+
     except HTTPException as e:
-        raise e 
-    except JWTError as e:
-        raise HTTPException(status_code=401,detail="Token Expired")
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired")
     except Exception as e:
         print(str(e))
-        raise HTTPException(status_code=500,detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error fetching subscription details: {str(e)}")
+
 
 @auth.get("/edit-profile")
 async def get_edit_profile_details(response:Response,token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
