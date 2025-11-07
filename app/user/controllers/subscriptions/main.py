@@ -107,7 +107,7 @@ async def get_properties(
                     "type": p.type,
                     "city": p.city,
                     "state": p.state,
-                    "property_image_url": get_image_or_default(
+                    "property_image_url":await get_image_or_default(
                         f"/property/{p.property_id}/legal_documents/property_photo.png"
                     ),
                 }
@@ -162,11 +162,22 @@ async def add_offline_subscriptions(
         sub = sub_query.scalar_one_or_none()
 
         if not sub:
+            
             raise HTTPException(status_code=404, detail="Subscription plan not found")
-
+        print(sub)
         # ✅ Verify amount matches the chosen duration
-        if sub.durations.get(payload.duration) < int(payload.cost):
-            raise HTTPException(status_code=400, detail="Amount is insufficient for selected duration")
+# Safely extract the required price from the plan's durations dict
+        plan_price = int(sub.durations.get(str(payload.duration), 0))
+        paid_amount = int(payload.cost)
+        
+        # Validate that cost covers the selected plan duration
+        if paid_amount < plan_price:
+            print(f"❌ Paid: {paid_amount}, Required: {plan_price}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Amount {paid_amount} is insufficient for selected duration ({payload.duration} months). Required: {plan_price}."
+            )
+        
 
         # 4️⃣ Prevent duplicate payment references
         existing_txn = await db.execute(
