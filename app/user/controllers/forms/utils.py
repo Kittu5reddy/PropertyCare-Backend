@@ -230,17 +230,66 @@ async def property_upload_image_as_png(file: dict, category: str, property_id: U
             return {"error": str(e)}
 
 
+import os
+import aioboto3
+from typing import Union
+from botocore.exceptions import ClientError
+from fastapi import HTTPException
+import fitz  # PyMuPDF for PDF safety validation
+from io import BytesIO
+
+# Constants
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB limit
+ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png"]
+ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"]
 
 async def property_upload_documents(file: dict, category: str, property_id: Union[str, int]) -> dict:
+    """
+    Secure property document upload to S3 with file validation and PDF safety checks.
+    """
+
+    # ✅ 1️⃣ Validate category
     folder_name = category.lower()
     if not folder_name:
-        return {"error": f"Invalid category '{category}'"}
+        raise HTTPException(status_code=400, detail=f"Invalid category '{category}'")
 
     file_name = file.get("filename", "uploaded_file")
-    name, ext = os.path.splitext(file_name)
-    
+    _, ext = os.path.splitext(file_name)
+
+    # ✅ 2️⃣ Extension check
+    if ext.lower() not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
+
+    # ✅ 3️⃣ Size check
+    if len(file["bytes"]) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Max 10 MB allowed.")
+
+    # ✅ 4️⃣ MIME detection and validation
+    mime_type = file.get("content_type", "").lower()
+    if mime_type not in ALLOWED_MIME_TYPES:
+        if ext.lower() == ".pdf":
+            mime_type = "application/pdf"
+        elif ext.lower() in [".jpg", ".jpeg"]:
+            mime_type = "image/jpeg"
+        elif ext.lower() == ".png":
+            mime_type = "image/png"
+        else:
+            raise HTTPException(status_code=400, detail="Invalid or unsupported file type")
+
+    # ✅ 5️⃣ PDF safety validation
+    if mime_type == "application/pdf":
+        try:
+            pdf = fitz.open(stream=file["bytes"], filetype="pdf")
+            if pdf.page_count == 0:
+                raise HTTPException(status_code=400, detail="Invalid or empty PDF.")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Corrupted or unsafe PDF file.")
+
+    # ✅ 6️⃣ Build S3 key
     object_key = f"property/{property_id}/legal_documents/{category}{ext}"
 
+    # ✅ 7️⃣ Upload securely to S3
+    session = aioboto3.Session()
     async with session.client(
         "s3",
         aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -253,14 +302,21 @@ async def property_upload_documents(file: dict, category: str, property_id: Unio
                 Key=object_key,
                 Body=file["bytes"],
                 ACL="private",
-                ContentType=file.get("content_type", "application/octet-stream")
+                ContentType=mime_type,
             )
+
+            # Optionally invalidate CloudFront cache if using CDN
+            # await invalidate_files([f"/{object_key}"])
+
             return {
                 "success": True,
                 "file_path": object_key,
+                "mime_type": mime_type,
             }
+
         except ClientError as e:
-            return {"error": str(e)}
+            error_message = e.response.get("Error", {}).get("Message", str(e))
+            raise HTTPException(status_code=500, detail=f"S3 upload failed: {error_message}")
 
 def get_image(filename: str) -> str:
     return f"{CLOUDFRONT_URL}{filename}{get_current_time()}"
