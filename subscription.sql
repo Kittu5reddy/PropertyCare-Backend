@@ -17,7 +17,7 @@ INSERT INTO
 VALUES (
         'VPC_SUB_001',
         'BASIC',
-        'FLATS',
+        'FLAT',
         ARRAY[
             'Rental services',
             'Tenant management',
@@ -49,7 +49,7 @@ INSERT INTO
 VALUES (
         'VPC_SUB_002',
         'GOLD',
-        'FLATS',
+        'FLAT',
         ARRAY[
             'Rental services',
             'Tenant management',
@@ -84,7 +84,7 @@ INSERT INTO
 VALUES (
         'VPC_SUB_003',
         'Platinum',
-        'FLATS',
+        'FLAT',
         ARRAY[
             'Encumbrance Certificate',
             'Physical verification',
@@ -125,7 +125,7 @@ INSERT INTO
 VALUES (
         'VPC_SUB_004',
         'BASIC',
-        'Plots',
+        'PLOT',
         ARRAY[
             'Monthly Photos',
             'Encumbrance Certificate',
@@ -155,7 +155,7 @@ INSERT INTO
 VALUES (
         'VPC_SUB_005',
         'GOLD',
-        'PLOTS',
+        'PLOT',
         ARRAY[
             'Encumbrance Certificate',
             '15 days photos',
@@ -189,7 +189,7 @@ INSERT INTO
 VALUES (
         'VPC_SUB_006',
         'GOLD',
-        'PLOTS',
+        'PLOT',
         ARRAY[
             'Encumbrance Certificate',
             '15 days photos',

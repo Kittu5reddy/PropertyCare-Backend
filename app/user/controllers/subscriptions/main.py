@@ -429,7 +429,7 @@ async def get_eligible_rental_percentage(
             raise HTTPException(status_code=400, detail="Subscription is not applicable for this property")
 
         # 5️⃣ Logic based on property type
-        if property_obj.type.upper() == "FLATS":
+        if property_obj.type.upper() == "FLAT":
             if property_obj.rental_income and property_obj.rental_income > 15000:
                 rental_percent = getattr(sub, "rental_percent", 0)
 
@@ -459,7 +459,7 @@ async def get_eligible_rental_percentage(
                     }
         
 
-        elif property_obj.type.upper() == "PLOTS":
+        elif property_obj.type.upper() == "PLOT":
             scale_factor = 1
             if property_obj.scale.upper() == "ACRES":
                 scale_factor = 4840
