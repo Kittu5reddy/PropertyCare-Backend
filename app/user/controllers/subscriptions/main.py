@@ -426,6 +426,8 @@ async def get_eligible_rental_percentage(
 
         # 4️⃣ Check if subscription applies to this property type
         if sub.category.upper() != property_obj.type.upper():
+            print(sub.category)
+            print(property_obj.type)
             raise HTTPException(status_code=400, detail="Subscription is not applicable for this property")
 
         # 5️⃣ Logic based on property type

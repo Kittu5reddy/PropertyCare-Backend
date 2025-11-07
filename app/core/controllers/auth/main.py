@@ -288,16 +288,22 @@ async def get_personal_details(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    ✅ Fetch a user's personal details, property stats, and cache results in Redis.
+    """
     try:
+        # 1️⃣ Validate token and get user
         user = await get_current_user(token, db)
+
         cache_key = f"user:{user.user_id}:personal-data"
 
+        # 2️⃣ Check Redis cache first
         cache_data = await redis_get_data(cache_key)
         if cache_data:
-            print("hit")
+            print("Cache hit ✅")
             return cache_data
 
-        # Get personal details
+        # 3️⃣ Fetch personal details
         result = await db.execute(
             select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
         )
@@ -305,18 +311,30 @@ async def get_personal_details(
         if not data:
             raise HTTPException(status_code=404, detail="Personal details not found")
 
-        # Get properties
-        result = await db.execute(
+        # 4️⃣ Fetch all properties for this user
+        properties_result = await db.execute(
             select(PropertyDetails).where(PropertyDetails.user_id == user.user_id)
         )
-        property_data = result.scalars().all()  # no await here!
+        property_data = properties_result.scalars().all()
         total_properties = len(property_data)
 
-        # Build profile URL
+        # 5️⃣ Count active and inactive subscriptions
+        active_subs_result = await db.execute(
+            select(PropertyDetails).where(
+                PropertyDetails.user_id == user.user_id,
+                PropertyDetails.active_sub == True
+            )
+        )
+        active_properties = active_subs_result.scalars().all()
+        with_plans = len(active_properties)
+        no_plans = total_properties - with_plans
+
+        # 6️⃣ Build profile URL (e.g., CloudFront or local path)
         profile_url = get_image(
-            f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"
+            f"/user/{user.user_id}/profile_photo/profile_photo.png?{get_current_time()}"
         )
 
+        # 7️⃣ Build response
         response = {
             "full_name": f"{data.first_name} {data.last_name}",
             "user_name": data.user_name,
@@ -324,20 +342,26 @@ async def get_personal_details(
             "location": f"{data.city}, {data.state}",
             "member_from": data.created_at.isoformat(),
             "total_properties": total_properties,
-            "with_plans": 20,
-            "no_plans": 180,
+            "with_plans": with_plans,
+            "no_plans": no_plans,
             "profile_photo_url": profile_url,
         }
 
+        # 8️⃣ Cache result for faster subsequent access
         await redis_set_data(cache_key, response)
+
         return response
+
     except HTTPException as e:
-        raise e 
-    except JWTError as e:
-        raise HTTPException(status_code=401,detail="Token Expired")
+        raise e
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired")
+
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500,detail=str(e))
+        print(f"❌ Error in get_personal_details: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
 
 @auth.get('/get-subscription-details')
 async def get_subscription_details(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
