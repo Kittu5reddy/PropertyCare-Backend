@@ -1,16 +1,17 @@
-from .utils import PropertyDetails
+from .utils import PropertyDetails,get_image_or_default
 from fastapi import APIRouter,Depends,HTTPException,status
 from app.core.models import AsyncSession,get_db
 from app.core.controllers.auth.main import oauth2_scheme
 from app.core.controllers.auth.utils import get_current_user
 from sqlalchemy import select
 from app.user.controllers.properties.utils import check_property_access
-from app.user.controllers.forms.utils import get_image
+
 from app.user.validators.transactionsuboffline import TransactionSubOffline as TransactionSubOfflineSchema
 from app.core.models.subscriptions_transaction_offline import TransactionSubOffline
 from app.core.models.subscriptions_plans import SubscriptionPlans
+from app.core.models.subscriptions import Subscriptions,SubscriptionHistory
 from app.user.models.users import User
-subscriptions=APIRouter(prefix='/subscriptions',tags=['subscriptions'])
+subscriptions=APIRouter(prefix='/subscription',tags=['subscriptions'])
 from datetime import datetime
 import uuid 
 from jose import JWTError
@@ -36,9 +37,9 @@ async def get_subscriptions(
             select(SubscriptionPlans).where(SubscriptionPlans.category == category.upper())
         )
         subscriptions_list = result.scalars().all()
-
         # ✅ If no data found
         if not subscriptions_list:
+            print(subscriptions_list)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No subscription plans found for category '{category}'"
@@ -54,11 +55,11 @@ async def get_subscriptions(
     except HTTPException:
         raise
     except Exception as e:
+        print(str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching subscriptions: {str(e)}"
         )
-
 
 @subscriptions.get("/get-properties")
 async def get_properties(
@@ -66,30 +67,38 @@ async def get_properties(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
-    """Fetch properties of a specific category for the logged-in user."""
-
+    """
+    ✅ Fetch properties of a specific category for the logged-in user.
+    Example: /get-properties?category=flats
+    """
     try:
+        # 1️⃣ Authenticate user
         user = await get_current_user(token, db)
-        # Query all matching properties
-        from sqlalchemy import select, and_
 
+        # 2️⃣ Validate category input
+        if not category:
+            raise HTTPException(status_code=400, detail="Category is required")
+
+        # 3️⃣ Fetch properties matching category + user
         result = await db.execute(
             select(PropertyDetails).where(
-                and_(
-                    PropertyDetails.type == category.lower(),
-                    PropertyDetails.user_id == user.user_id
-                )
+                PropertyDetails.type.ilike(category),  # case-insensitive match
+                PropertyDetails.user_id == user.user_id
             )
         )
         properties = result.scalars().all()
+
+        # 4️⃣ Handle empty results
         if not properties:
             raise HTTPException(
                 status_code=404,
                 detail=f"No properties found for category '{category}'."
             )
 
-        return {
+        # 5️⃣ Format response
+        response = {
             "user_id": user.user_id,
+            "category": category,
             "count": len(properties),
             "properties": [
                 {
@@ -98,22 +107,24 @@ async def get_properties(
                     "type": p.type,
                     "city": p.city,
                     "state": p.state,
-                    "property_image_url":get_image(f'/property/{ p.property_id}/legal_documents/property_photo.png')
+                    "property_image_url": get_image_or_default(
+                        f"/property/{p.property_id}/legal_documents/property_photo.png"
+                    ),
                 }
                 for p in properties
             ],
         }
 
+        return response
+
     except HTTPException as e:
         raise e
-    except JWTError as e:
-        raise HTTPException(status_code=401,detail=f"Token Expired")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
     except Exception as e:
-        print(f"Upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload reference photo: {str(e)}")
+        print(f"❌ Error in get_properties: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch properties: {str(e)}")
 
-
-    
 
 
 
@@ -154,7 +165,7 @@ async def add_offline_subscriptions(
             raise HTTPException(status_code=404, detail="Subscription plan not found")
 
         # ✅ Verify amount matches the chosen duration
-        if sub.durations.get(str(payload.duration)) < str(int(payload.cost)):
+        if sub.durations.get(payload.duration) < int(payload.cost):
             raise HTTPException(status_code=400, detail="Amount is insufficient for selected duration")
 
         # 4️⃣ Prevent duplicate payment references
@@ -496,3 +507,103 @@ async def get_eligible_rental_percentage(
             status_code=500,
             detail=f"Failed to check eligibility: {str(e)}"
         )
+
+
+@subscriptions.get("/get-all-sub-transactions")
+async def get_active_sub(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    ✅ Fetch all active property subscriptions for the current user
+    """
+    try:
+        # 1️⃣ Authenticate user
+        user = await get_current_user(token, db)
+        total_transactions=await db.execute(select(TransactionSubOffline).where(TransactionSubOffline.user_id==user.user_id))
+        total_transactions=total_transactions.all()
+        print(total_transactions)
+        return {"total_transactions":total_transactions}
+    except HTTPException as e:
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
+    except Exception as e:
+        print(f"❌ Error in get_active_sub: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch active subscriptions: {str(e)}")
+
+
+
+from datetime import datetime
+from sqlalchemy import select, desc
+
+@subscriptions.get("/get-current-property-sub/{property_id}")
+async def get_current_property_sub(
+    property_id: str,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    ✅ Fetch the latest subscription (end date, status, and remaining days)
+    for a specific property owned by the logged-in user.
+    """
+    try:
+        # 1️⃣ Authenticate user
+        user = await get_current_user(token, db)
+
+        # 2️⃣ Validate property ownership
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+        )
+        property_obj = result.scalar_one_or_none()
+
+        if not property_obj:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        if property_obj.user_id != user.user_id:
+            raise HTTPException(status_code=403, detail="You are not the owner of this property")
+
+        # 3️⃣ Fetch latest subscription record for this property
+        sub_result = await db.execute(
+            select(Subscriptions)
+            .where(Subscriptions.property_id == property_id)
+            .order_by(desc(Subscriptions.sub_end_date))
+        )
+
+        sub = sub_result.scalar_one_or_none()
+
+        if not sub:
+            return {
+                "status": "no_subscription",
+                "message": "No subscription records found for this property."
+            }
+
+        # 4️⃣ Calculate remaining days
+        now = datetime.utcnow()
+        remaining_days = None
+        if sub.sub_end_date:
+            remaining_days = (sub.sub_end_date - now).days
+
+        # 5️⃣ Build response
+        response = {
+            "property_id": property_id,
+            "subscription_id": sub.usub_id,
+            "sub_id": sub.sub_id,
+            "is_active": sub.is_active,
+            "start_date": sub.sub_start_date.isoformat(),
+            "end_date": sub.sub_end_date.isoformat(),
+            "method": sub.method,
+            "comments": sub.comments,
+            "remaining_days": remaining_days if remaining_days >= 0 else 0,
+            "status": "active" if sub.is_active and remaining_days > 0 else "expired",
+        }
+
+        return response
+
+    except HTTPException as e:
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
+    except Exception as e:
+        print(f"❌ Error in get_current_property_sub: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch subscription: {str(e)}")

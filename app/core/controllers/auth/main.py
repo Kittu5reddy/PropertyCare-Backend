@@ -414,7 +414,7 @@ async def get_subscription_details(
                         "property_name": p.property_name,
                         "property_id": p.property_id,
                         "location": f"{p.city}, {p.state}",
-                        "property_type": p.type,
+                        "property_type": p.type.upper(),
                         "created_at": p.created_at.isoformat()
                     }
                     for p in inactive_properties
