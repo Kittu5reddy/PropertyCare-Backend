@@ -208,13 +208,6 @@ async def logout(
 #        GET ROUTES
 #=========================
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import HTMLResponse
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from jose import JWTError
-
-auth = APIRouter()
 
 @auth.get("/verify-email", response_class=HTMLResponse)
 async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
