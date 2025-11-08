@@ -623,7 +623,7 @@ async def get_property_list(
             "type": row[3],
             "size": str(row[4]),
             'status':"active",
-            'subscription':str(date.today()),
+            'subscription':"no sub",
             "image_url":  get_image(f"/property/{row[0]}/legal_documents/property_photo.png") if photos else settings.DEFAULT_IMG_URL
         })
 

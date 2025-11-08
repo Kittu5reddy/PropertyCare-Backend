@@ -618,3 +618,118 @@ async def get_current_property_sub(
     except Exception as e:
         print(f"❌ Error in get_current_property_sub: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch subscription: {str(e)}")
+
+
+@subscriptions.get('/get-current-property-subscription/{property_id}')
+async def get_current_property_subscription(
+    property_id: str,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # 1️⃣ Validate and get user
+        user = await get_current_user(token, db)
+
+        # 2️⃣ Fetch user's active subscription for this property
+        result = await db.execute(
+            select(Subscriptions)
+            .where(
+                Subscriptions.property_id == property_id,
+                Subscriptions.user_id == user.user_id,
+                Subscriptions.is_active == True
+            )
+        )
+        data = result.scalar_one_or_none()
+
+        # 3️⃣ If no active subscription found
+        if not data:
+            return {
+                "is_active": False,
+                "sub_name": None,
+                "ends_on": None,
+                "features": []
+            }
+
+        # 4️⃣ Fetch subscription plan details
+        sub_result = await db.execute(
+            select(SubscriptionPlans).where(SubscriptionPlans.sub_id == data.sub_id)
+        )
+        sub = sub_result.scalar_one_or_none()
+
+        if not sub:
+            raise HTTPException(status_code=404, detail="Subscription plan not found")
+
+        # 5️⃣ Return subscription info
+        return {
+            "is_active": True,
+            "sub_name": sub.sub_type,
+            "ends_on": data.sub_end_date,
+            "features": sub.services
+        }
+
+    except HTTPException as e:
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Error fetching subscription details: {str(e)}")
+
+
+
+@subscriptions.get('/get-current-property-subscription-history/{property_id}')
+async def get_current_property_subscription_history(
+    property_id: str,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # 1️⃣ Validate and get user
+        user = await get_current_user(token, db)
+
+        # 2️⃣ Fetch all subscription records (past + present)
+        result = await db.execute(
+            select(Subscriptions)
+            .where(
+                Subscriptions.property_id == property_id,
+                Subscriptions.user_id == user.user_id
+            )
+            .order_by(Subscriptions.sub_start_date.desc())
+        )
+        subscriptions = result.scalars().all()
+
+        # 3️⃣ If no history found
+        if not subscriptions:
+            return {"message": "No subscription history found", "history": []}
+
+        # 4️⃣ Build a detailed response
+        history = []
+        for sub_record in subscriptions:
+            # Fetch corresponding plan details
+            plan_result = await db.execute(
+                select(SubscriptionPlans).where(SubscriptionPlans.sub_id == sub_record.sub_id)
+            )
+            plan = plan_result.scalar_one_or_none()
+
+            history.append({
+                "sub_name": plan.sub_type if plan else None,
+                "is_active": sub_record.is_active,
+                "started_on": sub_record.sub_start_date,
+                "ended_on": sub_record.sub_end_date
+            })
+
+        # 5️⃣ Return complete history
+        return {
+            "property_id": property_id,
+            "user_id": user.user_id,
+            "total_subscriptions": len(history),
+            "history": history
+        }
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Error fetching subscription history: {str(e)}")

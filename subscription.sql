@@ -210,3 +210,5 @@ VALUES (
         'admin_001',
         TRUE
     );
+
+python - m celery - A background_task.celery_app.celery_app worker --loglevel=info
