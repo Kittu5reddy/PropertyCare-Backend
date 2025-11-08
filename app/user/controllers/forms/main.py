@@ -64,7 +64,7 @@ async def submit(
         await db.refresh(current_user)
 
         # ✅ Create required actions for missing documents
-        if not data["documents"].get('aadhaar_document') and data.get('nri',False):
+        if not data["documents"].get('aadhaar_document') and not data.get('nri',False):
             information=None
             aadhar_record = RequiredAction(user_id=user.user_id, category="User",file_name="aadhaar")
             print("Aadhaar document required — action created.")
