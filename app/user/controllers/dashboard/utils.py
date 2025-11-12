@@ -1,44 +1,56 @@
 from sqlalchemy import select
 from app.core.models.property_details import PropertyDetails
 from app.core.models import get_db,AsyncSession
-from fastapi import Depends
+from fastapi import Depends,HTTPException
 from app.user.controllers.forms.utils import list_s3_objects,get_image,check_object_exists
 from datetime import date
 from config import settings
+from jose import JWTError
 async def get_property_details(
     user_id: str,
     db: AsyncSession,
     limit: int = 3
 ) -> list[dict]:
-    query = (
-        select(
-            PropertyDetails.property_id,
-            PropertyDetails.property_name,
-            PropertyDetails.size,
-            PropertyDetails.type,
-            PropertyDetails.city,
-
+    row=None
+    try:
+        query = (
+            select(
+                PropertyDetails.property_id,
+                PropertyDetails.property_name,
+                PropertyDetails.size,
+                PropertyDetails.type,
+                PropertyDetails.city,
+                PropertyDetails.scale,
+                PropertyDetails.active_sub
+            )
+            .where(PropertyDetails.user_id == user_id)
+            .limit(limit)  # limit on properties
         )
-        .where(PropertyDetails.user_id == user_id)
-        .limit(limit)  # limit on properties
-    )
-    result = await db.execute(query)
-    rows = result.all()
+        result = await db.execute(query)
+        rows = result.all()
+        print(row)
+        data = []
+        for row in rows:
+            photos = await check_object_exists(f"property/{row.property_id}/legal_documents/property_photo.png")
+            data.append({
+                "property_id": row.property_id,
+                "location":row.city,
+                "name": row.property_name,
+                "size": f"{int(row.size)} {row.scale}",
+                "type": row.type,
+                "subscription":row.active_sub ,
+                "image_url": get_image(f"/property/{row.property_id}/legal_documents/property_photo.png") if photos else settings.DEFAULT_IMG_URL
+            })
+        return data
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
-    data = []
-    for row in rows:
-        photos = await check_object_exists(f"property/{row.property_id}/legal_documents/property_photo.png")
-        data.append({
-            "property_id": row.property_id,
-            "location":row.city,
-            "name": row.property_name,
-            "size": row.size,
-            "type": row.type,
-             "subscription":str(date.today()) ,
-            "status": 'active',
-            "image_url": get_image(f"/property/{row.property_id}/legal_documents/property_photo.png") if photos else settings.DEFAULT_IMG_URL
-        })
-    return data
+
 
 
 

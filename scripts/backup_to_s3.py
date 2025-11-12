@@ -112,3 +112,4 @@ end_time = datetime.now()
 duration = (end_time - start_time).seconds
 logging.info(f"🎉 Backup and S3 upload completed successfully at {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
 logging.info(f"⏱️ Duration: {duration} seconds")
+# python -m celery -A background_task.celery_app.celery_app worker --loglevel=info

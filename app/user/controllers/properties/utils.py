@@ -38,8 +38,6 @@ async def is_property_details_changable(property_id: str, user_id: str, db: Asyn
         raise HTTPException(status_code=500, detail="Failed to check property status")
         # Option 2: (alternative) return False if you don’t want to break the flow
         # return False
-def generate_property_id(id:int):
-    return f'PC{datetime.utcnow().year}P{str(id).zfill(3)}'
 
 def generate_document_id(id:int):
     return f'PC{datetime.utcnow().year}D{str(id).zfill(3)}'

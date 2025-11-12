@@ -164,7 +164,7 @@ async def add_offline_subscriptions(
         if not sub:
             
             raise HTTPException(status_code=404, detail="Subscription plan not found")
-        print(sub)
+        # print(sub)
         # ✅ Verify amount matches the chosen duration
 # Safely extract the required price from the plan's durations dict
         plan_price = int(sub.durations.get(str(payload.duration), 0))
@@ -242,33 +242,35 @@ async def add_offline_subscriptions(
 
 
 
-
 @subscriptions.get("/get-all-subscriptions-users")
 async def get_all_subscriptions_users(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    👥 Fetch all users with subscription transactions (Admin only)
-    Includes property details and subscription plan info.
+    👥 Fetch all users with active subscription transactions (Admin only)
+    Includes user, property, and plan details.
     """
     try:
         # 1️⃣ Authenticate Admin
         user = await get_current_user(token, db)
-        if not user:
-            raise HTTPException(status_code=401, detail="unauthorized")
+        if not user or user.role.lower() != "admin":
+            raise HTTPException(status_code=401, detail="Unauthorized access")
 
-        # 2️⃣ Query all offline transactions with user + subscription details
+        # 2️⃣ Query: fetch all offline subscription transactions + related data
         query = (
             select(
                 TransactionSubOffline,
                 User,
                 PropertyDetails,
-                SubscriptionPlans
+                SubscriptionPlans,
+                Subscriptions
             )
             .join(User, User.user_id == TransactionSubOffline.user_id)
             .join(PropertyDetails, PropertyDetails.property_id == TransactionSubOffline.property_id)
             .join(SubscriptionPlans, SubscriptionPlans.sub_id == TransactionSubOffline.sub_id)
+            .join(Subscriptions, Subscriptions.sub_id == TransactionSubOffline.sub_id)
+            .where(Subscriptions.is_active == True)
             .order_by(TransactionSubOffline.created_at.desc())
         )
 
@@ -280,7 +282,7 @@ async def get_all_subscriptions_users(
 
         # 3️⃣ Format response
         response_data = []
-        for t, user, prop, sub in records:
+        for t, user, prop, sub, subscription in records:
             response_data.append({
                 "transaction_id": t.transaction_id,
                 "user_name": getattr(user, "name", None),
@@ -294,6 +296,7 @@ async def get_all_subscriptions_users(
                 "payment_number": t.payment_transaction_number,
                 "amount": float(t.cost),
                 "status": t.status,
+                "is_active": subscription.is_active,
                 "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S")
             })
 
@@ -303,14 +306,15 @@ async def get_all_subscriptions_users(
             "subscriptions": response_data
         }
 
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        raise e
     except Exception as e:
         print(f"❌ Error fetching subscribed users: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to fetch subscribed users: {str(e)}"
         )
+
 from datetime import datetime
 
 @subscriptions.get('/get-property-subscriptions/{property_id}')
@@ -733,3 +737,72 @@ async def get_current_property_subscription_history(
     except Exception as e:
         print(str(e))
         raise HTTPException(status_code=500, detail=f"Error fetching subscription history: {str(e)}")
+
+
+@subscriptions.get("/get-all-transactions")
+async def get_all_transactions(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    💰 Fetch all transactions (Admin only)
+    Includes user, property, and subscription plan details for both online & offline payments.
+    """
+    try:
+        # 1️⃣ Authenticate Admin
+        user = await get_current_user(token, db)
+        if not user or user.role.lower() != "admin":
+            raise HTTPException(status_code=401, detail="Unauthorized access")
+
+        # 2️⃣ Query transactions (both online and offline, if applicable)
+        query = (
+            select(
+                TransactionSubOffline,
+                User,
+                PropertyDetails,
+                SubscriptionPlans
+            )
+            .join(User, User.user_id == TransactionSubOffline.user_id)
+            .join(PropertyDetails, PropertyDetails.property_id == TransactionSubOffline.property_id)
+            .join(SubscriptionPlans, SubscriptionPlans.sub_id == TransactionSubOffline.sub_id)
+            .order_by(TransactionSubOffline.created_at.desc())
+        )
+
+        result = await db.execute(query)
+        records = result.all()
+
+        if not records:
+            return {"message": "No transactions found."}
+
+        # 3️⃣ Format the response
+        response_data = []
+        for t, user, prop, sub in records:
+            response_data.append({
+                "transaction_id": t.transaction_id,
+                # "user_name": getattr(user, "name", None),
+                # "user_email": user.email,
+                "property_id": prop.property_id,
+                # "property_name": prop.property_name,
+                "subscription_type": sub.sub_type,
+                "category": sub.category,
+                "amount": float(t.cost),
+                "payment_method": t.payment_method,
+                "payment_number": t.payment_transaction_number,
+                "status": t.status,
+                "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            })
+
+        # 4️⃣ Return the final formatted response
+        return {
+            "count": len(response_data),
+            "transactions": response_data
+        }
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(f"❌ Error fetching all transactions: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch transactions: {str(e)}"
+        )

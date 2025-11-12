@@ -173,7 +173,7 @@ async def get_property_data(
         if cache_data:
             print('hit')
             return cache_data
-        data = await get_property_details(user.user_id, db,5)
+        data = await get_property_details(user.user_id, db,3)
         # print(data)
         data={"data":data}
         await redis_set_data(cache_key,data)
@@ -200,7 +200,7 @@ async def get_property_data(
         if cache_data:
             print('hit')
             return cache_data
-        data = await get_property_details(user.user_id, db,5)
+        data = await get_property_details(user.user_id, db,3)
         # print(data)
         data={"data":data}
         await redis_set_data(cache_key,data)

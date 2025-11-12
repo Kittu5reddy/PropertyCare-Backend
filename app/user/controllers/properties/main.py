@@ -8,7 +8,7 @@ from app.user.models.users import User
 from app.core.models import get_redis,redis,redis_get_data,redis_set_data,redis_delete_data,redis_delete_data,redis_delete_pattern
 import json
 from app.core.models.property_documents import PropertyDocuments
-from .utils import generate_property_id,is_property_details_changable
+from .utils import is_property_details_changable
 from sqlalchemy import select,func,and_
 from app.core.models.property_details import PropertyDetails
 from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,property_delete_document,invalidate_files,property_delete_single_document
@@ -19,6 +19,7 @@ from datetime import datetime,date
 from botocore.exceptions import ClientError
 from sqlalchemy.exc import SQLAlchemyError
 from app.user.controllers.forms.utils import generate_presigned_url
+from app.core.controllers.auth.utils import generate_property_id
 prop=APIRouter(prefix='/property',tags=['user property'])
 
 
@@ -145,9 +146,10 @@ async def user_add_property(
         user: User = await get_current_user(token, db)
 
         # Generate property_id
+
         result = await db.execute(select(func.max(PropertyDetails.id)))
         last_id = result.scalar_one_or_none() or 0
-        next_id = last_id + 1
+        next_id = last_id + 1 + int(settings.PROPERTY_STARTING_NUMBER)
         property_id = generate_property_id(next_id)
 
         # Create records
@@ -610,7 +612,7 @@ async def get_property_list(
             PropertyDetails.city,
             PropertyDetails.type,
             PropertyDetails.size
-        ).where(PropertyDetails.user_id == user_id)
+        ).where(PropertyDetails.user_id == user.user_id)
     )
     rows = result.all()  # list of tuples
     properties = []
@@ -635,23 +637,17 @@ async def get_property_list(
 async def get_property_info(
     property_id: str,
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
-    redis_client: redis.Redis = Depends(get_redis)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        # Get current user
         user = await get_current_user(token, db)
 
-        # Check cache
         cache_key = f"property:{property_id}:info"
         cached_data = await redis_get_data(cache_key)
-        if cached_data:
-            if cached_data.get("user_id") == user.user_id:
-                return cached_data
-            else:
-                raise HTTPException(status_code=403, detail="You do not have access to this property")
+        if cached_data and cached_data.get("user_id") == user.user_id:
+            return cached_data
 
-        # Fetch property from DB
+        # Fetch the property from DB
         result = await db.execute(
             select(PropertyDetails).where(PropertyDetails.property_id == property_id).limit(1)
         )
@@ -659,24 +655,34 @@ async def get_property_info(
         if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
         if property_obj.user_id != user.user_id:
-            raise HTTPException(status_code=403, detail="You do not have access to this property")
+            raise HTTPException(status_code=403, detail="Access denied for this property")
 
-        # Convert property object to dict
-        data = {c.name: getattr(property_obj, c.name) for c in property_obj.__table__.columns}
-        # Convert datetime fields to ISO
-        for k, v in data.items():
-            if isinstance(v, datetime):
-                data[k] = v.isoformat()
+        # Convert to dict
+        full_data = {c.name: getattr(property_obj, c.name) for c in property_obj.__table__.columns}
 
-        # Property photos
-        try:
-            objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
-            data["property_photos"] = [get_image("/" + obj) for obj in objects]
-        except Exception as e:
-            print("S3 property photo error:", e)
-            data["property_photos"] = []
+        # ✅ Keep only desired fields
+        wanted_keys = [
+            "property_name",
+            "plot_number",
+            "project_name_or_venture",
+            "house_number",
+            "street",
+            "mandal",
+            "district",
+            "city",
+            "pin_code",
+            "type",
+            "sub_type",
+            "facing",
+            "size",
+            "scale",
+            "state",
+            "is_verified",
+        ]
 
-        # Legal photo
+        data = {k: full_data[k] for k in wanted_keys if k in full_data}
+
+        
         try:
             object_key = f"property/{property_id}/legal_documents/property_photo.png"
             is_exists = await check_object_exists(object_key)
@@ -685,33 +691,20 @@ async def get_property_info(
             print("S3 legal photo error:", e)
             data["property_photo"] = settings.DEFAULT_IMG_URL
 
-        # Monthly photos
-        try:
-            monthly_photos = await get_current_month_photos(property_id, token, db)
-            data["monthly_photos"] = monthly_photos.get("photos", [])
-        except Exception as e:
-            print("Monthly photos error:", e)
-            data["monthly_photos"] = []
 
-        # Cache response
-        await redis_set_data(cache_key, json.loads(json.dumps(data, default=str)))
+        data["size"] = f"{full_data.get('size', 0)}"
 
+        await redis_set_data(cache_key, data)
         return data
 
-    except HTTPException as http_exc:
-        raise http_exc
+    except HTTPException:
+        raise
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {e}")
-
-
-
-
-
-
 
 
 

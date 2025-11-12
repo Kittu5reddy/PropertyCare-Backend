@@ -85,7 +85,7 @@ async def signup(user: LoginSchema, background_tasks: BackgroundTasks, db: Async
     result = await db.execute(select(User).order_by(desc(User.id)).limit(1))
     last_user = result.scalar_one_or_none()
     next_id = last_user.id + 1 if last_user else 1
-    user_id = generate_user_id(next_id)
+    user_id = generate_user_id(next_id+int(settings.USERS_STARTING_NUMBER))
 
     new_user = User(user_id=user_id, email=user.email, hashed_password=hashed_password,
                     verification_token=token, is_verified=False)

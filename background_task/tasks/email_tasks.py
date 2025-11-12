@@ -1,3 +1,10 @@
+
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import smtplib
+import os
+from jinja2 import Environment, FileSystemLoader
+from config import settings
 from background_task.celery_app import celery_app
 # from background_task.t6.send_email import send_email, send_consultation_email, send_newsletter_email
 
@@ -41,13 +48,6 @@ def send_email_task(*args, **kwargs):
     except Exception as e:
         print(f"🚨 Error in send_email_task: {e}")
         raise e
-
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import smtplib
-import os
-from jinja2 import Environment, FileSystemLoader
-from config import settings
 
 # SMTP setup (GoDaddy)
 SMTP_SERVER = settings.SMTP_SERVER

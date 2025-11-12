@@ -124,6 +124,9 @@ class Settings(BaseSettings):
     # ==================================
     #          A W S
     # ==================================
+    #          A W S
+    # ==================================
+    # ==================================
     AWS_ACCESS_KEY_ID:str
     AWS_SECRET_ACCESS_KEY:str
     AWS_REGION:str
@@ -131,7 +134,9 @@ class Settings(BaseSettings):
     DISTRIBUTION_ID:str
     CLOUDFRONT_URL:str
 
-
+    ASSOCIATES_STARTING_NUMBER:str
+    USERS_STARTING_NUMBER:str
+    PROPERTY_STARTING_NUMBER:str
 
     # ==================================
     #         I M A G E S 
