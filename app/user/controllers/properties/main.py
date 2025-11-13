@@ -350,7 +350,7 @@ async def change_property_photo(
             "property_photo",         # category
             property_id               # property_id
         )
-        await invalidate_files(f'/property/{property_id}/legal_documents/property_photo.png')
+        await invalidate_files([f'/property/{property_id}/legal_documents/property_photo.png'])
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         cache_key = f"property:{property_id}:info"

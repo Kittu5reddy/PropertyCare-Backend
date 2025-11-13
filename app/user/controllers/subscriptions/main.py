@@ -457,34 +457,33 @@ async def get_eligible_rental_percentage(
             raise HTTPException(status_code=400, detail="Subscription is not applicable for this property")
 
         # 5️⃣ Logic based on property type
+        from decimal import Decimal
+
         if property_obj.type.upper() == "FLAT":
             if property_obj.rental_income and property_obj.rental_income > 15000:
+                
                 rental_percent = getattr(sub, "rental_percent", 0)
-
-                # Example: using 7% as rental percent if not in plan
+        
+                # Default to 7% if not defined
                 if not rental_percent:
                     rental_percent = 7
-
-                # Calculate estimated returns
+        
+                rental_income = Decimal(property_obj.rental_income)
+                percent = Decimal(rental_percent) / Decimal(100)
+        
                 durations = {
-                    "3": round(property_obj.rental_income * (rental_percent / 100) * 3, 2),
-                    "6": round(property_obj.rental_income * (rental_percent / 100) * 6, 2),
-                    "12": round(property_obj.rental_income * (rental_percent / 100) * 12, 2),
+                    "3": float(round(rental_income * percent * Decimal(3), 2)),
+                    "6": float(round(rental_income * percent * Decimal(6), 2)),
+                    "12": float(round(rental_income * percent * Decimal(12), 2)),
                 }
-
+        
                 return {
                     "status": "eligible",
-                    "extra_amount": rental_percent,
-                    "message":"your rates as been changed as per property",
+                    "extra_amount": float(rental_percent),
+                    "message": "your rates has been changed as per property",
                     "estimated_returns": durations
                 }
-            else:
-                return {
-                    "status": "not eligible",
-                    "extra_amount":1000,
-                    "message":False,
-                    "estimated_returns": sub.durations
-                    }
+
         
 
         elif property_obj.type.upper() == "PLOT":
@@ -518,6 +517,7 @@ async def get_eligible_rental_percentage(
     except HTTPException as e:
         raise e
     except Exception as e:
+        print(str(e))
         raise HTTPException(
             status_code=500,
             detail=f"Failed to check eligibility: {str(e)}"

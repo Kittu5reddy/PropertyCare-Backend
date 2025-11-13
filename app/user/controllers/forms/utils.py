@@ -33,23 +33,40 @@ CATEGORY_FOLDER_MAP = {
 session = aioboto3.Session()
 
 
-async def invalidate_files(paths: list[str]):
+async def invalidate_files(paths):
     try:
-        # Ensure all paths start with a leading '/'
+        # If a single string is passed, convert to single-item list
+        if isinstance(paths, str):
+            paths = [paths]
+
+        # If it's not a list, try to convert it to a list of strings safely
+        if not isinstance(paths, list):
+            paths = [str(paths)]
+
+        # Ensure all paths inside the list are strings
+        paths = [str(p) for p in paths]
+
+        # Ensure each path starts with '/'
         paths = [p if p.startswith('/') else f'/{p}' for p in paths]
 
         async with session.client("cloudfront") as client:
             response = await client.create_invalidation(
                 DistributionId=DISTRIBUTION_ID,
                 InvalidationBatch={
-                    "Paths": {"Quantity": len(paths), "Items": paths},
+                    "Paths": {
+                        "Quantity": len(paths),
+                        "Items": paths
+                    },
                     "CallerReference": str(datetime.now().timestamp()),
                 },
             )
+            print(response["Invalidation"])
             return response["Invalidation"]
+
     except Exception as e:
         print(str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
 
 async def create_user_directory(user_id: str) -> Dict[str, Dict[str, str]]:
     base_folder = f"user/{user_id}/"
@@ -183,6 +200,56 @@ PROPERTY_FOLDER_MAP = {
     "property_photo":"property_photo"
 }
 
+async def upload_feedback_image_as_png(
+    file: dict,
+    feedback_id: int,
+) -> dict:
+
+    # S3 folder structure for feedback
+    folder_name = "feedback"
+
+    # Create unique filename
+    # Example: feedback/45/user_10_feedback_45.png
+    object_key = f"feedbacks/{feedback_id}.png"
+    print("Uploading:", object_key)
+
+    # Convert to PNG
+    try:
+        image = Image.open(BytesIO(file["bytes"])).convert("RGB")
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        buffer.seek(0)
+    except UnidentifiedImageError:
+        return {"error": "Uploaded file is not a valid image."}
+    except Exception as e:
+        return {"error": f"Image conversion error: {str(e)}"}
+
+    # Upload to S3
+    async with session.client(
+        "s3",
+        aws_access_key_id=AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+        region_name=AWS_REGION
+    ) as s3:
+        try:
+            await s3.put_object(
+                Bucket=S3_BUCKET,
+                Key=object_key,
+                Body=buffer.read(),
+                ACL="private",
+                ContentType="image/png"
+            )
+
+            await invalidate_files([object_key])
+
+            return {
+                "success": True,
+                "file_path": object_key,
+                "content_type": "image/png"
+            }
+
+        except ClientError as e:
+            return {"error": str(e)}
 
 
 async def property_upload_image_as_png(file: dict, category: str, property_id: Union[str, int]) -> dict:

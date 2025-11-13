@@ -11,6 +11,7 @@ from app.admin.controllers.subscriptions.main import admin_subscriptions
 from app.user.controllers.properties.main import prop
 from app.user.controllers.services.main import services
 from app.core.controllers.emails.main import email
+from app.user.controllers.feedback.main import feedback
 from app.admin.controllers.dashboard.main import admin_dash
 from config import settings
 
@@ -39,6 +40,7 @@ def create_app():
     app.include_router(admin_subscriptions)
     app.include_router(form)
     app.include_router(prop)
+    app.include_router(feedback)
     app.include_router(email)
     app.include_router(surveillance)
     return app

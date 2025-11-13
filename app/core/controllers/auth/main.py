@@ -1,6 +1,6 @@
 from app.core.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,BASE_USER_URL,FORGOT_PASSWORD_TIME_LIMIT,get_is_pd_filled
 from app.core.controllers.auth.email import create_verification_token,send_verification_email,send_forgot_password_email
-from fastapi import APIRouter,Request,status
+from fastapi import APIRouter,Request
 from app.core.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
 from app.user.validators.auth import User as LoginSchema 
 from app.user.models.users import User,UserNameUpdate
@@ -12,7 +12,7 @@ from jose import JWTError,jwt
 from fastapi.responses import HTMLResponse
 from fastapi import Response
 from passlib.context import CryptContext
-from app.core.models import get_db,AsyncSession,redis_set_data,redis_get_data,redis_update_data,redis_delete_data,redis_client
+from app.core.models import get_db,AsyncSession,redis_set_data,redis_get_data,redis_delete_data,redis_client
 from fastapi import Depends,File,UploadFile
 from sqlalchemy import select, desc
 from fastapi import BackgroundTasks
@@ -41,7 +41,7 @@ from fastapi.responses import JSONResponse
 #=========================
 
 @auth.post("/login")
-async def login(user: LoginSchema, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+async def login(user: LoginSchema, db: AsyncSession = Depends(get_db)):
     db_user = await get_user_by_email(db, user.email)
     if not db_user or not pwd_context.verify(user.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -52,7 +52,7 @@ async def login(user: LoginSchema, background_tasks: BackgroundTasks, db: AsyncS
             await db.commit()
             await db.refresh(db_user)
         
-        background_tasks.add_task(send_verification_email, db_user.email, db_user.verification_token)
+        send_verification_email(email=db_user.email,token=db_user.verification_token)
         
         raise HTTPException(status_code=403, detail="Email not verified. A new verification email has been sent.")
 
@@ -446,7 +446,7 @@ async def get_personal_details(
 
         # 6️⃣ Build profile URL (e.g., CloudFront or local path)
         profile_url = get_image(
-            f"/user/{user.user_id}/profile_photo/profile_photo.png?{get_current_time()}"
+            f"/user/{user.user_id}/profile_photo/profile_photo.png"
         )
 
         # 7️⃣ Build response

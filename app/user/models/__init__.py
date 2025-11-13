@@ -10,4 +10,5 @@ from app.core.models.subscriptions_plans import SubscriptionPlans,SubscriptionPl
 from app.core.models.subscriptions_transaction_offline import TransactionSubOffline
 from app.core.models.subscriptions import Subscriptions,SubscriptionHistory
 from app.core.models.associates import Associates
+from app.user.models.feedbacks import FeedBack
 # from app.core.models
