@@ -693,7 +693,11 @@ async def get_property_info(
 
         try:
             data["property_photos"] =await  list_s3_objects(prefix=f"property/{property_id}/property_photos/")
-            data["property_photos"]=await list(map(generate_presigned_url,data["property_photos"]))
+            images=[]
+            for i in data["property_photos"]:
+                images.append(await generate_presigned_url(i))
+            data["property_photos"] =images
+            
         except Exception as e:
             print("S3 legal photo error:", e)
             data["property_photo"] = settings.DEFAULT_IMG_URL
