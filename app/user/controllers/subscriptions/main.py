@@ -1,13 +1,13 @@
-from .utils import PropertyDetails,get_image_or_default
+from .utils import get_image_or_default
 from fastapi import APIRouter,Depends,HTTPException,status
 from app.core.models import AsyncSession,get_db
 from app.core.controllers.auth.main import oauth2_scheme
 from app.core.controllers.auth.utils import get_current_user
 from sqlalchemy import select
 from app.user.controllers.properties.utils import check_property_access
-
+from app.core.models.property_details import PropertyDetails
 from app.user.validators.transactionsuboffline import TransactionSubOffline as TransactionSubOfflineSchema
-from app.core.models.subscriptions_transaction_offline import TransactionSubOffline
+from app.core.models.subscriptions_transactions import TransactionSubOffline
 from app.core.models.subscriptions_plans import SubscriptionPlans
 from app.core.models.subscriptions import Subscriptions,SubscriptionHistory
 from app.user.models.users import User
@@ -550,7 +550,7 @@ async def get_active_sub(
 
 
 from datetime import datetime
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, asc
 
 @subscriptions.get("/get-current-property-sub/{property_id}")
 async def get_current_property_sub(
@@ -558,70 +558,78 @@ async def get_current_property_sub(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    ✅ Fetch the latest subscription (end date, status, and remaining days)
-    for a specific property owned by the logged-in user.
-    """
     try:
         # 1️⃣ Authenticate user
         user = await get_current_user(token, db)
 
         # 2️⃣ Validate property ownership
         result = await db.execute(
-            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+            select(PropertyDetails).where(
+                PropertyDetails.property_id == property_id,
+                PropertyDetails.user_id == user.user_id
+            )
         )
         property_obj = result.scalar_one_or_none()
 
         if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
 
-        if property_obj.user_id != user.user_id:
-            raise HTTPException(status_code=403, detail="You are not the owner of this property")
-
-        # 3️⃣ Fetch latest subscription record for this property
-        sub_result = await db.execute(
+        # 3️⃣ Fetch LATEST subscription (renewals, highest end date)
+        renewed_result = await db.execute(
             select(Subscriptions)
-            .where(Subscriptions.property_id == property_id)
+            .where(Subscriptions.property_id == property_id,Subscriptions.is_active==True)
             .order_by(desc(Subscriptions.sub_end_date))
         )
+        renewed = renewed_result.scalars().first()   # pick ONLY FIRST
 
-        sub = sub_result.scalar_one_or_none()
+        # 4️⃣ Fetch OLDEST ACTIVE subscription (starts earlier, still active)
+        older_result = await db.execute(
+            select(Subscriptions)
+            .where(
+                Subscriptions.property_id == property_id,
+                Subscriptions.is_active == True
+            )
+            .order_by(asc(Subscriptions.sub_start_date))
+        )
+        older = older_result.scalars().first()
 
-        if not sub:
+        # If no subscription exists
+        if not renewed:
             return {
                 "status": "no_subscription",
                 "message": "No subscription records found for this property."
             }
 
-        # 4️⃣ Calculate remaining days
-        now = datetime.utcnow()
-        remaining_days = None
-        if sub.sub_end_date:
-            remaining_days = (sub.sub_end_date - now).days
+        # 5️⃣ Remaining days (from latest subscription)
+        now = datetime.utcnow().date()
 
-        # 5️⃣ Build response
+        end_date = renewed.sub_end_date
+        remaining_days = (end_date - now).days if end_date else 0
+        if remaining_days < 0:
+            remaining_days = 0
+
+        # 6️⃣ Build response
         response = {
-            "property_id": property_id,
-            "subscription_id": sub.usub_id,
-            "sub_id": sub.sub_id,
-            "is_active": sub.is_active,
-            "start_date": sub.sub_start_date.isoformat(),
-            "end_date": sub.sub_end_date.isoformat(),
-            "method": sub.method,
-            "comments": sub.comments,
-            "remaining_days": remaining_days if remaining_days >= 0 else 0,
-            "status": "active" if sub.is_active and remaining_days > 0 else "expired",
+            "sub_name": renewed.sub_name,
+            "start_date": older.sub_start_date.isoformat() if older else None,
+            "end_date": renewed.sub_end_date.isoformat(),
+            "services": renewed.services,
+            "payment_method": renewed.method,
+            "duration": renewed.duration,
+            "remaining_days": remaining_days,
+            "status": "active" if renewed.is_active and remaining_days > 0 else "expired",
+            "invoice": "https://your-s3-link.com/invoice.pdf"   # replace with actual
         }
 
         return response
 
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except JWTError:
         raise HTTPException(status_code=401, detail="Token expired or invalid")
     except Exception as e:
         print(f"❌ Error in get_current_property_sub: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch subscription: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch subscription")
 
 
 @subscriptions.get('/get-current-property-subscription/{property_id}')
@@ -640,7 +648,6 @@ async def get_current_property_subscription(
             .where(
                 Subscriptions.property_id == property_id,
                 Subscriptions.user_id == user.user_id,
-                Subscriptions.is_active == True
             )
         )
         data = result.scalar_one_or_none()

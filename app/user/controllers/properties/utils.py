@@ -3,6 +3,7 @@ from app.core.models import get_db,AsyncSession
 from app.core.models.property_details import PropertyDetails
 from sqlalchemy import select
 from fastapi import HTTPException
+from sqlalchemy.exc import SQLAlchemyError
 
 
 def check_property_access(property_obj, user_id: str):
@@ -11,6 +12,39 @@ def check_property_access(property_obj, user_id: str):
     """
     if property_obj.user_id != user_id:
         raise HTTPException(status_code=403, detail="You do not have access to this property")
+    
+
+
+
+async def is_user_authenticated_for_property(property_id: str, user_id: str, db: AsyncSession):
+    try:
+        # Fetch property
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+        )
+        property_obj = result.scalar_one_or_none()
+
+        # Property does not exist
+        if not property_obj:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        # Property exists, but belongs to another user
+        if property_obj.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this property")
+
+        return property_obj
+
+    except HTTPException:
+        raise  # Let FastAPI handle HTTP errors
+
+    except SQLAlchemyError as e:
+        print("Database error:", e)
+        raise HTTPException(status_code=500, detail="Database error while checking property authentication")
+
+    except Exception as e:
+        print("Unexpected error:", e)
+        raise HTTPException(status_code=500, detail="Failed to authenticate property access")
+
 
 
 async def is_property_details_changable(property_id: str, user_id: str, db: AsyncSession) -> bool:
@@ -42,3 +76,30 @@ async def is_property_details_changable(property_id: str, user_id: str, db: Asyn
 def generate_document_id(id:int):
     return f'PC{datetime.utcnow().year}D{str(id).zfill(3)}'
 
+
+
+async def get_current_property(property_id: str, user_id: str, db: AsyncSession):
+    try:
+        result = await db.execute(
+            select(PropertyDetails).where(
+                PropertyDetails.property_id == property_id,
+                PropertyDetails.user_id == user_id
+            )
+        )
+
+        property_obj = result.scalar_one_or_none()
+
+        if not property_obj:
+            raise HTTPException(
+                status_code=404,
+                detail="Property not found for this user"
+            )
+
+        return property_obj
+
+    except Exception as e:
+        print("Database Error:", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal database error while fetching property"
+        )

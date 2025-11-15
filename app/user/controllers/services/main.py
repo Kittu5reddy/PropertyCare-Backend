@@ -4,48 +4,50 @@ from sqlalchemy import select
 from jose import JWTError
 from app.core.models.property_details import PropertyDetails
 from app.core.controllers.auth.main import oauth2_scheme,get_current_user
-from app.core.models import redis_get_data, redis_set_data ,get_db,AsyncSession # adjust import
+from app.core.models import redis_get_data, redis_set_data ,get_db,AsyncSession 
 from app.core.models.services import Services
 
 services = APIRouter(prefix='/services',tags=['services'])
-
 @services.get('/get-services-list')
 async def get_services_list(db: AsyncSession = Depends(get_db)):
     try:
         cache_key = "services:list"
 
+        # 1️⃣ Return from cache if available
         cached_data = await redis_get_data(cache_key)
         if cached_data:
             return cached_data
 
+        # 2️⃣ Fetch only required fields (faster)
+        stmt = select(
+            Services.service_id,
+            Services.service_name,
+            Services.category,
+            Services.services,
+            Services.starting_price,
+            Services.short_comments,
+            Services.is_active
+        ).where(Services.is_active == True)
 
-        result = await db.execute(
-            select(Services).where(Services.is_active == True)
-        )
-        services_list = result.scalars().all() 
+        result = await db.execute(stmt)
+        rows = result.mappings().all()   # returns dict-like rows
 
-        from datetime import datetime
+        # Convert rows to list of dicts
+        data = [
+            {
+                "service_id": row["service_id"],
+                "service_name": row["service_name"],
+                "service_category": row["category"],
+                "services": row["services"],
+                "starting_price": row["starting_price"],
+                "short_comments": row["short_comments"],
+                "is_active": row["is_active"],
+                "image_url":"s3"
+            }
+            for row in rows
+        ]
 
-        data = []
-        for service in services_list:
-            data.append({
-        "id": service.id,
-        "service_id": service.service_id,
-        "service_name": service.service_name,
-        "services": service.services,
-        "is_active": service.is_active,
-        "approx_cost_usd": service.approx_cost_usd,
-        "approx_cost_inr": service.approx_cost_inr,
-        "durations": service.durations,
-        "applicable_to": service.applicable_to,
-        "comments": service.comments,
-        "created_by": service.created_by,
-        "created_at": service.created_at.isoformat() if service.created_at else None,
-        "updated_at": service.updated_at.isoformat() if service.updated_at else None,
-        })
-
-
-
+        # 3️⃣ Save to Redis
         await redis_set_data(cache_key, data)
 
         return data
@@ -56,8 +58,6 @@ async def get_services_list(db: AsyncSession = Depends(get_db)):
         print("Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-
-
 @services.get("/get-suitable-services-property/{category}")
 async def get_suitable_services_property(
     category: str,
@@ -65,34 +65,55 @@ async def get_suitable_services_property(
     db: AsyncSession = Depends(get_db)
 ):
     try:
+        # Normalize category (for CASE-INSENSITIVE matching)
+        category = category.upper()
+
+        # Validate input
+        valid_categories = {"FLAT", "PLOT"}
+        if category not in valid_categories:
+            raise HTTPException(status_code=400, detail="Invalid category. Use FLAT or PLOT")
+
+        # Get authenticated user
         user = await get_current_user(token, db)
 
-        result = await db.execute(
-            select(PropertyDetails.property_id, PropertyDetails.property_name).where(
-                PropertyDetails.user_id == user.user_id,
-                PropertyDetails.type == category
-            )
+        # Fetch properties of this user & category
+        stmt = select(
+            PropertyDetails.property_id,
+            PropertyDetails.property_name,
+        ).where(
+            PropertyDetails.user_id == user.user_id,
+            PropertyDetails.type == category
         )
-        rows = result.all()
+
+        result = await db.execute(stmt)
+        rows = result.mappings().all()   # returns dict-like rows instead of tuples
+
+        properties = [
+            {
+                "property_id": row["property_id"],
+                "property_name": row["property_name"]
+            }
+            for row in rows
+        ]
 
         return {
             "status": "success",
             "user_id": user.user_id,
             "category": category,
-            "properties": [
-                {"property_id": r.property_id, "property_name": r.property_name}
-                for r in rows
-            ]
+            "total_properties": len(properties),
+            "properties": properties
         }
 
-    except HTTPException as http_exc:
-        raise http_exc
+    except HTTPException:
+        raise
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch property info: {str(e)}"
+        )
 
-# @services.post('/add-services')
-# async def add_services(payload:):
+@services.post('/add-services')
+async def add_services():
+    pass

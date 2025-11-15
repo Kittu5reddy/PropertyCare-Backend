@@ -15,7 +15,7 @@ admin_subscriptions=APIRouter(prefix='/admin-subscriptions',tags=["admin subscri
 from .utils import generate_subscription_id
 from jose import JWTError
 from app.admin.validators.subscriptionplanupdate import SubscriptionPlanUpdate
-from app.core.models.subscriptions_transaction_offline import TransactionSubOffline
+from app.core.models.subscriptions_transactions import TransactionSubOffline
 
 @admin_subscriptions.get("/get-subscriptions")
 async def get_subscription_plans(

@@ -7,7 +7,7 @@ from app.core.models.consultation import Consultation,ConsultationHistory
 from app.core.models.services import Services,ServicesHistory
 from app.core.models.services_transactions import ServicesTransactions,ServicesTransactionsHistory
 from app.core.models.subscriptions_plans import SubscriptionPlans,SubscriptionPlansHistory
-from app.core.models.subscriptions_transaction_offline import TransactionSubOffline
+from app.core.models.subscriptions_transactions import TransactionSubOffline
 from app.core.models.subscriptions import Subscriptions,SubscriptionHistory
 from app.core.models.associates import Associates
 from app.user.models.feedbacks import FeedBack

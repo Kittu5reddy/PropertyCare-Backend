@@ -10,19 +10,19 @@ class Subscriptions(Base):
     __tablename__ = "subscriptions"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    usub_id: Mapped[str] = mapped_column(String, unique=True, index=True)
+    usub_id: Mapped[str] = mapped_column(String, unique=True,nullable=False, index=True)
 
     # Foreign Keys
     user_id: Mapped[str] = mapped_column(String(50), ForeignKey("users.user_id"), nullable=False)
     sub_id: Mapped[str] = mapped_column(String(50), ForeignKey("subscriptions_plans.sub_id"), nullable=False)
     property_id: Mapped[str] = mapped_column(String(50), ForeignKey("property_details.property_id"), nullable=True)
-
+    sub_name:Mapped[str]=mapped_column(String(20),nullable=False)
     # Subscription details
-    services: Mapped[dict] = mapped_column(JSON, nullable=True)
+    services: Mapped[list[str] ] = mapped_column(ARRAY(String), nullable=True)
     sub_start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     sub_end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    durations: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
+    durations:Mapped[int]=mapped_column(Integer,nullable=False)
     comments: Mapped[str] = mapped_column(Text, nullable=True)
     method:Mapped[str]=mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -41,11 +41,11 @@ class SubscriptionHistory(Base):
     user_id: Mapped[str] = mapped_column(String(50), nullable=False)
     sub_id: Mapped[str] = mapped_column(String(50), nullable=False)
     property_id: Mapped[str] = mapped_column(String(50), nullable=True)
-    services: Mapped[dict] = mapped_column(JSON, nullable=True)
+    services: Mapped[list[str] ] = mapped_column(ARRAY(String), nullable=True)
     sub_start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     sub_end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    durations: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
+    durations:Mapped[int]=mapped_column(Integer,nullable=False)
     comments: Mapped[str] = mapped_column(Text, nullable=True)
 
     # Audit fields

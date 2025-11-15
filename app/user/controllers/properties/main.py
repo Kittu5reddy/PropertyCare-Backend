@@ -177,7 +177,7 @@ async def user_add_property(
             facing=form.facing,
             associates_id=form.associates_id if form.associates_id else None,
             rental_income=form.rental_income,
-            type=form.type_of_property.strip() if form.type_of_property else None,
+            type=form.type_of_property.strip().upper() if form.type_of_property else None,
             sub_type=form.sub_type_property.strip() if form.sub_type_property else None,
             description=form.additional_notes,
         )
@@ -687,6 +687,13 @@ async def get_property_info(
             object_key = f"property/{property_id}/legal_documents/property_photo.png"
             is_exists = await check_object_exists(object_key)
             data["property_photo"] = get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
+        except Exception as e:
+            print("S3 legal photo error:", e)
+            data["property_photo"] = settings.DEFAULT_IMG_URL
+
+        try:
+            data["property_photos"] =await  list_s3_objects(prefix=f"property/{property_id}/property_photos/")
+            data["property_photos"]=await list(map(generate_presigned_url,data["property_photos"]))
         except Exception as e:
             print("S3 legal photo error:", e)
             data["property_photo"] = settings.DEFAULT_IMG_URL
