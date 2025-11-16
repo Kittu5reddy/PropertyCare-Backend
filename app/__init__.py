@@ -18,8 +18,8 @@ from config import settings
 
 ALLOW_ORIGINS=settings.allow_origins
 
-def create_app():
-    app = FastAPI(title="Vibhoos PropCare")
+def create_app(docs_url="/docs", redoc_url="/redocs", openapi_url="/openapi.json"):
+    app = FastAPI(title="Vibhoos PropCare",docs_url=docs_url, redoc_url=redoc_url, openapi_url=openapi_url)
 
     allow_origins=ALLOW_ORIGINS
 
