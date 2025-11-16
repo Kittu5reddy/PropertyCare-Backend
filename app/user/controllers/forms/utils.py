@@ -17,7 +17,9 @@ AWS_REGION = settings.AWS_REGION
 S3_BUCKET = settings.S3_BUCKET_NAME
 DISTRIBUTION_ID = settings.DISTRIBUTION_ID
 CLOUDFRONT_URL=settings.CLOUDFRONT_URL
-
+CLOUDFRONT_KEY_PAIR_ID=settings.CLOUDFRONT_KEY_PAIR_ID
+PRIVATE_KEY_PATH=settings.PRIVATE_KEY_PATH
+CLOUDFRONT_DOMAIN = settings.CLOUDFRONT_URL
 
 CATEGORY_FOLDER_MAP = {
     "aadhaar": "aadhar",
@@ -532,3 +534,63 @@ async def generate_presigned_url(key: str, expires_in:int= REDIS_EXPIRE_TIME):  
         except ClientError as e:
             print(f"Presigned URL Error: {e}")
             raise HTTPException(status_code=500, detail="Failed to generate presigned URL")
+
+
+
+
+import time
+import base64
+from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
+
+
+
+
+# Load private key once
+def load_private_key():
+    with open(PRIVATE_KEY_PATH, "rb") as f:
+        return serialization.load_pem_private_key(
+            f.read(), password=None
+        )
+
+private_key = load_private_key()
+
+
+def sign_policy(message: bytes) -> str:
+    """Sign using SHA1 RSA for CloudFront."""
+    signature = private_key.sign(
+        message,
+        padding.PKCS1v15(),
+        hashes.SHA1()
+    )
+    # CloudFront needs URL-safe Base64
+    return base64.b64encode(signature).decode("utf-8").replace("+", "-").replace("=", "_").replace("/", "~")
+
+
+async def generate_cloudfront_presigned_url(resource_key: str, expires_in: int = 300):
+    """
+    resource_key: path inside cloudfront (ex: property/VPC/file.png)
+    expires_in: time in seconds
+    """
+    expires = int(time.time()) + expires_in
+
+    # File URL
+    resource_url = f"{CLOUDFRONT_DOMAIN}/{resource_key}"
+
+    # Simple policy (expires only)
+    policy = (
+        f'{{"Statement":[{{"Resource":"{resource_url}","Condition":{{"DateLessThan":{{"AWS:EpochTime":{expires}}}}}}}]}}'
+    )
+
+    signature = sign_policy(policy.encode("utf-8"))
+
+    # Build final CloudFront signed URL
+    signed_url = (
+        f"{resource_url}"
+        f"?Expires={expires}"
+        f"&Signature={signature}"
+        f"&Key-Pair-Id={CLOUDFRONT_KEY_PAIR_ID}"
+    )
+
+    return signed_url

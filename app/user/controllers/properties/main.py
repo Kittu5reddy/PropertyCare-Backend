@@ -18,10 +18,10 @@ from config import settings
 from datetime import datetime,date
 from botocore.exceptions import ClientError
 from sqlalchemy.exc import SQLAlchemyError
-from app.user.controllers.forms.utils import generate_presigned_url
+from app.user.controllers.forms.utils import generate_presigned_url,generate_cloudfront_presigned_url
 from app.core.controllers.auth.utils import generate_property_id
 prop=APIRouter(prefix='/property',tags=['user property'])
-
+import asyncio
 
 # ======================
 #     P O S T
@@ -692,15 +692,21 @@ async def get_property_info(
             data["property_photo"] = settings.DEFAULT_IMG_URL
 
         try:
-            data["property_photos"] =await  list_s3_objects(prefix=f"property/{property_id}/property_photos/")
-            images=[]
-            for i in data["property_photos"]:
-                images.append(await generate_presigned_url(i))
-            data["property_photos"] =images
-            
+            keys = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
+
+            if not keys:
+                data["property_photos"] = []
+            else:
+                # Generate URLs in parallel → FAST + ONLY signed URLs
+                data["property_photos"] = await asyncio.gather(
+                    *[generate_cloudfront_presigned_url(k) for k in keys]
+                )
+                print(data["property_photos"])
+
         except Exception as e:
-            print("S3 legal photo error:", e)
-            data["property_photo"] = settings.DEFAULT_IMG_URL
+            print("S3 property_photos error:", e)
+            data["property_photos"] = []
+
 
 
         data["size"] = f"{full_data.get('size', 0)}"

@@ -26,8 +26,8 @@ class Settings(BaseSettings):
 
 
 
-
-
+    CLOUDFRONT_KEY_PAIR_ID:str
+    PRIVATE_KEY_PATH:str
     # ==================================
     #  J W T AUTH KEYS
     # ==================================   

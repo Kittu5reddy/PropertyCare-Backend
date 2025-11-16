@@ -12,7 +12,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-
+keys
 # Distribution / packaging
 build/
 dist/
