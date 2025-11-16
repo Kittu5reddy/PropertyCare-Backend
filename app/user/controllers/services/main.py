@@ -6,7 +6,9 @@ from app.core.models.property_details import PropertyDetails
 from app.core.controllers.auth.main import oauth2_scheme,get_current_user
 from app.core.models import redis_get_data, redis_set_data ,get_db,AsyncSession 
 from app.core.models.services import Services
+from config import settings
 
+from app.user.controllers.forms.utils import generate_cloudfront_presigned_url,check_object_exists
 services = APIRouter(prefix='/services',tags=['services'])
 @services.get('/get-services-list')
 async def get_services_list(db: AsyncSession = Depends(get_db)):
@@ -57,7 +59,6 @@ async def get_services_list(db: AsyncSession = Depends(get_db)):
     except Exception as e:
         print("Error:", str(e))
         raise HTTPException(status_code=500, detail="Internal Server Error")
-
 @services.get("/get-suitable-services-property/{category}")
 async def get_suitable_services_property(
     category: str,
@@ -65,36 +66,62 @@ async def get_suitable_services_property(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        # Normalize category (for CASE-INSENSITIVE matching)
+        # Normalize input
         category = category.upper()
-
-        # Validate input
         valid_categories = {"FLAT", "PLOT"}
+
         if category not in valid_categories:
             raise HTTPException(status_code=400, detail="Invalid category. Use FLAT or PLOT")
 
-        # Get authenticated user
+        # Auth user
         user = await get_current_user(token, db)
 
-        # Fetch properties of this user & category
+        # Fetch user properties by category
         stmt = select(
             PropertyDetails.property_id,
             PropertyDetails.property_name,
+            PropertyDetails.city
         ).where(
             PropertyDetails.user_id == user.user_id,
             PropertyDetails.type == category
         )
 
         result = await db.execute(stmt)
-        rows = result.mappings().all()   # returns dict-like rows instead of tuples
+        rows = result.mappings().all()
 
-        properties = [
-            {
-                "property_id": row["property_id"],
-                "property_name": row["property_name"]
+        if not rows:
+            return {
+                "status": "success",
+                "user_id": user.user_id,
+                "category": category,
+                "total_properties": 0,
+                "properties": []
             }
-            for row in rows
-        ]
+
+        properties = []
+
+        for row in rows:
+            property_id = row["property_id"]
+
+            # Correct S3 key
+            s3_key = f"property/{property_id}/legal_documents/property_photo.png"
+
+            # Check S3 file existence
+            exists = await check_object_exists(s3_key)
+
+            if exists:
+                # Generate CloudFront signed URL
+                image_url = await generate_cloudfront_presigned_url(s3_key)
+            else:
+                # Fallback image
+                image_url = settings.DEFAULT_IMG_URL
+
+            properties.append({
+                "property_id": property_id,
+                "property_name": row["property_name"],
+                "property_image_url": image_url,
+                "property_address": row["city"]
+            })
 
         return {
             "status": "success",
@@ -109,10 +136,8 @@ async def get_suitable_services_property(
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch property info: {str(e)}"
-        )
+        print("Error:", str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {e}")
 
 @services.post('/add-services')
 async def add_services():
