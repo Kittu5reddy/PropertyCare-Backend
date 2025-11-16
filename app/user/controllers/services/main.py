@@ -28,6 +28,7 @@ async def get_services_list(db: AsyncSession = Depends(get_db)):
             Services.services,
             Services.starting_price,
             Services.short_comments,
+            Services.applicable_to,
             Services.is_active
         ).where(Services.is_active == True)
 
@@ -44,6 +45,7 @@ async def get_services_list(db: AsyncSession = Depends(get_db)):
                 "starting_price": row["starting_price"],
                 "short_comments": row["short_comments"],
                 "is_active": row["is_active"],
+                "applicable_to":row['applicable_to'],
                 "image_url":"s3"
             }
             for row in rows
