@@ -18,7 +18,7 @@ from sqlalchemy import select, desc
 from fastapi import BackgroundTasks
 from app.user.validators.auth import ChangePassword
 from app.user.validators.user_profile import ChangeFirstName,ChangeLastName,ChangeUsername,ChangeContactNumber,ChangeHouseNumber,ChangeStreet,ChangeCity,ChangeState,ChangeCountry,ChangePinCode
-from app.user.controllers.forms.utils import check_object_exists,generate_cloudfront_presigned_url
+from app.user.controllers.forms.utils import get_image,get_current_time
 from datetime import datetime,timedelta
 from app.user.controllers.forms.utils import upload_image_as_png
 import time
@@ -403,19 +403,22 @@ async def get_personal_details(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    ✅ Fetch a user's personal details, property stats, and cache results in Redis.
+    """
     try:
-        # 1️⃣ Validate user
+        # 1️⃣ Validate token and get user
         user = await get_current_user(token, db)
 
         cache_key = f"user:{user.user_id}:personal-data"
 
-        # 2️⃣ Check Redis
+        # 2️⃣ Check Redis cache first
         cache_data = await redis_get_data(cache_key)
         if cache_data:
             print("Cache hit ✅")
             return cache_data
 
-        # 3️⃣ Personal details
+        # 3️⃣ Fetch personal details
         result = await db.execute(
             select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
         )
@@ -423,30 +426,27 @@ async def get_personal_details(
         if not data:
             raise HTTPException(status_code=404, detail="Personal details not found")
 
-        # 4️⃣ Property details
+        # 4️⃣ Fetch all properties for this user
         properties_result = await db.execute(
             select(PropertyDetails).where(PropertyDetails.user_id == user.user_id)
         )
         property_data = properties_result.scalars().all()
         total_properties = len(property_data)
 
-        # 5️⃣ Active subscriptions
-        active_result = await db.execute(
+        # 5️⃣ Count active and inactive subscriptions
+        active_subs_result = await db.execute(
             select(PropertyDetails).where(
                 PropertyDetails.user_id == user.user_id,
                 PropertyDetails.active_sub == True
             )
         )
-        with_plans = len(active_result.scalars().all())
+        active_properties = active_subs_result.scalars().all()
+        with_plans = len(active_properties)
         no_plans = total_properties - with_plans
 
-        # 6️⃣ Profile photo logic (CloudFront)
-        s3_key = f"user/{user.user_id}/profile_photo/profile_photo.png"
-        exists = await check_object_exists(s3_key)
-
-        profile_url = (
-            await generate_cloudfront_presigned_url(s3_key)
-            if exists else settings.DEFAULT_PROFILE_IMG_URL
+        # 6️⃣ Build profile URL (e.g., CloudFront or local path)
+        profile_url = get_image(
+            f"/user/{user.user_id}/profile_photo/profile_photo.png"
         )
 
         # 7️⃣ Build response
@@ -462,14 +462,20 @@ async def get_personal_details(
             "profile_photo_url": profile_url,
         }
 
-        # 8️⃣ Cache response
+        # 8️⃣ Cache result for faster subsequent access
         await redis_set_data(cache_key, response)
 
         return response
 
+    except HTTPException as e:
+        raise e
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired")
+
     except Exception as e:
         print(f"❌ Error in get_personal_details: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 @auth.get("/get-subscription-details")
 async def get_subscription_details(
@@ -542,28 +548,16 @@ async def get_subscription_details(
 
 
 @auth.get("/edit-profile")
-async def get_edit_profile_details(
-    response: Response,
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-):
+async def get_edit_profile_details(response:Response,token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     try:
         user = await get_current_user(token, db)
-
-        # Fetch personal details
-        result = await db.execute(
-            select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
-        )
+        result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_id == user.user_id))
         data = result.scalar_one_or_none()
-
         if not data:
-            await logout(response, token, db)
+            await logout(response,token,db)
             raise HTTPException(status_code=404, detail="Personal details not found")
 
-        # Check username update constraints
-        result = await db.execute(
-            select(UserNameUpdate).where(UserNameUpdate.user_id == user.user_id).limit(1)
-        )
+        result = await db.execute(select(UserNameUpdate).where(UserNameUpdate.user_id == user.user_id).limit(1))
         username_update = result.scalar_one_or_none()
 
         is_username_changable = True
@@ -573,16 +567,6 @@ async def get_edit_profile_details(
             if delta <= timedelta(days=30):
                 is_username_changable = False
 
-        # Profile photo — CloudFront Signed URL
-        s3_key = f"user/{user.user_id}/profile_photo/profile_photo.png"
-        exists = await check_object_exists(s3_key)
-
-        image_url = (
-            await generate_cloudfront_presigned_url(s3_key)
-            if exists else settings.DEFAULT_PROFILE_IMG_URL
-        )
-
-        # Final response
         return {
             "first_name": data.first_name,
             "last_name": data.last_name,
@@ -595,20 +579,18 @@ async def get_edit_profile_details(
             "state": data.state,
             "pin_code": data.pin_code,
             "country": data.country,
-            "image_url": image_url,
+            "image_url": get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"),
             "aadhaar_number": data.aadhaar_number,
             "pan_number": data.pan_number,
             "can_change_username": is_username_changable
         }
-
-    except HTTPException:
-        raise
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token Expired")
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
     except Exception as e:
         print(str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
+        raise HTTPException(status_code=500,detail=str(e))
 
 
 #=========================
