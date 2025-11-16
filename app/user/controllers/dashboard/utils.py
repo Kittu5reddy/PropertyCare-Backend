@@ -2,7 +2,7 @@ from sqlalchemy import select
 from app.core.models.property_details import PropertyDetails
 from app.core.models import get_db,AsyncSession
 from fastapi import Depends,HTTPException
-from app.user.controllers.forms.utils import list_s3_objects,get_image,check_object_exists
+from app.user.controllers.forms.utils import generate_cloudfront_presigned_url,check_object_exists
 from datetime import date
 from config import settings
 from jose import JWTError
@@ -11,7 +11,7 @@ async def get_property_details(
     db: AsyncSession,
     limit: int = 3
 ) -> list[dict]:
-    row=None
+
     try:
         query = (
             select(
@@ -24,33 +24,40 @@ async def get_property_details(
                 PropertyDetails.active_sub
             )
             .where(PropertyDetails.user_id == user_id)
-            .limit(limit)  # limit on properties
+            .limit(limit)
         )
+
         result = await db.execute(query)
         rows = result.all()
-        print(row)
+
         data = []
+
         for row in rows:
-            photos = await check_object_exists(f"property/{row.property_id}/legal_documents/property_photo.png")
+            # Check if property image exists
+            key = f"property/{row.property_id}/legal_documents/property_photo.png"
+            exists = await check_object_exists(key)
+
+            if exists:
+                # IMPORTANT: must await signed URL
+                signed_url = await generate_cloudfront_presigned_url(key)
+            else:
+                signed_url = settings.DEFAULT_IMG_URL
+
             data.append({
                 "property_id": row.property_id,
-                "location":row.city,
+                "location": row.city,
                 "name": row.property_name,
                 "size": f"{int(row.size)} {row.scale}",
                 "type": row.type,
-                "subscription":row.active_sub ,
-                "image_url": get_image(f"/property/{row.property_id}/legal_documents/property_photo.png") if photos else settings.DEFAULT_IMG_URL
+                "subscription": row.active_sub,
+                "image_url": signed_url
             })
+
         return data
-    except HTTPException as e:
-        raise e 
-    except JWTError as e:
-        raise HTTPException(status_code=401,detail="Token Expired")
+
     except Exception as e:
         print(str(e))
-        raise HTTPException(status_code=500,detail=str(e))
-
-
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 

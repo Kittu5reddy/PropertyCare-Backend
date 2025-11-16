@@ -442,6 +442,7 @@ async def delete_document(
     try:
         user = await get_current_user(token, db)
         cache_key=f"property:{property_id}:documents"
+        
         data=await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id==property_id).limit(1))
         data=data.scalar_one_or_none()
         is_verified=getattr(data,category,None)
@@ -459,44 +460,50 @@ async def delete_document(
     except Exception as e:
         print(str(e))
         raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
-
 @prop.delete("/delete-reference-image/{property_id}")
 async def delete_reference_photo(
     property_id: str,
-    property_photos: str = Body(..., embed=True),  
+    property_photos: str = Body(..., embed=True),
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
-
-    try:    
+    try:
         user = await get_current_user(token, db)
-        filename = property_photos.split("/")[-1]
-        if "?v" in filename:
-            filename=filename.split('?')[0]
-        print(filename)
-        print(filename,property_id)
-        is_removed=await db.execute(select(PropertyDocuments).where(property_id==PropertyDocuments.property_id))
+
+        # Convert CloudFront URL → S3 key
+        s3_key = cloudfront_url_to_s3_key(property_photos)
+        filename = s3_key.split("/")[-1]
+
+        # Check verified
+        is_removed = await db.execute(
+            select(PropertyDocuments).where(property_id == PropertyDocuments.property_id)
+        )
         is_removed = is_removed.scalar_one_or_none()
-        if is_removed.property_photos==True:
-            raise HTTPException(status_code=403,detail="Reference Images are verified cant be deleted")
+        if is_removed.property_photos:
+            raise HTTPException(status_code=403, detail="Reference Images are verified, can't be deleted")
+
+        # Delete from S3
         result = await property_delete_single_document(
             category="property_photos",
             property_id=property_id,
-            filename=filename
+            filename=filename  # delete correct file
         )
+
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
+
+        # Clear cache
         cache_key = f"property:{property_id}:reference-images"
         await redis_delete_data(cache_key)
+
         return {"status": "success", "deleted_file": result["deleted_file"]}
-    except HTTPException as http_exc:
-        raise http_exc
+
+    except HTTPException:
+        raise
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
-
+        raise HTTPException(status_code=500, detail=f"Failed to delete property image: {e}")
 
 
 
@@ -626,7 +633,7 @@ async def get_property_list(
             "size": str(row[4]),
             'status':"active",
             'subscription':"no sub",
-            "image_url":  get_image(f"/property/{row[0]}/legal_documents/property_photo.png") if photos else settings.DEFAULT_IMG_URL
+            "image_url":  await get_image(f"/property/{row[0]}/legal_documents/property_photo.png") if photos else settings.DEFAULT_IMG_URL
         })
 
     await   redis_set_data(cache_key,properties)
@@ -686,7 +693,7 @@ async def get_property_info(
         try:
             object_key = f"property/{property_id}/legal_documents/property_photo.png"
             is_exists = await check_object_exists(object_key)
-            data["property_photo"] = get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
+            data["property_photo"] =await get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
         except Exception as e:
             print("S3 legal photo error:", e)
             data["property_photo"] = settings.DEFAULT_IMG_URL
@@ -701,7 +708,6 @@ async def get_property_info(
                 data["property_photos"] = await asyncio.gather(
                     *[generate_cloudfront_presigned_url(k) for k in keys]
                 )
-                print(data["property_photos"])
 
         except Exception as e:
             print("S3 property_photos error:", e)
@@ -745,45 +751,64 @@ async def get_property_info(
 
 
 
-
 @prop.get("/get-reference-images/{property_id}")
 async def get_reference_images(
     property_id: str,
-    token:str=Depends(oauth2_scheme),
+    token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
-    redis_client:redis.Redis=Depends(get_redis)
+    redis_client: redis.Redis = Depends(get_redis)
 ):
     try:
-        user=await get_current_user(token,db)
-                # ✅ Cache key
+        user = await get_current_user(token, db)
+
+        # Redis key
         cache_key = f"property:{property_id}:reference-images"
-        # 🔹 Step 1: Try to fetch from Redis
+
+        # Step 1: Check redis cache
         cached_data = await redis_client.get(cache_key)
         if cached_data:
-            print(("hit"))
+            print("hit")
             return json.loads(cached_data)
 
-        objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
-        # print(objects)
-        # Convert S3 keys to signed/public URLs if needed
-        data=await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id==property_id))
-        data=data.scalar_one_or_none()
-        
-        image_urls = list(map(get_image,list("/"+images for images in objects)))
-        data={
-            "is_verfied":data.property_photos,
-            "property_photos": image_urls
+        # Step 2: Get list of S3 objects
+        s3_objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
+
+        # Convert keys into CloudFront paths (no leading slash)
+        image_keys = [
+            f"property/{property_id}/property_photos/{obj.split('/')[-1]}"
+            for obj in s3_objects
+        ]
+
+        # Step 3: Generate CloudFront signed URLs (ASYNC & FAST)
+        signed_urls = await asyncio.gather(
+            *[generate_cloudfront_presigned_url(key) for key in image_keys]
+        )
+
+        # DB data
+        result = await db.execute(
+            select(PropertyDocuments).where(PropertyDocuments.property_id == property_id)
+        )
+        doc = result.scalar_one_or_none()
+
+        response = {
+            "is_verified": doc.property_photos if doc else False,
+            "property_photos": signed_urls
         }
-        await redis_set_data(cache_key=cache_key,data=data)
+
+        # Step 4: Cache in Redis
+        await redis_set_data(cache_key, response)
+
         print("miss")
-        return data
-    except HTTPException as http_exc:
-        raise http_exc
+        return response
+
+    except HTTPException:
+        raise
     except JWTError:
         raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
+        print("Error:", e)
+        raise HTTPException(status_code=500, detail=f"Failed to fetch reference images: {e}")
+
 
 @prop.get("/get-property-documents/{property_id}")
 async def get_reference_documents(
@@ -812,7 +837,7 @@ async def get_reference_documents(
         # Construct response with presigned URLs
         response = {}
         for key in objects:
-            presigned_url = await generate_presigned_url(key, expires_in=300)  # 5 minutes
+            presigned_url = await generate_cloudfront_presigned_url(key, expires_in=300)  # 5 minutes
             file_name = key.split("/")[-1].split(".")[0]
             response[file_name] = {
                 "url": presigned_url,
@@ -832,3 +857,22 @@ async def get_reference_documents(
 
 
 
+
+
+
+def cloudfront_url_to_s3_key(url: str) -> str:
+    """
+    Example:
+    https://cdn.domain.com/property/ID/property_photos/file.png?Expires=... → property/ID/property_photos/file.png
+    """
+    # remove query params
+    url = url.split("?")[0]
+
+    # remove domain part
+    parts = url.split(".net/")  # or .com/ for your domain
+    if len(parts) > 1:
+        key = parts[1]
+    else:
+        key = url
+
+    return key.lstrip("/")

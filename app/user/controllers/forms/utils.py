@@ -387,9 +387,6 @@ async def property_upload_documents(file: dict, category: str, property_id: Unio
             error_message = e.response.get("Error", {}).get("Message", str(e))
             raise HTTPException(status_code=500, detail=f"S3 upload failed: {error_message}")
 
-def get_image(filename: str) -> str:
-    return f"{CLOUDFRONT_URL}{filename}{get_current_time()}"
-
 def get_current_time() -> str:
     return f"?v={int(time.time())}"
 
@@ -592,5 +589,20 @@ async def generate_cloudfront_presigned_url(resource_key: str, expires_in: int =
         f"&Signature={signature}"
         f"&Key-Pair-Id={CLOUDFRONT_KEY_PAIR_ID}"
     )
+
+    return signed_url
+
+
+async def get_image(filename: str) -> str:
+    """
+    filename example: '/property/VPCPT0201/property_photos/img.png'
+    returns: CloudFront signed URL
+    """
+
+    # Remove leading '/' because CloudFront keys should not start with slash
+    key = filename.lstrip("/")
+
+    # Generate CloudFront signed URL (5 min default)
+    signed_url = await generate_cloudfront_presigned_url(key)
 
     return signed_url

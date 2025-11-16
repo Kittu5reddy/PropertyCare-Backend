@@ -1,7 +1,7 @@
 from fastapi import APIRouter,Depends,HTTPException,UploadFile,File,Form
 from jose import JWTError
 from app.core.controllers.auth.main import oauth2_scheme
-from app.user.controllers.forms.utils import get_image
+
 from app.core.controllers.auth.main import get_current_user
 from app.core.models.property_details import PropertyDetails
 from .utils import get_property_details
