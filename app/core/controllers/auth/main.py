@@ -1003,3 +1003,47 @@ async def add_user_documents(
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@auth.get("/check-username/{username}")
+async def check_username(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # Decode token to ensure it's valid
+        payload = await get_current_user(token,db)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Now query the DB
+    result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_name == username))
+    existing = result.scalar_one_or_none()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    return {"available": True}
+
+@auth.get("/check-contact/{phonenumber}")
+async def check_phonenumber(
+    phonenumber: str,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # Decode token to ensure it's valid
+        payload = await get_current_user(token,db)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Now query the DB
+    result = await db.execute(select(PersonalDetails).where(PersonalDetails.contact_number == phonenumber))
+    existing = result.scalar_one_or_none()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="phone_number  already exists")
+    
+    return {"available": True}
