@@ -143,6 +143,13 @@ class Settings(BaseSettings):
     # ==================================
     DEFAULT_IMG_URL:str
 
+    # ==================================
+    #    G O O G L E   O A U T H
+    # ==================================
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    GOOGLE_OAUTH_REDIRECT_URI: str | None = None
+
 
 
 

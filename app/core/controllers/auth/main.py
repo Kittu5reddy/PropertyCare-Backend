@@ -992,7 +992,10 @@ async def add_user_documents(
         db.add(personal_details)
         await db.commit()
         await db.refresh(personal_details)
-
+        user.is_pdfilled=True
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
         return {
             "message": "Documents uploaded successfully",
             "uploaded": uploaded_files

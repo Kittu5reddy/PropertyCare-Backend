@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.controllers.auth.main import auth
+from app.core.controllers.auth.google_oauth import google_auth
 from app.user.controllers.forms.main import form
 from app.user.controllers.subscriptions.main import subscriptions
 from app.user.controllers.surveillance.main import surveillance
@@ -40,6 +41,7 @@ def create_app(docs_url="/docs", redoc_url="/redocs", openapi_url="/openapi.json
 
     # Include routers
     app.include_router(auth)
+    app.include_router(google_auth)
     app.include_router(services)
     app.include_router(admin_auth)
     app.include_router(admin_dash)

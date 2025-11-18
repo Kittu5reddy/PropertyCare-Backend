@@ -5,16 +5,35 @@ from sqlalchemy.orm import relationship
 
 class User(Base):
     __tablename__ = "users"
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    hashed_password = Column(String)
+
+    # Universal user fields
+    email = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=True)  # NULL for OAuth users
+
+    # OAuth fields
+    oauth_provider = Column(String, nullable=True)        # google, meta, github, linkedin
+    oauth_provider_id = Column(String, unique=True)       # Google sub / Facebook id
+    oauth_avatar_url = Column(String, nullable=True)      # profile picture from provider
+
+    # Optional provider token fields
+    oauth_access_token = Column(String, nullable=True)
+    oauth_refresh_token = Column(String, nullable=True)
+    oauth_expires_at = Column(DateTime, nullable=True)
+
+    # Verification fields
     is_verified = Column(Boolean, default=False)
+    verification_token = Column(String, nullable=True)
+
+    # User onboarding fields
     is_pdfilled = Column(Boolean, default=False)
-    verification_token = Column(String)
+
+    # Meta
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    created_by = Column(String,ForeignKey("admin.admin_id"))
-    status = Column(String,default="active")
+    created_by = Column(String, ForeignKey("admin.admin_id"), nullable=True)
+    status = Column(String, default="active")
 
     
 class UserNameUpdate(Base):
