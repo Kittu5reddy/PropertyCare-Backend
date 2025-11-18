@@ -13,7 +13,7 @@ class PersonalDetails(BaseModel):
     first_name: str
     last_name: str
     user_name: str
-    date_of_birth: date
+    dob: date
     gender: str
     contact_number: str
     description: str
