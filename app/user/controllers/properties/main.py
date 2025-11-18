@@ -1,7 +1,7 @@
 from fastapi import APIRouter,Depends,HTTPException,Form, Body
 from jose import JWTError
 from app.core.controllers.auth.main import oauth2_scheme,AsyncSession,get_db,get_current_user
-from app.user.controllers.surveillance.main import  get_current_month_photos
+
 from app.user.validators.propertydetails import  PropertyDetailForm,UpdatePropertyNameRequest
 from app.user.validators.changeproperty import PropertyDetailsUpdate as ChangePropertySchema
 from app.user.models.users import User
@@ -15,10 +15,10 @@ from app.user.controllers.forms.utils import property_upload_image_as_png,proper
 from fastapi import APIRouter, Depends, UploadFile, File
 from app.user.controllers.forms.utils import list_s3_objects,get_image,check_object_exists
 from config import settings
-from datetime import datetime,date
+
 from botocore.exceptions import ClientError
 from sqlalchemy.exc import SQLAlchemyError
-from app.user.controllers.forms.utils import generate_presigned_url,generate_cloudfront_presigned_url
+from app.user.controllers.forms.utils import generate_cloudfront_presigned_url
 from app.core.controllers.auth.utils import generate_property_id
 prop=APIRouter(prefix='/property',tags=['user property'])
 import asyncio
@@ -178,7 +178,7 @@ async def user_add_property(
             associates_id=form.associates_id if form.associates_id else None,
             rental_income=form.rental_income,
             type=form.type_of_property.strip().upper() if form.type_of_property else None,
-            sub_type=form.sub_type_property.strip() if form.sub_type_property else None,
+            sub_type=form.sub_type_property.strip().upper() if form.sub_type_property else None,
             description=form.additional_notes,
         )
         

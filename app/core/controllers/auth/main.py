@@ -1,6 +1,7 @@
 from app.core.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,BASE_USER_URL,FORGOT_PASSWORD_TIME_LIMIT,get_is_pd_filled
 from app.core.controllers.auth.email import create_verification_token,send_verification_email,send_forgot_password_email
 from fastapi import APIRouter,Request
+from app.user.validators.personal_details import  PersonalDetails as PersonalDetailSchema
 from app.core.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
 from app.user.validators.auth import User as LoginSchema 
 from app.user.models.users import User,UserNameUpdate
@@ -8,7 +9,7 @@ from app.user.models.personal_details import PersonalDetails
 from fastapi import APIRouter, HTTPException,Depends,BackgroundTasks
 from app.user.controllers.forms.utils import create_user_directory
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError,jwt
+from jose import JWTError
 from fastapi.responses import HTMLResponse
 from fastapi import Response
 from passlib.context import CryptContext
@@ -858,6 +859,147 @@ async def change_country(form: ChangeCountry, token: str = Depends(oauth2_scheme
         raise HTTPException(status_code=500,detail=str(e))
     
 
+from app.user.controllers.forms.utils import upload_documents,upload_image_as_png
+
+
+@auth.post('/add-user-details')
+async def add_user_details(
+    payload: PersonalDetailSchema,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)
+
+        # ✔ Check if already exists
+        existing_record_stmt = await db.execute(
+            select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
+        )
+        existing_record = existing_record_stmt.scalar_one_or_none()
+
+        if existing_record:
+            # Update user table
+            user_record_txt = await db.execute(select(User).where(User.user_id == user.user_id))
+            user_record = user_record_txt.scalar_one_or_none()
+            user_record.is_pdfilled = True
+
+            db.add(user_record)
+            await db.commit()
+            await db.refresh(user_record)
+
+            raise HTTPException(status_code=400, detail="Record already exists")
+
+        # ✔ Convert Pydantic → dict
+        data = payload.dict()
+
+        # ✔ Add user_id manually
+        data["user_id"] = user.user_id
+
+        # ✔ Create SQLAlchemy instance
+        new_record = PersonalDetails(**data)
+
+        db.add(new_record)
+        await db.commit()
+        await db.refresh(new_record)
+
+        return {"message": "Personal details added successfully"}
+
+    except Exception as e:
+        raise
+    except Exception as e:
+        print(str(e))
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
 
 
+
+@auth.post("/add-user-documents")
+async def add_user_documents(
+    pan_file: UploadFile | None = File(None),
+    aadhar_file: UploadFile | None = File(None),
+    profile_photo: UploadFile | None = File(None),
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        user = await get_current_user(token, db)
+
+        stmt = await db.execute(
+            select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
+        )
+        personal_details = stmt.scalar_one_or_none()
+
+        if not personal_details:
+            raise HTTPException(
+                status_code=400, detail="Please complete personal details first."
+            )
+
+        # NRI user cannot upload PAN or Aadhar (but CAN upload profile photo)
+        if personal_details.nri and (pan_file or aadhar_file):
+            raise HTTPException(
+                status_code=400,
+                detail="NRI users cannot upload PAN or Aadhaar documents."
+            )
+
+        # Convert UploadFile to dict only if file is provided
+        async def to_dict(f: UploadFile) -> dict:
+            return {
+                "filename": f.filename,
+                "bytes": await f.read(),
+                "content_type": f.content_type or "application/octet-stream"
+            }
+
+        uploaded_files = {}
+
+        # Upload profile photo if provided
+        if profile_photo is not None:
+            profile_dict = await to_dict(profile_photo)
+            profile_url = await upload_image_as_png(
+                profile_dict, "profile_photo", user.user_id
+            )
+
+            if "error" in profile_url:
+                raise HTTPException(status_code=500, detail="Profile upload failed")
+
+            personal_details.profile_photo = profile_url["file_path"]
+            uploaded_files["profile_photo"] = profile_url["file_path"]
+
+        # Upload PAN if provided
+        if pan_file is not None:
+            pan_dict = await to_dict(pan_file)
+            pan_url = await upload_documents(pan_dict, "pan", user.user_id)
+
+            if "error" in pan_url:
+                raise HTTPException(status_code=500, detail="PAN upload failed")
+
+            personal_details.pan_document = pan_url["file_path"]
+            uploaded_files["pan_document"] = pan_url["file_path"]
+
+        # Upload Aadhaar if provided
+        if aadhar_file is not None:
+            aadhar_dict = await to_dict(aadhar_file)
+            aadhar_url = await upload_documents(aadhar_dict, "aadhaar", user.user_id)
+
+            if "error" in aadhar_url:
+                raise HTTPException(status_code=500, detail="Aadhaar upload failed")
+
+            personal_details.aadhaar_document = aadhar_url["file_path"]
+            uploaded_files["aadhaar_document"] = aadhar_url["file_path"]
+
+        # SAVE TO DB
+        db.add(personal_details)
+        await db.commit()
+        await db.refresh(personal_details)
+
+        return {
+            "message": "Documents uploaded successfully",
+            "uploaded": uploaded_files
+        }
+
+    except Exception as e:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

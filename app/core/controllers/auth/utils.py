@@ -158,12 +158,12 @@ async def get_current_user(token: str, db: AsyncSession) -> User:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
-
+    print(email)
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if user is None:
+        print(user)
         raise HTTPException(status_code=404, detail="User not found")
-
     return user
 
 
