@@ -171,22 +171,25 @@ async def google_callback(
     app_access = create_access_token(payload)
     app_refresh = create_refresh_token(payload)
 
-    response = JSONResponse({
-        "message": "Google OAuth successful",
-        "email": user.email,
-        "access_token": app_access,
-        "token_type": "Bearer",
-        "provider": "google"
-    })
+    FRONTEND_SUCCESS_URL = "https://user.vibhoospropcare.com/auth/success"
+    
+        # 2. Create the final URL with the access token as a query parameter
+        # The frontend will read this token from the URL
+    redirect_url = f"{FRONTEND_SUCCESS_URL}?access_token={app_access}"
 
+    # 3. Create a RedirectResponse object
+    response = RedirectResponse(url=redirect_url, status_code=302)
+
+    # 4. Set the refresh token cookie on the RedirectResponse object
     response.set_cookie(
         key="refresh_token",
         value=app_refresh,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=True, # Should be True in production
+        samesite="none", # Required for cross-site cookie
         max_age=60 * 60 * 24 * REFRESH_TOKEN_EXPIRE_DAYS,
         path="/auth/refresh"
     )
 
-    return response
+    # 5. Return the response to the user's browser
+    return response # <-- This is the redirect!
