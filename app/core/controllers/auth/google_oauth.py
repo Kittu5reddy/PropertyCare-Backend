@@ -175,7 +175,7 @@ async def google_callback(
     
         # 2. Create the final URL with the access token as a query parameter
         # The frontend will read this token from the URL
-    redirect_url = f"{FRONTEND_SUCCESS_URL}?access_token={app_access}"
+    redirect_url = f"{FRONTEND_SUCCESS_URL}?access_token={app_access}&pd_filled={user.is_pdfilled}"
 
     # 3. Create a RedirectResponse object
     response = RedirectResponse(url=redirect_url, status_code=302)
