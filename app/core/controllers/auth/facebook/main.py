@@ -16,25 +16,7 @@ from app.core.controllers.auth.utils import (
 )
 
 google_auth = APIRouter(prefix="/auth/google", tags=["auth-google"])
-
-STATE_TTL = 300  # seconds
-
-
-def _build_authorize_url(state: str) -> str:
-    base = "https://accounts.google.com/o/oauth2/v2/auth"
-    params = {
-        "response_type": "code",
-        "client_id": settings.GOOGLE_CLIENT_ID,
-        "redirect_uri": settings.GOOGLE_OAUTH_REDIRECT_URI,
-        "scope": "openid email profile",
-        "state": state,
-        "access_type": "online",
-        "prompt": "consent",
-    }
-    # Manual query building (avoid external libs for now)
-    query = "&".join(f"{k}={v}" for k, v in params.items())
-    return f"{base}?{query}"
-
+from .utils import *
 
 @google_auth.get("/login")
 async def google_login():
@@ -42,33 +24,19 @@ async def google_login():
         raise HTTPException(status_code=500, detail="Google OAuth not configured")
     state = secrets.token_urlsafe(16)
     await redis_client.setex(f"oauth:google:state:{state}", STATE_TTL, "1")
-    return RedirectResponse(_build_authorize_url(state))
+    return RedirectResponse(build_authorize_url(state))
 
 
-async def _exchange_code_for_tokens(code: str):
-    token_url = "https://oauth2.googleapis.com/token"
-    data = {
-        "code": code,
-        "client_id": settings.GOOGLE_CLIENT_ID,
-        "client_secret": settings.GOOGLE_CLIENT_SECRET,
-        "redirect_uri": settings.GOOGLE_OAUTH_REDIRECT_URI,
-        "grant_type": "authorization_code",
-    }
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.post(token_url, data=data)
-        if resp.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"Token exchange failed: {resp.text}")
-        return resp.json()
 
 
-async def _fetch_userinfo(access_token: str):
-    userinfo_url = "https://openidconnect.googleapis.com/v1/userinfo"
-    headers = {"Authorization": f"Bearer {access_token}"}
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(userinfo_url, headers=headers)
-        if resp.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"UserInfo fetch failed: {resp.text}")
-        return resp.json()
+
+
+
+
+
+
+
+
 
 @google_auth.get("/callback")
 async def google_callback(
@@ -89,13 +57,13 @@ async def google_callback(
     await redis_client.delete(key)
 
     # Exchange code
-    tokens = await _exchange_code_for_tokens(code)
+    tokens = await exchange_code_for_tokens(code)
     access_token = tokens.get("access_token")
     if not access_token:
         raise HTTPException(status_code=400, detail="Missing access token from Google")
 
     # Fetch user info
-    userinfo = await _fetch_userinfo(access_token)
+    userinfo = await fetch_userinfo(access_token)
     email = userinfo.get("email")
     google_id = userinfo.get("sub")
     avatar = userinfo.get("picture")

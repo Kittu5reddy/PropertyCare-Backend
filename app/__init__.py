@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.controllers.auth.main import auth
-from app.core.controllers.auth.google_oauth import google_auth
+from app.core.controllers.auth.google.main import google_auth
 from app.user.controllers.forms.main import form
 from app.user.controllers.subscriptions.main import subscriptions
 from app.user.controllers.surveillance.main import surveillance

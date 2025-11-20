@@ -491,8 +491,8 @@ async def get_subscription_details(
         )
         properties = result.scalars().all()
 
-        if not properties:
-            raise HTTPException(status_code=404, detail="No properties found for this user")
+        # if not properties:
+        #     raise HTTPException(status_code=404, detail="No properties found for this user")
 
         # 3️⃣ Separate active/inactive
         active_properties = [p for p in properties if p.active_sub]
