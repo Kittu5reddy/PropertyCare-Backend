@@ -16,7 +16,7 @@ from app.user.controllers.services.main import services
 from app.core.controllers.emails.main import email
 from app.user.controllers.feedback.main import feedback
 from app.admin.controllers.dashboard.main import admin_dash
-
+from app.user.controllers.profile.main import profile
 from config import settings
 
 ALLOW_ORIGINS = settings.allow_origins
@@ -54,6 +54,7 @@ def create_app(docs_url="/docs", redoc_url="/redocs", openapi_url="/openapi.json
     app.include_router(form)
     app.include_router(prop)
     app.include_router(feedback)
+    app.include_router(profile)
     app.include_router(email)
     app.include_router(surveillance)
 
