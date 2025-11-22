@@ -23,8 +23,8 @@ class PropertyDetailForm(BaseModel):
     pin_code: int
 
     size: float                        
-    phone_number: str                  
-
+    alternate_contact: str=None                  
+    alternate_name:str=None
     land_mark: Optional[str] = None
     latitude: Optional[str] = None
     longitude: Optional[str] = None
@@ -33,7 +33,6 @@ class PropertyDetailForm(BaseModel):
     type: str
     sub_type: str
     scale: str
-    others: Optional[str] = None
 
     description: Optional[str] = None
 

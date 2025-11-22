@@ -1,17 +1,13 @@
 from fastapi import Depends,HTTPException,APIRouter
-from app.core.controllers.auth.utils import get_password_hash,get_current_user,get_current_user_personal_details,verify_password
-
+from app.core.controllers.auth.utils import get_current_user,get_current_user_personal_details
+from app.user.validators.profile_update_form import ProfileUpdateForm
 from app.user.models.users import UserNameUpdate
 from app.user.models.personal_details import PersonalDetails
-
 from jose import JWTError
 from fastapi import Response
-
 from app.core.models import get_db,AsyncSession,redis_delete_data
 from fastapi import Depends,File,UploadFile
 from sqlalchemy import select
-from app.user.validators.auth import ChangePassword
-from app.user.validators.user_profile import ChangeFirstName,ChangeLastName,ChangeUsername,ChangeContactNumber,ChangeHouseNumber,ChangeStreet,ChangeCity,ChangeState,ChangeCountry,ChangePinCode
 from app.user.controllers.forms.utils import get_image,get_current_time
 from datetime import datetime,timedelta
 from app.user.controllers.forms.utils import upload_image_as_png
@@ -52,6 +48,7 @@ async def get_edit_profile_details(response:Response,token: str = Depends(oauth2
             "city": data.city,
             "state": data.state,
             "pin_code": data.pin_code,
+            "is_nri":data.nri,
             "country": data.country,
             "image_url": get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"),
             "aadhaar_number": data.aadhaar_number,
@@ -67,11 +64,9 @@ async def get_edit_profile_details(response:Response,token: str = Depends(oauth2
         raise HTTPException(status_code=500,detail=str(e))
 
 
-from fastapi import Body
-
-@profile.put("/update")
+@profile.put("/user-profile-update")
 async def update_profile(
-    data: dict = Body(...),  
+    form: ProfileUpdateForm,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
@@ -79,66 +74,26 @@ async def update_profile(
         user = await get_current_user_personal_details(token, db)
         user_id = user.user_id
 
-        allowed_fields = {
-            "first_name": str,
-            "last_name": str,
-            "user_name": str,
-            "contact_number": str,
-            "house_number": str,
-            "street": str,
-            "city": str,
-            "state": str,
-            "pin_code": int,
-            "country": str
-        }
+        data = form.dict(exclude_none=True)  # Only valid fields
+
+        if not data:
+            raise HTTPException(status_code=400, detail="No valid fields to update.")
 
         updates = {}
 
-        # Validate & assign fields
         for field, value in data.items():
-
-            # ❌ Reject invalid fields
-            if field not in allowed_fields:
-                raise HTTPException(status_code=400, detail=f"Invalid field: {field}")
-
-            # Trim if string
             if isinstance(value, str):
                 value = value.strip()
 
-            # ✔ SPECIAL VALIDATIONS
-
-            if field == "user_name":
-                # Check duplicate username
-                existing = await db.execute(
-                    select(PersonalDetails).where(PersonalDetails.user_name == value)
-                )
-                if existing.scalar_one_or_none():
-                    raise HTTPException(status_code=409, detail="Username already exists")
-
-            if field == "contact_number":
-                # Check duplicate number
-                existing = await db.execute(
-                    select(PersonalDetails).where(PersonalDetails.contact_number == value)
-                )
-                if existing.scalar_one_or_none():
-                    raise HTTPException(status_code=409, detail="Contact number already exists")
-
-            # Add to updates
             setattr(user, field, value)
             updates[field] = value
 
-        # If no valid updates
-        if not updates:
-            raise HTTPException(status_code=400, detail="No valid fields to update.")
-
-        # Save changes
         db.add(user)
         await db.commit()
         await db.refresh(user)
 
-        # Clear redis
-        cache_key = f"user:{user_id}:personal-data"
-        await redis_delete_data(cache_key)
+        # Clear redis cache
+        await redis_delete_data(f"user:{user_id}:personal-data")
 
         return {
             "message": "Profile updated successfully.",
@@ -152,3 +107,24 @@ async def update_profile(
     except Exception as e:
         print("Update profile error:", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@profile.put("/change-profile-photo")
+async def change_profile_photo(profile_photo: UploadFile = File(...), token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    try:
+        user = await get_current_user(token, db)
+        file_data = await profile_photo.read()
+        result = await upload_image_as_png(file={"bytes": file_data}, category="profile_photo", user_id=user.user_id)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        cache_key=f"user:{user.user_id}:personal-data"
+        await redis_delete_data(cache_key)
+        return result
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
