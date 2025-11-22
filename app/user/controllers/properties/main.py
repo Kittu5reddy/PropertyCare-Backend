@@ -1,31 +1,47 @@
-from fastapi import APIRouter,Depends,HTTPException,Form, Body
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body
 from jose import JWTError
-from app.core.controllers.auth.main import oauth2_scheme,AsyncSession,get_db,get_current_user
+from sqlalchemy import select, func, and_
+from sqlalchemy.ext.asyncio import AsyncSession
+import asyncio
+import json
 
-from app.user.validators.propertydetails import  PropertyDetailForm,UpdatePropertyNameRequest
+# Import utils & models
+from app.core.controllers.auth.main import oauth2_scheme, get_db, get_current_user
+from app.user.validators.propertydetails import PropertyDetailForm, UpdatePropertyNameRequest
 from app.user.validators.changeproperty import PropertyDetailsUpdate as ChangePropertySchema
 from app.user.models.users import User
-from app.core.models import get_redis,redis,redis_get_data,redis_set_data,redis_delete_data,redis_delete_data,redis_delete_pattern
-import json
-from app.core.models.property_documents import PropertyDocuments
-from .utils import is_property_details_changable
-from sqlalchemy import select,func,and_
-from app.core.models.property_details import PropertyDetails
-from app.user.controllers.forms.utils import property_upload_image_as_png,property_upload_documents,property_delete_document,invalidate_files,property_delete_single_document
-from fastapi import APIRouter, Depends, UploadFile, File
-from app.user.controllers.forms.utils import list_s3_objects,get_image,check_object_exists
-from config import settings
 
+from app.core.models.property_details import PropertyDetails
+from app.core.models.property_documents import PropertyDocuments
+from app.user.controllers.forms.utils import (
+    property_upload_image_as_png,
+    property_upload_documents,
+    property_delete_document,
+    property_delete_single_document,
+    invalidate_files,
+    list_s3_objects,
+    generate_cloudfront_presigned_url,
+    get_image,
+    check_object_exists
+)
+from app.core.models import (
+    get_redis,
+    redis_get_data,
+    redis_set_data,
+    redis_delete_data,
+    redis_delete_pattern
+)
+
+from config import settings
 from botocore.exceptions import ClientError
 from sqlalchemy.exc import SQLAlchemyError
-from app.user.controllers.forms.utils import generate_cloudfront_presigned_url
 from app.core.controllers.auth.utils import generate_property_id
-prop=APIRouter(prefix='/property',tags=['user property'])
-import asyncio
 
-# ======================
-#     P O S T
-# ======================
+prop = APIRouter(prefix="/property", tags=["user property"])
+
+# ======================================================
+#                     P O S T
+# ======================================================
 
 @prop.post("/is-property-exists")
 async def is_property_exist(
@@ -34,8 +50,7 @@ async def is_property_exist(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        
-        user: User = await get_current_user(token, db)
+        user = await get_current_user(token, db)
 
         result = await db.execute(
             select(PropertyDetails).where(
@@ -47,92 +62,59 @@ async def is_property_exist(
                 )
             )
         )
+        return {"is_property_exist": result.first() is not None}
 
-
-        property_obj = result.first()
-        return {"is_property_exist": property_obj is not None}
-
-    except HTTPException as http_exc:
-        raise http_exc
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to check property existence: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
-
-
-
-@prop.post('/upload-document/{property_id}')
+@prop.post("/upload-document/{property_id}")
 async def upload_property_documents(
     property_id: str,
-    category: str = Form(...),  
-    file: UploadFile = File(...),            
+    category: str = Form(...),
+    file: UploadFile = File(...),
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
-        user = await get_current_user(token, db)
-        cache_key=f"property:{property_id}:documents"
-        # Convert UploadFile → dict
-        contents = await file.read()
-        file_data = {
-            "filename": file.filename,
-            "bytes": contents,
-            "content_type": file.content_type,
-        }
+        await get_current_user(token, db)
 
-        # Call existing helper
+        contents = await file.read()
+        file_data = {"filename": file.filename, "bytes": contents, "content_type": file.content_type}
+
         result = await property_upload_documents(file_data, category, property_id)
-        await redis_delete_data(cache_key)
+        await redis_delete_data(f"property:{property_id}:documents")
+
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
-
         return result
-    except HTTPException as http_exc:
-        raise http_exc
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to check property existence: {str(e)}")
-        
-
-
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 
 @prop.post("/add-reference-image/{property_id}")
 async def add_reference_photo(
     property_id: str,
-    category: str = Form(...),  # required
-    files: list[UploadFile] = File(...),  # multiple files
+    category: str = Form(...),
+    files: list[UploadFile] = File(...),
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        user = await get_current_user(token, db)
-        cache_key = f"property:{property_id}:reference-images"
+        await get_current_user(token, db)
+
         results = []
         for file in files:
-            contents = await file.read()
-            file_data = {
-                "filename": file.filename,
-                "bytes": contents,
-                "content_type": file.content_type,
-            }
-            result = await property_upload_image_as_png(file_data, category, property_id)
-            results.append(result)
+            content = await file.read()
+            file_data = {"filename": file.filename, "bytes": content, "content_type": file.content_type}
+            results.append(await property_upload_image_as_png(file_data, category, property_id))
+
         await redis_delete_pattern(f"property:{property_id}:*")
         return {"status": "success", "files": results}
 
-    except HTTPException as e:
-        raise e
-    except JWTError as e:
-        raise HTTPException(status_code=401,detail=f"Token Expired")
     except Exception as e:
-        print(f"Upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload reference photo: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed: {str(e)}")
 
 
 @prop.post("/add-property")
@@ -142,198 +124,58 @@ async def user_add_property(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        # Authenticate
-        user: User = await get_current_user(token, db)
-
-        # Generate property_id
+        user = await get_current_user(token, db)
 
         result = await db.execute(select(func.max(PropertyDetails.id)))
-        last_id = result.scalar_one_or_none() or 0
-        next_id = last_id + 1 + int(settings.PROPERTY_STARTING_NUMBER)
+        next_id = (result.scalar_one_or_none() or 0) + 1 + int(settings.PROPERTY_STARTING_NUMBER)
         property_id = generate_property_id(next_id)
 
-        # Create records
-        property = PropertyDetails(
-        property_id=property_id,                     # generated by backend
-        property_name=form.property_name,
-        survey_number=form.survey_number,
-        plot_number=form.plot_number,
-
-        user_id=user.user_id,
-        house_number=form.house_number,
-
-        project_name_or_venture=form.project_name_or_venture,
-        street=form.street,
-        city=form.city,
-        state=form.state,
-        district=form.district,
-        mandal=form.mandal,
-
-        scale=form.scale,
-        country=form.country,
-        pin_code=form.pin_code,
-        size=form.size,
-
-        alternate_name=form.alternate_name,
-        alternate_contact=form.alternate_contact,
-        land_mark=form.land_mark,
-
-        latitude=form.latitude,
-        longitude=form.longitude,
-        gmap_url=form.gmap_url,
-
-        facing=form.facing,
-        type=form.type,
-        sub_type=form.sub_type,
-
-        description=form.description,
-
-        rental_income=form.rental_income,
-        associates_id=form.associates_id,
-        admin_id=form.admin_id,
-    )
-
-        
-        await redis_delete_pattern(f"user:{user.user_id}:*")
+        property = PropertyDetails(property_id=property_id, user_id=user.user_id, **form.dict())
         documents = PropertyDocuments(property_id=property_id)
+
         db.add(property)
         await db.commit()
         await db.refresh(property)
-        # db.add_all([property, documents]) 
-        db.add(documents)
 
-        # Save
+        db.add(documents)
         await db.commit()
-        await db.refresh(documents)
+
+        await redis_delete_pattern(f"user:{user.user_id}:*")
 
         return {"property_id": property_id, "message": "Property added successfully"}
 
-    except HTTPException as http_exc:
-        raise http_exc
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-@prop.post("/add-documents/{property_id}")
-async def property_documents(
-    property_id: str,
-    files: list[UploadFile] = File(...),
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-):
-    try:
-        user = await get_current_user(token, db)
-
-        # Validate ownership
-        property_obj = await db.execute(
-            select(PropertyDetails).where(
-                PropertyDetails.user_id == user.user_id,
-                PropertyDetails.property_id == property_id
-            )
-        )
-        property_obj = property_obj.scalar_one_or_none()
-        if not property_obj:
-            raise HTTPException(status_code=404, detail="Property not found or unauthorized")
-
-        # Validate document container
-        authorized = await db.execute(
-            select(PropertyDocuments).where(PropertyDocuments.property_id == property_id).limit(1)
-        )
-        authorized = authorized.scalar_one_or_none()
-        if not authorized:
-            raise HTTPException(status_code=400, detail="No document container found for this property")
-        
-        uploaded = []
-        for file in files:
-            content = await file.read()
-            if "__" in file.filename:
-                doc_type, original_name = file.filename.split("__", 1)
-            else:
-                doc_type, original_name = "unknown", file.filename
-
-            # Prevent overwriting verified docs
-            if getattr(authorized, doc_type, False):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Document '{doc_type}' is already verified, contact admin to update"
-                )
-
-            # Prepare dict
-            file_dict = {
-                "doc_type": doc_type,
-                "filename": original_name,
-                "size": len(content),
-                "bytes": content,
-            }
-
-            # Upload
-            if doc_type in ["property_photos", "property_photo"]:
-                result = await property_upload_image_as_png(file_dict, doc_type, property_id)
-            else:
-                result = await property_upload_documents(file_dict, doc_type, property_id)
-
-            uploaded.append({
-                "doc_type": doc_type,
-                "filename": original_name,
-                "size": len(content),
-                "s3_path": result.get("file_path") if result else None
-            })
-
-        # Invalidate cache
-        cache_key = f"property:{property_id}:documents"
-        await redis_delete_data(cache_key)
-
-        return {"property_id": property_id, "uploaded": uploaded}
-
-    except HTTPException as e:
-        raise e
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    except Exception as e:
-        print(f"Upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to upload documents: {str(e)}")
-
-
-
-
+# ======================================================
+#                     P U T
+# ======================================================
 
 @prop.put("/update-property-name/{property_id}")
 async def update_property_name(
     property_id: str,
-    payload: UpdatePropertyNameRequest,   
+    payload: UpdatePropertyNameRequest,
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
         user = await get_current_user(token, db)
 
-        result = await db.execute(
-            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
-        )
+        result = await db.execute(select(PropertyDetails).where(PropertyDetails.property_id == property_id))
         property_obj = result.scalar_one_or_none()
 
         if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
 
-        # Update name
         property_obj.property_name = payload.property_name
         await db.commit()
         await db.refresh(property_obj)
-        cache_key = f"property:{property_id}:info"
-        await redis_delete_data(cache_key)
-        return {"message": "Property name updated successfully", "property": property_obj.property_name}
-    except HTTPException as http_exc:
-        raise http_exc
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+
+        await redis_delete_data(f"property:{property_id}:info")
+
+        return {"message": "Property name updated successfully"}
+
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
-    except Exception as e:
-        await db.rollback()
-        print(str(e))
         raise HTTPException(status_code=500, detail=f"Error updating property: {str(e)}")
 
 
@@ -342,185 +184,95 @@ async def change_property_photo(
     property_id: str,
     file: UploadFile = File(...),
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
-        user = await get_current_user(token, db)
+        await get_current_user(token, db)
 
-        # Check if property exists
-        result = await db.execute(
-            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
-        )
-        property_obj = result.scalar_one_or_none()
-        if not property_obj:
-            raise HTTPException(status_code=404, detail="Property not found")
+        content = await file.read()
+        result = await property_upload_image_as_png({"bytes": content}, "property_photo", property_id)
 
-        # Upload to S3 (pass as dict to function)
-        file_content = await file.read()
-        result = await property_upload_image_as_png(
-            {"bytes": file_content},  # dict wrapper
-            "property_photo",         # category
-            property_id               # property_id
-        )
-        await invalidate_files([f'/property/{property_id}/legal_documents/property_photo.png'])
-        if "error" in result:
-            raise HTTPException(status_code=400, detail=result["error"])
-        cache_key = f"property:{property_id}:info"
-        await redis_delete_data(cache_key)
+        await invalidate_files([f"/property/{property_id}/legal_documents/property_photo.png"])
+        await redis_delete_data(f"property:{property_id}:info")
+
         return result
 
-    except HTTPException as http_exc:
-        raise http_exc
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-from pydantic import BaseModel
-from typing import Dict, Any
+
 @prop.put("/update-property-details/{property_id}")
 async def update_property_details(
     property_id: str,
-    payload: ChangePropertySchema,  # Pydantic model
+    payload: ChangePropertySchema,
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
         user = await get_current_user(token, db)
 
-        # Check if property exists
-        result = await db.execute(
-            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
-        )
+        result = await db.execute(select(PropertyDetails).where(PropertyDetails.property_id == property_id))
         property_obj = result.scalar_one_or_none()
+
         if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
 
-        # Check if property can be changed
-        can_change = await is_property_details_changable(property_id, user.user_id, db)
-        if not can_change:
-            raise HTTPException(
-                status_code=403,
-                detail="Property cannot be changed after verification. Contact admin."
-            )
-
-                # Dynamically update fields with type safety
+        # Apply updates dynamically
         for key, value in payload.dict(exclude_unset=True).items():
-            if hasattr(property_obj, key) and value is not None:
-                print("22222222222",key)
-                if key == "size":
-                    setattr(property_obj, key, float(value))
-                elif key == "pin_code":
-                    setattr(property_obj, key, int(value))
-                else:
-                    setattr(property_obj, key, value)
+            setattr(property_obj, key, value)
 
         await db.commit()
         await db.refresh(property_obj)
 
-        # Clear cache
-        cache_key = f"property:{property_id}:info"
-        await redis_delete_data(cache_key)
+        await redis_delete_data(f"property:{property_id}:info")
 
-        return {
-            "message": "Property details updated successfully",
-            "property": property_obj
-        }
+        return {"message": "Updated successfully", "property": property_obj}
 
-    except HTTPException:
-        raise
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token has expired")
     except Exception as e:
-        await db.rollback()
-        print(f"[update_property_details] Unexpected Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error updating property: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error updating property details: {str(e)}")
 
-
-# ==================================
-#     D   E   L    E    T    E
-# ==================================
-
-
+# ======================================================
+#                     D E L E T E
+# ======================================================
 
 @prop.delete("/delete-document/{property_id}")
 async def delete_document(
     property_id: str,
-    category: str,   # pass category name
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-):
-    try:
-        user = await get_current_user(token, db)
-        cache_key=f"property:{property_id}:documents"
-        
-        data=await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id==property_id).limit(1))
-        data=data.scalar_one_or_none()
-        is_verified=getattr(data,category,None)
-        if is_verified:
-            raise HTTPException(status_code=400,detail="Document is verifed contact admin team")
-        result = await property_delete_document(category, property_id)
-        if "error" in result:
-            raise HTTPException(status_code=404, detail=result["error"])
-        await redis_delete_data(cache_key)
-        return {"deleted":f"{category} is deleted sucessfully"}
-    except HTTPException as http_exc:
-        raise http_exc
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    except Exception as e:
-        print(str(e))
-        raise HTTPException(status_code=500, detail=f"Failed to add property: {str(e)}")
-@prop.delete("/delete-reference-image/{property_id}")
-async def delete_reference_photo(
-    property_id: str,
-    property_photos: str = Body(..., embed=True),
+    category: str,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        user = await get_current_user(token, db)
-
-        # Convert CloudFront URL → S3 key
-        s3_key = cloudfront_url_to_s3_key(property_photos)
-        filename = s3_key.split("/")[-1]
-
-        # Check verified
-        is_removed = await db.execute(
-            select(PropertyDocuments).where(property_id == PropertyDocuments.property_id)
-        )
-        is_removed = is_removed.scalar_one_or_none()
-        if is_removed.property_photos:
-            raise HTTPException(status_code=403, detail="Reference Images are verified, can't be deleted")
-
-        # Delete from S3
-        result = await property_delete_single_document(
-            category="property_photos",
-            property_id=property_id,
-            filename=filename  # delete correct file
-        )
-
+        result = await property_delete_document(category, property_id)
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
 
-        # Clear cache
-        cache_key = f"property:{property_id}:reference-images"
-        await redis_delete_data(cache_key)
+        await redis_delete_data(f"property:{property_id}:documents")
+        return {"message": "Document deleted"}
 
-        return {"status": "success", "deleted_file": result["deleted_file"]}
-
-    except HTTPException:
-        raise
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete property image: {e}")
+        raise HTTPException(status_code=500, detail=f"Error deleting: {str(e)}")
 
 
+@prop.delete("/delete-reference-image/{property_id}")
+async def delete_reference_photo(
+    property_id: str,
+    payload: dict = Body(...),
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        file_url = payload["property_photos"]
+        filename = file_url.split("/")[-1].split("?")[0]
 
+        result = await property_delete_single_document("property_photos", property_id, filename)
 
+        await redis_delete_data(f"property:{property_id}:reference-images")
+        return {"message": "Reference image deleted", "deleted": filename}
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    
 
 
 
@@ -535,95 +287,25 @@ async def delete_reference_photo(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ============================
-#     G   E   T
-# ============================
-
-
-
+# ======================================================
+#                     G E T
+# ======================================================
 
 @prop.get("/properties-list/{user_id}")
 async def get_property_list(
-    user_id:str,
-    token:str=Depends(oauth2_scheme), 
+    user_id: str,
+    token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
-    redis_client:redis.Redis=Depends(get_redis)
+    redis_client=Depends(get_redis),
 ):
     cache_key = f"user:{user_id}:property-list"
 
-    cached_data = await redis_get_data(cache_key)
-    if cached_data:
-        return cached_data
-    user=await get_current_user(token,db)
+    cached = await redis_get_data(cache_key)
+    if cached:
+        return cached
+
+    user = await get_current_user(token, db)
+
     result = await db.execute(
         select(
             PropertyDetails.property_id,
@@ -633,134 +315,104 @@ async def get_property_list(
             PropertyDetails.size
         ).where(PropertyDetails.user_id == user.user_id)
     )
-    rows = result.all()  # list of tuples
+
+    rows = result.all()
     properties = []
+
     for row in rows:
-        photos = await check_object_exists(f"property/{row[0]}/legal_documents/property_photo.png")
+        image_exists = await check_object_exists(f"property/{row[0]}/legal_documents/property_photo.png")
+
         properties.append({
             "property_id": row[0],
             "name": row[1],
             "location": row[2],
             "type": row[3],
             "size": str(row[4]),
-            'status':"active",
-            'subscription':"no sub",
-            "image_url":  await get_image(f"/property/{row[0]}/legal_documents/property_photo.png") if photos else settings.DEFAULT_IMG_URL
+            "image_url": await get_image(f"/property/{row[0]}/legal_documents/property_photo.png")
+            if image_exists else settings.DEFAULT_IMG_URL
         })
 
-    await   redis_set_data(cache_key,properties)
-
+    await redis_set_data(cache_key, properties)
     return properties
+
+
+
 
 @prop.get("/get-property-info/{property_id}")
 async def get_property_info(
     property_id: str,
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
         user = await get_current_user(token, db)
-
         cache_key = f"property:{property_id}:info"
-        cached_data = await redis_get_data(cache_key)
-        if cached_data and cached_data.get("user_id") == user.user_id:
-            return cached_data
-
-        # Fetch the property from DB
+        # cached = await redis_get_data(cache_key)
+        # if cached:
+        #     return cached
         result = await db.execute(
-            select(PropertyDetails).where(PropertyDetails.property_id == property_id).limit(1)
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
         )
         property_obj = result.scalar_one_or_none()
+
         if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
-        if property_obj.user_id != user.user_id:
-            raise HTTPException(status_code=403, detail="Access denied for this property")
 
-        # Convert to dict
+        # Convert SQLAlchemy row to dict
         full_data = {c.name: getattr(property_obj, c.name) for c in property_obj.__table__.columns}
 
-        # ✅ Keep only desired fields
-        wanted_keys = [
-            "property_name",
-            "plot_number",
-            "project_name_or_venture",
-            "house_number",
-            "street",
-            "mandal",
-            "district",
-            "city",
-            "pin_code",
-            "type",
-            "sub_type",
-            "facing",
-            "size",
-            "scale",
-            "state",
-            "is_verified",
-        ]
+        # ⭐ HARD-CODED JSON RESPONSE (BEST)
+        data = {
+            "property_id": property_id,
+            "property_name": full_data["property_name"],
+            "plot_number": full_data["plot_number"],
+            "project_name_or_venture": full_data["project_name_or_venture"],
+            "house_number": full_data["house_number"],
+            "street": full_data["street"],
+            "mandal": full_data["mandal"],
+            "district": full_data["district"],
+            "city": full_data["city"],
 
-        data = {k: full_data[k] for k in wanted_keys if k in full_data}
+            # Convert Decimal → int
+            "pin_code": int(full_data["pin_code"]) if full_data["pin_code"] else None,
 
-        
-        try:
-            object_key = f"property/{property_id}/legal_documents/property_photo.png"
-            is_exists = await check_object_exists(object_key)
-            data["property_photo"] =await get_image("/" + object_key) if is_exists else settings.DEFAULT_IMG_URL
-        except Exception as e:
-            print("S3 legal photo error:", e)
-            data["property_photo"] = settings.DEFAULT_IMG_URL
+            "type": full_data["type"],
+            "sub_type": full_data["sub_type"],
+            "facing": full_data["facing"],
 
-        try:
-            keys = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
+            # Convert Decimal → float
+            "size": float(full_data["size"]) if full_data["size"] else None,
+            "scale": full_data["scale"],
+            "rental_income": float(full_data["rental_income"]) or 0.0,
 
-            if not keys:
-                data["property_photos"] = []
-            else:
-                # Generate URLs in parallel → FAST + ONLY signed URLs
-                data["property_photos"] = await asyncio.gather(
-                    *[generate_cloudfront_presigned_url(k) for k in keys]
-                )
+            "state": full_data["state"],
+            "is_verified": full_data["is_verified"],
+            "alternate_name": full_data["alternate_name"],
+            "alternate_contact": full_data["alternate_contact"],
+        }
 
-        except Exception as e:
-            print("S3 property_photos error:", e)
-            data["property_photos"] = []
+        # Add property photo
+        image_path = f"property/{property_id}/legal_documents/property_photo.png"
+        exists = await check_object_exists(image_path)
 
+        data["property_photo"] = (
+            await get_image(f"/{image_path}") if exists else settings.DEFAULT_IMG_URL
+        )
 
-
-        data["size"] = f"{full_data.get('size', 0)}"
+        data["property_photos"] = (
+            await get_reference_images(property_id=full_data['property_id'],token=token,db=db)
+        )
 
         await redis_set_data(cache_key, data)
         return data
 
-    except HTTPException:
-        raise
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Failed to fetch property info: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 
 @prop.get("/get-reference-images/{property_id}")
@@ -768,122 +420,117 @@ async def get_reference_images(
     property_id: str,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
-    redis_client: redis.Redis = Depends(get_redis)
+    redis_client=Depends(get_redis),
 ):
     try:
-        user = await get_current_user(token, db)
-
-        # Redis key
+        user=await get_current_user(token,db)
         cache_key = f"property:{property_id}:reference-images"
+        cached = await redis_get_data(cache_key)
 
-        # Step 1: Check redis cache
-        cached_data = await redis_client.get(cache_key)
-        if cached_data:
-            return json.loads(cached_data)
+        if cached:
+            return cached
 
-        # Step 2: Get list of S3 objects
-        s3_objects = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
-
-        # Convert keys into CloudFront paths (no leading slash)
-        image_keys = [
-            f"property/{property_id}/property_photos/{obj.split('/')[-1]}"
-            for obj in s3_objects
-        ]
-
-        # Step 3: Generate CloudFront signed URLs (ASYNC & FAST)
+        s3_keys = await list_s3_objects(prefix=f"property/{property_id}/property_photos/")
         signed_urls = await asyncio.gather(
-            *[generate_cloudfront_presigned_url(key) for key in image_keys]
+            *[generate_cloudfront_presigned_url(k) for k in s3_keys]
         )
 
-        # DB data
-        result = await db.execute(
-            select(PropertyDocuments).where(PropertyDocuments.property_id == property_id)
-        )
+        result = await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id == property_id))
         doc = result.scalar_one_or_none()
 
         response = {
             "is_verified": doc.property_photos if doc else False,
-            "property_photos": signed_urls
+            "property_photos": signed_urls,
         }
 
-        # Step 4: Cache in Redis
         await redis_set_data(cache_key, response)
-
-
         return response
-
-    except HTTPException:
-        raise
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
     except Exception as e:
-        print("Error:", e)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch reference images: {e}")
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
 
 
 @prop.get("/get-property-documents/{property_id}")
-async def get_reference_documents(
+async def get_property_documents(
     property_id: str,
     token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     try:
+        user=await get_current_user(token,db)
         cache_key = f"property:{property_id}:documents"
-        cached_data = await redis_get_data(cache_key)
-        if cached_data:
-            return cached_data       
+        cached = await redis_get_data(cache_key)
 
-        # Authenticate user
-        user = await get_current_user(token, db)
+        if cached:
+            return cached
 
-        # List S3 objects
-        objects = await list_s3_objects(prefix=f"property/{property_id}/legal_documents/")
+        s3_keys = await list_s3_objects(prefix=f"property/{property_id}/legal_documents/")
 
-        # Fetch DB record
-        result = await db.execute(
-            select(PropertyDocuments).where(PropertyDocuments.property_id == property_id)
-        )
-        data = result.scalar_one_or_none()
+        result = await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id == property_id))
+        doc = result.scalar_one_or_none()
 
-        # Construct response with presigned URLs
         response = {}
-        for key in objects:
-            presigned_url = await generate_cloudfront_presigned_url(key, expires_in=300)  # 5 minutes
+        for key in s3_keys:
             file_name = key.split("/")[-1].split(".")[0]
             response[file_name] = {
-                "url": presigned_url,
-                "is_verified": getattr(data, file_name, False) if data else False
+                "url": await generate_cloudfront_presigned_url(key),
+                "is_verified": getattr(doc, file_name, False) if doc else False
             }
 
-        # Cache for faster retrieval
-        await redis_set_data(cache_key=cache_key, data=response)
+        await redis_set_data(cache_key, response)
         return response
 
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid Token")
-    except ClientError as e:
-        raise HTTPException(status_code=502, detail=f"S3 Error: {str(e)}")
-    except SQLAlchemyError as e:
-        raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
+    except HTTPException as e:
+        raise e 
+    except JWTError as e:
+        raise HTTPException(status_code=401,detail="Token Expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500,detail=str(e))
+    
 
 
 
+# @prop.get("/get-property-reports/{property_id}")
+# async def get_property_reports(
+#     property_id: str,
+#     token: str = Depends(oauth2_scheme),
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     try:
+        
+#         user=await get_current_user(token,db)
+#         cache_key = f"property:{property_id}:reports"
+#         cached = await redis_get_data(cache_key)
+
+#         if cached:
+#             return cached
+
+#         s3_keys = await list_s3_objects(prefix=f"property/{property_id}/reports/")
+
+#         result = await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id == property_id))
+#         doc = result.scalar_one_or_none()
+
+#         response = {}
+#         urls=[]
+#         for key in s3_keys:
+#             file_name = key.split("/")[-1].split(".")[0]
+#             url= await generate_cloudfront_presigned_url(key),
+#             response[file_name] = urls.append(u)
+            
 
 
+#         await redis_set_data(cache_key, response)
+#         return response
 
-def cloudfront_url_to_s3_key(url: str) -> str:
-    """
-    Example:
-    https://cdn.domain.com/property/ID/property_photos/file.png?Expires=... → property/ID/property_photos/file.png
-    """
-    # remove query params
-    url = url.split("?")[0]
-
-    # remove domain part
-    parts = url.split(".net/")  # or .com/ for your domain
-    if len(parts) > 1:
-        key = parts[1]
-    else:
-        key = url
-
-    return key.lstrip("/")
+#     except HTTPException as e:
+#         raise e 
+#     except JWTError as e:
+#         raise HTTPException(status_code=401,detail="Token Expired")
+#     except Exception as e:
+#         print(str(e))
+#         raise HTTPException(status_code=500,detail=str(e))
