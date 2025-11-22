@@ -175,7 +175,7 @@ async def user_add_property(
         size=form.size,
 
         alternate_name=form.alternate_name,
-        phone_number=form.phone_number,
+        alternate_contact=form.alternate_contact,
         land_mark=form.land_mark,
 
         latitude=form.latitude,
@@ -185,7 +185,6 @@ async def user_add_property(
         facing=form.facing,
         type=form.type,
         sub_type=form.sub_type,
-        others=form.others,
 
         description=form.description,
 

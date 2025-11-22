@@ -447,7 +447,6 @@ async def get_personal_details(
 
         profile_url = (
             await generate_cloudfront_presigned_url(s3_key)
-            if exists else settings.DEFAULT_PROFILE_IMG_URL
         )
 
         # 7️⃣ Build response
