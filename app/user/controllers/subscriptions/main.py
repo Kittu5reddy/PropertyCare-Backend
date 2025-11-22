@@ -129,31 +129,31 @@ async def get_properties(
 
 
 
-@subscriptions.post("/add-offline-subscriptions")
-async def add_offline_subscriptions(
-    payload: TransactionSubOfflineSchema,
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Add an offline subscription transaction (cash, cheque, UPI, etc.)
-    """
-    try:
-        user = await get_current_user(token, db)
-        property_ = await get_property_user(payload.property_id, user.user_id, db)
-        sub = await get_current_sub(payload.sub_id, db)
+# @subscriptions.post("/add-offline-subscriptions")
+# async def add_offline_subscriptions(
+#     payload: TransactionSubOfflineSchema,
+#     token: str = Depends(oauth2_scheme),
+#     db: AsyncSession = Depends(get_db)
+# ):
+#     """
+#     Add an offline subscription transaction (cash, cheque, UPI, etc.)
+#     """
+#     try:
+#         user = await get_current_user(token, db)
+#         property_ = await get_property_user(payload.property_id, user.user_id, db)
+#         sub = await get_current_sub(payload.sub_id, db)
 
-        if not property_:
-            raise HTTPException(
-                status_code=403,
-                detail={"status": "error", "message": "User not authorized to access this property"}
-            )
+#         if not property_:
+#             raise HTTPException(
+#                 status_code=403,
+#                 detail={"status": "error", "message": "User not authorized to access this property"}
+#             )
 
-        if sub.category != property_.type:
-            raise HTTPException(
-                status_code=402,
-                detail={"status": "error", "message": "Choose correct subscription category"}
-            )
+#         if sub.category != property_.type:
+#             raise HTTPException(
+#                 status_code=402,
+#                 detail={"status": "error", "message": "Choose correct subscription category"}
+#             )
 
         
 
