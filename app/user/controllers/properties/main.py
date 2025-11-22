@@ -180,6 +180,8 @@ async def user_add_property(
             type=form.type_of_property.strip().upper() if form.type_of_property else None,
             sub_type=form.sub_type_property.strip().upper() if form.sub_type_property else None,
             description=form.additional_notes,
+            gmap_url=form.gmap_url
+            
         )
         
         await redis_delete_pattern(f"user:{user.user_id}:*")
@@ -637,7 +639,7 @@ async def get_property_list(
         })
 
     await   redis_set_data(cache_key,properties)
-        # print("miss")
+
     return properties
 
 @prop.get("/get-property-info/{property_id}")
@@ -767,7 +769,6 @@ async def get_reference_images(
         # Step 1: Check redis cache
         cached_data = await redis_client.get(cache_key)
         if cached_data:
-            print("hit")
             return json.loads(cached_data)
 
         # Step 2: Get list of S3 objects
@@ -798,7 +799,7 @@ async def get_reference_images(
         # Step 4: Cache in Redis
         await redis_set_data(cache_key, response)
 
-        print("miss")
+
         return response
 
     except HTTPException:

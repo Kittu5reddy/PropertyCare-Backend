@@ -915,6 +915,12 @@ async def add_user_details(
 
 
 
+# @auth.put('/edit-user-details')
+# async def edit_user_details(payload:EditProfileDetailSchema,):
+
+
+
+
 @auth.post("/add-user-documents")
 async def add_user_documents(
     pan_file: UploadFile | None = File(None),

@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-
 from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import ARRAY

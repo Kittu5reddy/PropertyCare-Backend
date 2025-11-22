@@ -3,32 +3,46 @@ from typing import Optional,Annotated
 from fastapi import Form
 
 class PropertyDetailForm(BaseModel):
-    name: str
-    survey_number:Optional[str]=""
+
+    property_name: str
+
+    survey_number: Optional[str] = None
     plot_number: str
+
+
     house_number: str
+
+    project_name_or_venture: Optional[str] = None
+    street: str
     city: str
     state: str
     district: str
     mandal: str
-    pin_code: str
-    size: str
+
+    country: str = "India"
+    pin_code: int
+
+    size: float                        
+    phone_number: str                  
+
+    land_mark: Optional[str] = None
+    latitude: Optional[str] = None
+    longitude: Optional[str] = None
+    gmap_url: Optional[str] = None
     facing: str
-    owner_name: str
-    owner_contact: str
-    type_of_property: str
-    sub_type_property: str
-    units:str
-    country:Optional[str]="India"
-    project_name: Optional[str] = ""
-    street:Optional[str] = ""
-    gmaps_url: Optional[str] = ""
-    nearby_landmark: Optional[str] = ""
-    latitude: Optional[str] = ""
-    longitude: Optional[str] = ""
-    additional_notes: Optional[str] = ""
-    associates_id:Optional[str] = ""
-    rental_income:Optional[float] = 0.0
+    type: str
+    sub_type: str
+    scale: str
+    others: Optional[str] = None
+
+    description: Optional[str] = None
+
+    rental_income: Optional[float] = 0.0
+
+    # foreign keys (frontend optional)
+    admin_id: Optional[str] = None
+    associates_id: Optional[str] = None
+
 
 class UpdatePropertyNameRequest(BaseModel):
     property_name: str
