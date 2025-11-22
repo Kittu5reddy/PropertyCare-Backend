@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.middlewares.error_alert import ErrorNotifierMiddleware
+
 from app.core.controllers.auth.main import auth
 from app.core.controllers.auth.google.main import google_auth
 from app.user.controllers.forms.main import form
@@ -28,9 +30,10 @@ def create_app(docs_url="/docs", redoc_url="/redocs", openapi_url="/openapi.json
         openapi_url=openapi_url
     )
 
+    # 🌟 Add Global Error Email Middleware
+    app.add_middleware(ErrorNotifierMiddleware)
 
-
-    # CORS configuration (must come AFTER SlowAPI)
+    # CORS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOW_ORIGINS,

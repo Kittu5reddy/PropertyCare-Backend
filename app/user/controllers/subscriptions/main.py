@@ -15,6 +15,7 @@ subscriptions=APIRouter(prefix='/subscriptions',tags=['subscriptions'])
 from datetime import datetime
 import uuid 
 from jose import JWTError
+from .utils import *
 
 
 
@@ -128,8 +129,6 @@ async def get_properties(
 
 
 
-
-
 @subscriptions.post("/add-offline-subscriptions")
 async def add_offline_subscriptions(
     payload: TransactionSubOfflineSchema,
@@ -140,103 +139,23 @@ async def add_offline_subscriptions(
     Add an offline subscription transaction (cash, cheque, UPI, etc.)
     """
     try:
-        # 1️⃣ Validate user token
         user = await get_current_user(token, db)
+        property_ = await get_property_user(payload.property_id, user.user_id, db)
+        sub = await get_current_sub(payload.sub_id, db)
 
-        # 2️⃣ Validate property ownership
-        result = await db.execute(
-            select(PropertyDetails).where(PropertyDetails.property_id == payload.property_id)
-        )
-        property_obj = result.scalar_one_or_none()
-
-        if not property_obj:
-            raise HTTPException(status_code=404, detail="Property not found")
-
-        if property_obj.user_id != user.user_id:
-            raise HTTPException(status_code=403, detail="You are not the owner of this property")
-
-        # 3️⃣ Validate subscription plan
-        sub_query = await db.execute(
-            select(SubscriptionPlans).where(SubscriptionPlans.sub_id == payload.sub_id)
-        )
-        sub = sub_query.scalar_one_or_none()
-
-        if not sub:
-            
-            raise HTTPException(status_code=404, detail="Subscription plan not found")
-        # print(sub)
-        # ✅ Verify amount matches the chosen duration
-# Safely extract the required price from the plan's durations dict
-        plan_price = int(sub.durations.get(str(payload.duration), 0))
-        paid_amount = int(payload.cost)
-        
-        # Validate that cost covers the selected plan duration
-        if paid_amount < plan_price:
-            print(f"❌ Paid: {paid_amount}, Required: {plan_price}")
+        if not property_:
             raise HTTPException(
-                status_code=400,
-                detail=f"Amount {paid_amount} is insufficient for selected duration ({payload.duration} months). Required: {plan_price}."
+                status_code=403,
+                detail={"status": "error", "message": "User not authorized to access this property"}
             )
-        
 
-        # 4️⃣ Prevent duplicate payment references
-        existing_txn = await db.execute(
-            select(TransactionSubOffline).where(
-                TransactionSubOffline.payment_transaction_number == payload.payment_transaction_number
-            )
-        )
-        if existing_txn.scalar_one_or_none():
+        if sub.category != property_.type:
             raise HTTPException(
-                status_code=400,
-                detail=f"Payment reference '{payload.payment_transaction_number}' already exists. Please use a unique reference."
+                status_code=402,
+                detail={"status": "error", "message": "Choose correct subscription category"}
             )
 
-        # 5️⃣ Generate unique transaction ID
-        transaction_id = (
-            getattr(payload, 'transaction_id', None)
-            or f"TXOFF-{datetime.now().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
-        )
-
-        # 6️⃣ Create ORM record
-        record = TransactionSubOffline(
-            user_id=user.user_id,
-            property_id=payload.property_id,
-            sub_id=payload.sub_id,
-            transaction_id=transaction_id,
-            duration=int(payload.duration),
-            cost=payload.cost,
-            payment_method=payload.payment_method,
-            payment_transaction_number=payload.payment_transaction_number,
-            status=payload.status or "PENDING",
-        )
-
-        # 7️⃣ Save to DB
-        db.add(record)
-        await db.commit()
-        await db.refresh(record)
-
-        # 8️⃣ Return success response
-        return {
-            "message": "Offline subscription transaction created successfully.",
-            "transaction_id": transaction_id,
-            "status": record.status,
-            "amount": str(record.cost),
-        }
-
-    except HTTPException as e:
-        await db.rollback()
-        raise e
-
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token expired or invalid")
-
-    except Exception as e:
-        await db.rollback()
-        print(f"Upload error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to add offline subscription: {str(e)}")
-
-
-
+        
 
 
 

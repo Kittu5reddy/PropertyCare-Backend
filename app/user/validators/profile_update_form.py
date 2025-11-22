@@ -11,9 +11,7 @@ class ProfileUpdateForm(BaseModel):
     state: Optional[str] = None
     pin_code: Optional[int] = None
     country: Optional[str] = None
-    isnri: Optional[bool] = None
-    pan_number: Optional[str] = None
-    aadhar_number: Optional[str] = None
+    nri: Optional[bool] = None                # FIXED
 
     class Config:
-        extra = "forbid"   # ❌ Reject unknown fields automatically
+        extra = "forbid"

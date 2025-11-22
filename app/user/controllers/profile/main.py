@@ -24,19 +24,9 @@ async def get_edit_profile_details(response:Response,token: str = Depends(oauth2
         result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_id == user.user_id))
         data = result.scalar_one_or_none()
         if not data:
-            # await logout(response,token,db)
             raise HTTPException(status_code=404, detail="Personal details not found")
 
         result = await db.execute(select(UserNameUpdate).where(UserNameUpdate.user_id == user.user_id).limit(1))
-        username_update = result.scalar_one_or_none()
-
-        is_username_changable = True
-        if username_update:
-            last_updated = username_update.last_updated
-            delta = datetime.now(tz=last_updated.tzinfo) - last_updated
-            if delta <= timedelta(days=30):
-                is_username_changable = False
-
         return {
             "first_name": data.first_name,
             "last_name": data.last_name,
@@ -50,10 +40,9 @@ async def get_edit_profile_details(response:Response,token: str = Depends(oauth2
             "pin_code": data.pin_code,
             "is_nri":data.nri,
             "country": data.country,
-            "image_url": get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"),
+            "image_url": get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png"),
             "aadhaar_number": data.aadhaar_number,
-            "pan_number": data.pan_number,
-            "can_change_username": is_username_changable
+            "pan_number": data.pan_number
         }
     except HTTPException as e:
         raise e 
