@@ -579,7 +579,6 @@ async def get_edit_profile_details(
 
         image_url = (
             await generate_cloudfront_presigned_url(s3_key)
-            if exists else settings.DEFAULT_PROFILE_IMG_URL
         )
 
         # Final response
