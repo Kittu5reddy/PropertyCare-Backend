@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Integer, DateTime, func, ForeignKey, Text,Boolean,Float,NUMERIC
+from sqlalchemy import String, Integer, DateTime, func, ForeignKey, Text, JSON,Boolean,Float,NUMERIC
 from sqlalchemy.orm import Mapped, mapped_column
 from app.core.models import Base
 from config import settings
@@ -40,6 +40,34 @@ class PropertyDetails(Base):
     active_sub:Mapped[bool]=mapped_column(Boolean,default=False)
     associates_id:Mapped[str]=mapped_column(String(225),ForeignKey("associates.associates_id"),nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+
+
+class PropertyHistory(Base):
+    __tablename__ = "property_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    # which property the history belongs to
+    property_id: Mapped[int] = mapped_column(Integer, ForeignKey("property_details.id"), nullable=False)
+
+    # who made the change
+    updated_by_user: Mapped[str] = mapped_column(String(50), ForeignKey("users.user_id"), nullable=True)
+    updated_by_admin: Mapped[str] = mapped_column(String(50), ForeignKey("admin.admin_id"), nullable=True)
+
+    # type of action (CREATE / UPDATE / DELETE)
+    action: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    # store old/new values in JSON for audit
+    changes_made: Mapped[dict] = mapped_column(JSON, nullable=True)
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
+    )
+
 
 
 
