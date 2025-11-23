@@ -208,3 +208,7 @@ async def booking_consulting(
         "message": "Consultation booked successfully — confirmation email sent!",
         "id": record.id,
     }
+
+
+
+

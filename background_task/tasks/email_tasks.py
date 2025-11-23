@@ -61,8 +61,8 @@ PHONE_NUMBER = settings.PHONE_NUMBER
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # (go up 3 levels from: app/core/controllers/emails/utils.py → app/core/controllers → app/core → app)
 
-TEMPLATE_DIR = os.path.join(PROJECT_ROOT, "app", "core", "controllers", "emails", "templates")
-
+TEMPLATE_DIR = os.path.join(PROJECT_ROOT, "app", "user", "controllers", "emails", "templates")
+print(TEMPLATE_DIR)
 print(f"📁 Loading email templates from: {TEMPLATE_DIR}")
 
 env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))

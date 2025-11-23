@@ -84,3 +84,66 @@ def send_newsletter_email(to_email: str, context: dict):
     """Send a newsletter welcome email."""
     context = context
     return send_email("Welcome to Vibhoos PropCare Newsletter", to_email, "newsletter_email.html", context,header="NEWS LETTER")
+from background_task.tasks.email_tasks import send_email
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import smtplib
+import secrets
+from config import settings
+from datetime import datetime
+
+# GoDaddy SMTP settings
+SMTP_SERVER = "smtpout.secureserver.net"
+SMTP_PORT = 465  # SSL port
+EMAIL_ADDRESS = settings.EMAIL_ADDRESS
+EMAIL_PASSWORD = settings.EMAIL_PASSWORD
+PATH = settings.EMAIL_TOKEN_VERIFICATION
+API_BASE_URL=settings.API_BASE_URL
+
+def create_verification_token():
+    return secrets.token_urlsafe(32)
+
+
+from background_task.tasks.email_tasks import send_email_task
+from config import settings
+
+API_BASE_URL = settings.API_BASE_URL
+
+def send_verification_email(email: str, token: str):
+    """Send verification email asynchronously using Celery."""
+    context = {
+        "verification_link": f"{API_BASE_URL}/auth/verify-email?token={token}"
+    }
+
+    subject = "Verify Your Vibhoos PropCare Account"
+
+    # 🔥 Send via Celery (background)
+    send_email_task.delay(
+        subject,
+        email,
+        "user_verification_email.html",
+        context,
+        header="Account Verification"
+    )
+
+    print(f"✅ Verification email queued for {email}")
+
+
+async def send_forgot_password_email(email: str, reset_link: str, context: dict = None):
+    """Send forgot password email asynchronously using Celery."""
+    subject = "Reset Your Vibhoos PropCare Password"
+
+    if context is None:
+        context = {"reset_link": reset_link}
+
+    # 🔥 Send via Celery (background)
+    send_email_task.delay(
+        subject,
+        email,
+        "reset_password_email.html",
+        context,
+        header="RESET-PASSWORD"
+    )
+
+    print(f"✅ Password reset email queued for {email}")
+

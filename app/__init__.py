@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.middlewares.error_alert import ErrorNotifierMiddleware
 
-from app.core.controllers.auth.main import auth
-from app.core.controllers.auth.google.main import google_auth
+from app.user.controllers.auth.main import auth
+from app.user.controllers.auth.google.main import google_auth
 from app.user.controllers.forms.main import form
 from app.user.controllers.subscriptions.main import subscriptions
 from app.user.controllers.surveillance.main import surveillance
@@ -13,7 +13,7 @@ from app.admin.controllers.auth.main import admin_auth
 from app.admin.controllers.subscriptions.main import admin_subscriptions
 from app.user.controllers.properties.main import prop
 from app.user.controllers.services.main import services
-from app.core.controllers.emails.main import email
+from app.user.controllers.emails.main import email
 from app.user.controllers.feedback.main import feedback
 from app.admin.controllers.dashboard.main import admin_dash
 from app.user.controllers.profile.main import profile

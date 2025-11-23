@@ -1,6 +1,7 @@
 from app.core.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,BASE_USER_URL,FORGOT_PASSWORD_TIME_LIMIT,get_is_pd_filled
-from app.core.controllers.auth.email import create_verification_token,send_verification_email,send_forgot_password_email
+from app.user.controllers.emails.utils import create_verification_token,send_verification_email,send_forgot_password_email
 from fastapi import APIRouter,Request
+from app.user.controllers.forms.utils import check_object_exists,list_s3_objects,generate_cloudfront_presigned_url
 from app.core.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
 from app.user.validators.auth import User as LoginSchema 
 from app.user.models.users import User,UserNameUpdate
@@ -75,7 +76,7 @@ async def login(user: LoginSchema, db: AsyncSession = Depends(get_db)):
 
 
 @auth.post("/signup")
-async def signup(user: LoginSchema, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
+async def signup(user: LoginSchema,  db: AsyncSession = Depends(get_db)):
     db_user = await get_user_by_email(db, user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already exists")
@@ -93,7 +94,7 @@ async def signup(user: LoginSchema, background_tasks: BackgroundTasks, db: Async
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
-    background_tasks.add_task(send_verification_email, new_user.email, new_user.verification_token)
+    send_verification_email(new_user.email,new_user.verification_token)
 
     return {"message": "User created successfully. Please check your email to verify your account.", "email": new_user.email}
 
@@ -399,27 +400,25 @@ async def get_user_id(token: str = Depends(oauth2_scheme), db: AsyncSession = De
         raise HTTPException(status_code=404, detail="User not found")
     return {"user_id": user.user_id}
 
+
 @auth.get("/get-personal-data")
 async def get_personal_details(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    ✅ Fetch a user's personal details, property stats, and cache results in Redis.
-    """
     try:
-        # 1️⃣ Validate token and get user
+        # 1️⃣ Validate user
         user = await get_current_user(token, db)
 
         cache_key = f"user:{user.user_id}:personal-data"
 
-        # 2️⃣ Check Redis cache first
+        # 2️⃣ Check Redis
         cache_data = await redis_get_data(cache_key)
         if cache_data:
             print("Cache hit ✅")
             return cache_data
 
-        # 3️⃣ Fetch personal details
+        # 3️⃣ Personal details
         result = await db.execute(
             select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
         )
@@ -427,27 +426,29 @@ async def get_personal_details(
         if not data:
             raise HTTPException(status_code=404, detail="Personal details not found")
 
-        # 4️⃣ Fetch all properties for this user
+        # 4️⃣ Property details
         properties_result = await db.execute(
             select(PropertyDetails).where(PropertyDetails.user_id == user.user_id)
         )
         property_data = properties_result.scalars().all()
         total_properties = len(property_data)
 
-        # 5️⃣ Count active and inactive subscriptions
-        active_subs_result = await db.execute(
+        # 5️⃣ Active subscriptions
+        active_result = await db.execute(
             select(PropertyDetails).where(
                 PropertyDetails.user_id == user.user_id,
                 PropertyDetails.active_sub == True
             )
         )
-        active_properties = active_subs_result.scalars().all()
-        with_plans = len(active_properties)
+        with_plans = len(active_result.scalars().all())
         no_plans = total_properties - with_plans
 
-        # 6️⃣ Build profile URL (e.g., CloudFront or local path)
-        profile_url = get_image(
-            f"/user/{user.user_id}/profile_photo/profile_photo.png"
+        # 6️⃣ Profile photo logic (CloudFront)
+        s3_key = f"user/{user.user_id}/profile_photo/profile_photo.png"
+        exists = await check_object_exists(s3_key)
+
+        profile_url = (
+            await generate_cloudfront_presigned_url(s3_key)
         )
 
         # 7️⃣ Build response
@@ -463,20 +464,15 @@ async def get_personal_details(
             "profile_photo_url": profile_url,
         }
 
-        # 8️⃣ Cache result for faster subsequent access
+        # 8️⃣ Cache response
         await redis_set_data(cache_key, response)
 
         return response
 
-    except HTTPException as e:
-        raise e
-
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Token expired")
-
     except Exception as e:
         print(f"❌ Error in get_personal_details: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @auth.get("/get-subscription-details")
 async def get_subscription_details(
@@ -549,16 +545,28 @@ async def get_subscription_details(
 
 
 @auth.get("/edit-profile")
-async def get_edit_profile_details(response:Response,token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+async def get_edit_profile_details(
+    response: Response,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
     try:
         user = await get_current_user(token, db)
-        result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_id == user.user_id))
+
+        # Fetch personal details
+        result = await db.execute(
+            select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
+        )
         data = result.scalar_one_or_none()
+
         if not data:
-            await logout(response,token,db)
+            await logout(response, token, db)
             raise HTTPException(status_code=404, detail="Personal details not found")
 
-        result = await db.execute(select(UserNameUpdate).where(UserNameUpdate.user_id == user.user_id).limit(1))
+        # Check username update constraints
+        result = await db.execute(
+            select(UserNameUpdate).where(UserNameUpdate.user_id == user.user_id).limit(1)
+        )
         username_update = result.scalar_one_or_none()
 
         is_username_changable = True
@@ -568,6 +576,15 @@ async def get_edit_profile_details(response:Response,token: str = Depends(oauth2
             if delta <= timedelta(days=30):
                 is_username_changable = False
 
+        # Profile photo — CloudFront Signed URL
+        s3_key = f"user/{user.user_id}/profile_photo/profile_photo.png"
+        exists = await check_object_exists(s3_key)
+
+        image_url = (
+            await generate_cloudfront_presigned_url(s3_key)
+        )
+
+        # Final response
         return {
             "first_name": data.first_name,
             "last_name": data.last_name,
@@ -580,18 +597,20 @@ async def get_edit_profile_details(response:Response,token: str = Depends(oauth2
             "state": data.state,
             "pin_code": data.pin_code,
             "country": data.country,
-            "image_url": get_image(f"/user/{user.user_id}/profile_photo/profile_photo.png{get_current_time()}"),
+            "image_url": image_url,
             "aadhaar_number": data.aadhaar_number,
             "pan_number": data.pan_number,
             "can_change_username": is_username_changable
         }
-    except HTTPException as e:
-        raise e 
-    except JWTError as e:
-        raise HTTPException(status_code=401,detail="Token Expired")
+
+    except HTTPException:
+        raise
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token Expired")
     except Exception as e:
         print(str(e))
-        raise HTTPException(status_code=500,detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 #=========================
@@ -1010,3 +1029,51 @@ async def add_user_documents(
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@auth.get("/check-username/{username}")
+async def check_username(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # Decode token to ensure it's valid
+        payload = await get_current_user(token,db)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Now query the DB
+    result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_name == username))
+    existing = result.scalar_one_or_none()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    return {"available": True}
+
+
+
+
+
+@auth.get("/check-contact/{phonenumber}")
+async def check_phonenumber(
+    phonenumber: str,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # Decode token to ensure it's valid
+        payload = await get_current_user(token,db)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # Now query the DB
+    result = await db.execute(select(PersonalDetails).where(PersonalDetails.contact_number == phonenumber))
+    existing = result.scalar_one_or_none()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="phone_number  already exists")
+    
+    return {"available": True}

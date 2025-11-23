@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Email Already Verified</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f3f4f6;
+        padding: 40px;
+        display: flex;
+        height: 100vh;
+        justify-content: center;
+        align-items: center;
+      }
+      .card {
+        max-width: 500px;
+        background: #fff;
+        padding: 35px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-top: 6px solid #16a34a;
+        text-align: center;
+      }
+      h2 {
+        color: #16a34a;
+      }
+      a {
+        background-color: #16a34a;
+        padding: 12px 24px;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: bold;
+        display: inline-block;
+        margin-top: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Email Already Verified</h2>
+      <p>You can now log in to your account.</p>
+
+      <a href="{{ login_url }}">Go to Login</a>
+    </div>
+  </body>
+</html>

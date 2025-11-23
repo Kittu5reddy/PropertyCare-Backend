@@ -103,6 +103,8 @@ async def redis_update_data(
 async def redis_delete_data(
     cache_key: list
 ):
+    
+    print("deleted")
     result = await redis_client.delete(cache_key)
     return result > 0   # returns True if key was deleted
 

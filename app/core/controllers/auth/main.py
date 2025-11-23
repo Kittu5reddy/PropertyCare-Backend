@@ -1,5 +1,5 @@
 from app.core.controllers.auth.utils import create_access_token,create_refresh_token,get_password_hash,verify_refresh_token,get_current_user,get_current_user_personal_details,verify_password,BASE_USER_URL,FORGOT_PASSWORD_TIME_LIMIT,get_is_pd_filled
-from app.core.controllers.auth.email import create_verification_token,send_verification_email,send_forgot_password_email
+from app.user.controllers.emails.utils import create_verification_token,send_verification_email,send_forgot_password_email
 from fastapi import APIRouter,Request
 from app.user.validators.personal_details import  PersonalDetails as PersonalDetailSchema
 from app.core.controllers.auth.utils import get_user_by_email,REFRESH_TOKEN_EXPIRE_DAYS,generate_user_id
@@ -201,176 +201,55 @@ async def logout(
     # Remove refresh token cookie
     response.delete_cookie("refresh_token")
 
-    return {"message": "Logged out"}
 
 
 
-#=========================
+#======================
+from fastapi.templating import Jinja2Templates
 #        GET ROUTES
 #=========================
-
-
+templates = Jinja2Templates(directory="templates")
 @auth.get("/verify-email", response_class=HTMLResponse)
-async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
+async def verify_email(request: Request, token: str, db: AsyncSession = Depends(get_db)):
     try:
-        # 1️⃣ Find user with matching verification token
+        # 1️⃣ Find user with matching token
         result = await db.execute(select(User).where(User.verification_token == token))
         user = result.scalar_one_or_none()
 
         # 2️⃣ Invalid or expired token
         if not user:
-            return HTMLResponse(
-                content="""
-                <div style='font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 40px; text-align: center; height: 100vh; display: flex; align-items: center; justify-content: center;'>
-                    <div style='max-width: 500px; background: #fff; padding: 35px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 6px solid #dc2626;'>
-                        <h2 style='color: #dc2626;'>Invalid or Expired Token</h2>
-                        <p style='color: #374151;'>Please check your verification link or try signing up again.</p>
-                    </div>
-                </div>
-                """,
+            return templates.TemplateResponse(
+                "email_invalid.html",
+                {"request": request},
                 status_code=400
             )
 
         # 3️⃣ If already verified
         if user.is_verified:
-            return HTMLResponse(
-                content=f"""
-                <div style='font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 40px; text-align: center; height: 100vh; display: flex; align-items: center; justify-content: center;'>
-                    <div style='max-width: 500px; background: #fff; padding: 35px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-top: 6px solid #16a34a;'>
-                        <h2 style='color: #16a34a;'>Email Already Verified</h2>
-                        <p style='color: #374151;'>You can now log in to your account.</p>
-                        <a href="{settings.BASE_USER_URL}/login"
-                           style='display:inline-block;margin-top:15px;background-color:#16a34a;color:#fff;padding:12px 24px;
-                                  text-decoration:none;border-radius:6px;font-weight:bold;'>
-                            Go to Login
-                        </a>
-                    </div>
-                </div>
-                """,
+            return templates.TemplateResponse(
+                "email_already_verified.html",
+                {
+                    "request": request,
+                    "login_url": f"{settings.BASE_USER_URL}/login"
+                },
                 status_code=200
             )
 
-        # 4️⃣ Update user verification
+        # 4️⃣ Verify user
         user.is_verified = True
         user.verification_token = None
         await db.commit()
 
-        # Create user directory for uploads, etc.
+        # Create user uploads folder
         await create_user_directory(user.user_id)
 
-        # 5️⃣ Return success HTML
-        return HTMLResponse(
-            content=f"""
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Email Verification - Vibhoos PropCare</title>
-    <style>
-      body {{
-        margin: 0;
-        padding: 0;
-        font-family: "Segoe UI", Roboto, Arial, sans-serif;
-        height: 100vh;
-        background: linear-gradient(135deg, #e8f5e9, #f1fdf4);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }}
-      .container {{
-        width: 100%;
-        max-width: 520px;
-        background: #ffffff;
-        padding: 40px 35px;
-        border-radius: 16px;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
-        border-top: 6px solid #16a34a;
-        text-align: center;
-        transition: all 0.3s ease-in-out;
-      }}
-      .logo {{
-        width: 130px;
-        margin-bottom: 20px;
-      }}
-      h2 {{
-        color: #166534;
-        font-size: 26px;
-        margin-bottom: 12px;
-      }}
-      p {{
-        color: #374151;
-        font-size: 16px;
-        line-height: 1.6;
-        margin-bottom: 25px;
-      }}
-      a.button {{
-        display: inline-block;
-        background: linear-gradient(90deg, #16a34a, #22c55e);
-        color: white;
-        padding: 12px 28px;
-        text-decoration: none;
-        border-radius: 8px;
-        font-weight: 600;
-        box-shadow: 0 3px 8px rgba(34, 197, 94, 0.4);
-        transition: background 0.3s ease, transform 0.2s ease;
-      }}
-      a.button:hover {{
-        background: linear-gradient(90deg, #22c55e, #16a34a);
-        transform: scale(1.03);
-      }}
-      .footer-text {{
-        margin-top: 25px;
-        font-size: 13px;
-        color: #6b7280;
-      }}
-      .footer-text a {{
-        color: #16a34a;
-        text-decoration: none;
-        font-weight: 500;
-      }}
-      footer {{
-        position: absolute;
-        bottom: 20px;
-        text-align: center;
-        width: 100%;
-        color: #9ca3af;
-        font-size: 12px;
-      }}
-      @media (max-width: 600px) {{
-        .container {{
-          margin: 0 15px;
-          padding: 30px 20px;
-        }}
-      }}
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <img
-        src="https://vibhoospropcare.com/logo.png"
-        alt="Vibhoos PropCare"
-        class="logo"
-      />
-      <h2>Email Verified Successfully!</h2>
-      <p>
-        Great news! 🎉 Your email has been verified successfully.<br />
-        You can now log in and explore your
-        <b>Vibhoos PropCare</b> account.
-      </p>
-      <a href="{settings.BASE_USER_URL}/login" class="button">Go to Login</a>
-
-      <p class="footer-text">
-        Need help? Contact our support team at
-        <a href="mailto:support@vibhoospropcare.com">
-          support@vibhoospropcare.com
-        </a>
-      </p>
-    </div>
-    <footer>© 2025 Vibhoos PropCare. All rights reserved.</footer>
-  </body>
-</html>
-""",
+        # 5️⃣ Success page
+        return templates.TemplateResponse(
+            "email_verified.html",
+            {
+                "request": request,
+                "login_url": f"{settings.BASE_USER_URL}/login"
+            },
             status_code=200
         )
 
@@ -378,8 +257,6 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Token expired")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Email verification failed: {str(e)}")
-
-
 
 
 
@@ -1013,47 +890,3 @@ async def add_user_documents(
 
 
 
-@auth.get("/check-username/{username}")
-async def check_username(
-    username: str,
-    db: AsyncSession = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
-):
-    try:
-        # Decode token to ensure it's valid
-        payload = await get_current_user(token,db)
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    # Now query the DB
-    result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_name == username))
-    existing = result.scalar_one_or_none()
-    
-    if existing:
-        raise HTTPException(status_code=400, detail="Username already exists")
-    
-    return {"available": True}
-
-
-
-
-@auth.get("/check-contact/{phonenumber}")
-async def check_phonenumber(
-    phonenumber: str,
-    db: AsyncSession = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
-):
-    try:
-        # Decode token to ensure it's valid
-        payload = await get_current_user(token,db)
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    # Now query the DB
-    result = await db.execute(select(PersonalDetails).where(PersonalDetails.contact_number == phonenumber))
-    existing = result.scalar_one_or_none()
-    
-    if existing:
-        raise HTTPException(status_code=400, detail="phone_number  already exists")
-    
-    return {"available": True}

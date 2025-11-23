@@ -60,8 +60,9 @@ async def update_profile(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        user = await get_current_user_personal_details(token, db)
-        user_id = user.user_id
+        user = await get_current_user(token, db)
+        cache_key = f"user:{user.user_id}:personal-data"
+
 
         data = form.dict(exclude_none=True)  # Only valid fields
 
@@ -82,7 +83,7 @@ async def update_profile(
         await db.refresh(user)
 
         # Clear redis cache
-        await redis_delete_data(f"user:{user_id}:personal-data")
+        await redis_delete_data(cache_key)
 
         return {
             "message": "Profile updated successfully.",
