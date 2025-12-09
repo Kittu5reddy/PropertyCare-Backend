@@ -1,39 +1,52 @@
+from __future__ import annotations
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, DateTime, func, ForeignKey, Numeric
+from sqlalchemy import Integer, String, DateTime, ForeignKey, Numeric, Boolean
 from app.core.models import Base
 from datetime import datetime
 
 
+class SubscriptionsTransactions(Base):
+    __tablename__ = "subscription_transactions"
 
-class TransactionSubOffline(Base):
-    __tablename__ = "transaction_sub_offline"
-
+    # Primary key
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    transaction_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
 
-    # Link to user and property
-    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("users.user_id"), nullable=False)
-    property_id: Mapped[str] = mapped_column(String(50), ForeignKey("property_details.property_id"), nullable=False)
+    # Internal transaction reference (tranXXXX)
+    tran_id: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
 
-    # Subscription plan reference
-    sub_id: Mapped[str] = mapped_column(String(50), ForeignKey("subscriptions_plans.sub_id"), nullable=False)
-    duration:Mapped[str]=mapped_column(Integer,nullable=False)
+    # Foreign keys
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=False)
+    property_id: Mapped[int | None] = mapped_column(ForeignKey("property_details.property_id"))
+    sub_id: Mapped[int] = mapped_column(ForeignKey("subscriptions_plans.sub_id"), nullable=False)
 
+    # Plan details
+    starting_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    ending_date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    plan_type: Mapped[str] = mapped_column(String(50), nullable=False)
 
-    # Unique transaction reference (internal/external)
+    # ---------- PayPhi Important Fields ----------
+    merchant_id: Mapped[str] = mapped_column(String(20), nullable=False)
+    merchant_txn_no: Mapped[str] = mapped_column(String(50), nullable=False)  # merchantTxnNo
 
-    #cost at that time
-    cost: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    txn_id: Mapped[str | None] = mapped_column(String(30))   # PayPhi txnID
+    payment_id: Mapped[str | None] = mapped_column(String(30))  # paymentID
 
-    # Payment details
-    payment_method: Mapped[str] = mapped_column(String(50), nullable=False)  # CASH, CHEQUE, UPI, etc.
-    payment_transaction_number: Mapped[str] = mapped_column(String(100),unique=True, nullable=False)  # UPI ref, cheque no., etc.
+    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    currency_code: Mapped[str] = mapped_column(String(3), default="356")
 
+    payment_mode: Mapped[str | None] = mapped_column(String(20))        # CARD/UPI/NB
+    payment_sub_inst_type: Mapped[str | None] = mapped_column(String(50))  # CC/DC/Bank Name
 
-    # Status tracking (PENDING → APPROVED/REJECTED)
-    status: Mapped[str] = mapped_column(String(20), default="PENDING")
+    response_code: Mapped[str | None] = mapped_column(String(10))
+    response_description: Mapped[str | None] = mapped_column(String(255))
 
-    # Audit
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    status: Mapped[str] = mapped_column(String(20), default="INITIATED")
+    payment_datetime: Mapped[datetime | None] = mapped_column(DateTime)
 
+    # Optional fields
+    hash_validated: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )

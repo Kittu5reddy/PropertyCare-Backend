@@ -6,8 +6,6 @@ import os
 from jinja2 import Environment, FileSystemLoader
 from config import settings
 from background_task.celery_app import celery_app
-# from background_task.t6.send_email import send_email, send_consultation_email, send_newsletter_email
-
 
 @celery_app.task(
     name="background_task.tasks.email_tasks.send_email_task",

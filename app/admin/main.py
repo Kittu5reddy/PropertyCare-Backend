@@ -1,7 +1,7 @@
 from sqlalchemy import select
 # from app.core.models import async_session
-from app.admin.models.admins import Admin      
-from app.core.controllers.auth.main import pwd_context
+from app.admin.models.admin import Admin      
+from app.core.controllers.auth.utils import pwd_context
 import uuid
 
 # async def create_admin(email: str, password: str):

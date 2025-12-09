@@ -1,12 +1,17 @@
 from fastapi import APIRouter,Depends,HTTPException,UploadFile,File
-from app.core.controllers.auth.main import oauth2_scheme,get_current_user
-from app.core.models import get_db,AsyncSession
+from app.user.controllers.auth.utils import get_current_user
+from sqlalchemy.ext.asyncio import (
+    AsyncSession
+)
+from app.core.services.db import get_db
 from app.user.models.feedbacks import FeedBack
 from .utils import generate_feedback_number
-from app.user.controllers.forms.utils import upload_feedback_image_as_png
+from app.core.services.s3 import upload_feedback_image_as_png
 from background_task.tasks.email_tasks import send_email_task
 from jose import JWTError
 feedback=APIRouter(prefix='/feedbacks',tags=['feed back'])
+from fastapi.security import OAuth2PasswordBearer
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 from fastapi import Form
 @feedback.post("/feedback-submit")
 async def feedback_submit(
@@ -88,3 +93,4 @@ async def feedback_submit(
         print(str(e))
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+

@@ -1,11 +1,14 @@
 from sqlalchemy import select
 from app.core.models.property_details import PropertyDetails
-from app.core.models import get_db,AsyncSession
-from fastapi import Depends,HTTPException
-from app.user.controllers.forms.utils import generate_cloudfront_presigned_url,check_object_exists
+from sqlalchemy.ext.asyncio import (
+    AsyncSession
+)
+from fastapi import HTTPException
+from app.core.services.s3 import generate_cloudfront_presigned_url,check_object_exists
+from app.core.services.db import get_db
 from datetime import date
 from config import settings
-from jose import JWTError
+
 async def get_property_details(
     user_id: str,
     db: AsyncSession,

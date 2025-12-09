@@ -1,36 +1,71 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from fastapi.responses import HTMLResponse
 from fastapi import APIRouter,Depends
 from app.core.validators.emails import NewsLetter as NewsLetterSchema
 from app.core.models.newsletter import NewsLetter 
 from app.core.models.consultation import Consultation  
 from app.core.validators.consultation import Consultation as ConsultationSchema
-from .utils import send_consultation_email,send_newsletter_email
+
 email=APIRouter(prefix="/email",tags=['emails'])
 from sqlalchemy import select
-from app.core.models import get_db,AsyncSession
+from app.core.services.db import get_db
+from sqlalchemy.ext.asyncio import (
+    AsyncSession
+)
 from .utils import *
-from email.message import EmailMessage
-from background_task.tasks.email_tasks import send_email_task
+
+
 from fastapi import BackgroundTasks
 from email_validator import validate_email, EmailNotValidError
 import dns.resolver
 
+from fastapi.security import OAuth2PasswordBearer
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-
-def send_newsletter(recipient_email, html_body):
-    msg = EmailMessage()
-    msg['Subject'] = 'Vibhoos PropCare Newsletter'
-    msg['From'] = 'news@vibhoospropcare.com'
-    msg['To'] = recipient_email
-    # List-Unsubscribe headers for Gmail manage subscription
-    msg['List-Unsubscribe'] = f'<https://api.vibhoospropcare.com/email/unsubscribe-news-letters/{recipient_email}>'
-    msg['List-Unsubscribe-Post'] = 'List-Unsubscribe=One-Click'
-    msg.set_content(html_body, subtype='html')
-
-    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        server.starttls()
-        server.login('your_username', 'your_password')
-        server.send_message(msg)
 
 @email.post('/subscribe-news-letters')
 async def news_letter_subscribe(
@@ -82,7 +117,7 @@ async def news_letter_subscribe(
     "phone_number":PHONE_NUMBER,
     }
  
-    send_email_task.delay("Welcome to Vibhoos PropCare Newsletter", email_normalized, "newsletter_email.html", context,header="NEWS LETTER")
+    send_email_task.delay("Welcome to Vibhoos PropCare Newsletter", email_normalized, "/general/newsletter_email.html", context,header="NEWS LETTER")
 
 
     return {"message": message, "status": "active"}
@@ -198,7 +233,7 @@ async def booking_consulting(
     send_email_task.delay(
         subject="Your Consultation Request - Vibhoos PropCare",
         to_email=email_normalized,
-        template_name="consultation_email.html",
+        template_name="/general/consultation_email.html",
         context=context,
         header="Consultation Request"
     )

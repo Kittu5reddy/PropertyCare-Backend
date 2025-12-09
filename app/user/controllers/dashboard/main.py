@@ -1,27 +1,19 @@
-from fastapi import APIRouter,Depends,HTTPException,UploadFile,File,Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
-from app.core.controllers.auth.main import oauth2_scheme
-
-from app.core.controllers.auth.main import get_current_user
-from app.core.models.property_details import PropertyDetails
-from .utils import get_property_details
-from app.core.models import AsyncSession,get_db,redis_get_data,redis_set_data
-from sqlalchemy import select
-from app.user.controllers.forms.utils import list_s3_objects
-from app.user.models.required_actions import RequiredAction
-from app.user.validators.required_actions import RequiredActions as RequiredActionSchema
-dash=APIRouter(prefix='/dash',tags=['/dash'])
-
-
-from app.user.controllers.forms.utils import property_upload_documents,upload_documents
-from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from jose import JWTError
-from app.core.controllers.auth.main import get_current_user, oauth2_scheme
+from sqlalchemy import select
+
+from app.core.models.property_details import PropertyDetails
+from app.core.services.s3 import property_upload_documents, upload_documents
+from app.core.services.redis import redis_get_data, redis_set_data
+from app.core.services.db import get_db
+from app.user.controllers.auth.utils import get_current_user
 from app.user.models.required_actions import RequiredAction
+from .utils import get_property_details
 
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+dash=APIRouter(prefix='/dash',tags=['/dash'])
 @dash.get("/get-required-actions")
 async def get_required_actions(
     token: str = Depends(oauth2_scheme),

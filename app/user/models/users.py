@@ -32,6 +32,8 @@ class User(Base):
 
     # Meta
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    # Foreign key must reference the correct table name within the default schema.
+    # The admins table is named 'admins' under the PropCare schema via Base metadata.
     created_by = Column(String, ForeignKey("admin.admin_id"), nullable=True)
     status = Column(String, default="active")
 
