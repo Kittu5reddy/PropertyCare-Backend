@@ -7,7 +7,7 @@ from jose import JWTError
 from datetime import datetime, timedelta
 
 from app.user.controllers.auth.utils import get_current_user
-from app.core.services.s3 import generate_cloudfront_presigned_url,check_object_exists,upload_image_as_png
+from app.core.services.s3 import generate_cloudfront_presigned_url,check_object_exists,upload_image_as_png,get_image_cloudfront_signed_url
 from app.core.services.db import get_db
 from app.core.services.redis import redis_delete_data
 from app.user.controllers.auth.main import logout
@@ -344,7 +344,7 @@ async def get_personal_data(
         data = {
             "full_name": f"{record.first_name} {record.last_name}",
             "user_name": record.user_name,
-            "profile_photo_url": record.profile_photo_url,
+            "profile_photo_url": get_image_cloudfront_signed_url(f'/users/{user.user_id}/profile_photo/profile_photo.png'),
             "contact_number": record.contact_number,
             "location": record.location,
             "member_from": record.member_from,
