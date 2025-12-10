@@ -269,10 +269,29 @@ async def update_property_name(
     db: AsyncSession = Depends(get_db),
 ):
     try:
+        # Authenticate user
         user = await get_current_user(token, db)
 
-        # Validate name length (<=20 allowed)
-        if len(payload.property_name) > 20:
+        # Validate input BEFORE using len()
+        if not payload.property_name:
+            raise HTTPException(status_code=400, detail="Property name is required")
+
+        property_name = payload.property_name.strip()
+
+        if len(property_name) > 20:
+            raise HTTPException(status_code=400, detail="Name must be <= 20 characters")
+
+        # Strip extra spaces
+        property_name = payload.property_name.strip()
+
+        if property_name == "":
+            raise HTTPException(
+                status_code=400,
+                detail="Property name cannot be empty"
+            )
+
+        # Validate length
+        if len(property_name) > 20:
             raise HTTPException(
                 status_code=400,
                 detail="Name should be less than or equal to 20 characters"
@@ -288,25 +307,35 @@ async def update_property_name(
             raise HTTPException(status_code=404, detail="Property not found")
 
         # Update name
-        property_obj.property_name = payload.property_name
+        property_obj.property_name = property_name
 
+        # Commit transaction
         try:
             await db.commit()
         except IntegrityError:
             await db.rollback()
-            raise HTTPException(status_code=400, detail="Duplicate property name is not allowed")
+            raise HTTPException(
+                status_code=400,
+                detail="Duplicate property name is not allowed"
+            )
 
         await db.refresh(property_obj)
 
-        # Clear cache
-        await redis_delete_data(f"property:{property_id}:info")
+        # Clear Redis cache safely
+        try:
+            await redis_delete_data(f"property:{property_id}:info")
+        except Exception as e:
+            print("Redis delete error:", e)
 
         return {"message": "Property name updated successfully"}
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error updating property: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error updating property: {str(e)}"
+        )
 
 @prop.put("/change-property-photo/{property_id}")
 async def change_property_photo(

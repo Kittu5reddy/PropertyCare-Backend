@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Respons
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from app.user.controllers.auth.utils import get_is_pd_filled
 from jose import JWTError
 from datetime import datetime, timedelta
 
@@ -286,3 +286,83 @@ async def get_subscription_details(
 
 
 
+
+
+
+
+
+@profile.get('/user-registration-status')
+async def user_registration_status(token: str = Depends(oauth2_scheme)):
+    try:
+        return {"is_pdfilled": get_is_pd_filled(token)}
+    except HTTPException as e:
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Error fetching subscription details: {str(e)}")
+
+
+
+
+
+async def get_user_id(token:str=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
+    try:
+        user=await get_current_user(token,db)
+        return user.user_id
+    except HTTPException as e:
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail=f"Error fetching subscription details: {str(e)}")
+
+
+
+
+@profile.get('/get-personal-data')
+async def get_personal_data(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # 1. Authenticate User
+        user = await get_current_user(token, db)
+
+        # 2. Fetch personal details
+        result = await db.execute(
+            select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
+        )
+        record = result.scalar_one_or_none()
+
+        if not record:
+            raise HTTPException(status_code=404, detail="Personal details not found")
+
+        # 3. Prepare response data
+        data = {
+            "full_name": f"{record.first_name} {record.last_name}",
+            "user_name": record.user_name,
+            "profile_photo_url": record.profile_photo_url,
+            "contact_number": record.contact_number,
+            "location": record.location,
+            "member_from": record.member_from,
+            "total_properties": record.total_properties,
+            "with_plans": record.with_plans,
+            "no_plans": record.no_plans,
+            "nri": record.nri
+        }
+
+        return data
+
+    except HTTPException:
+        raise
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching personal details: {str(e)}"
+        )

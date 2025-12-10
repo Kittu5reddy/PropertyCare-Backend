@@ -406,11 +406,3 @@ async def change_password(payload: ChangePassword, token: str = Depends(oauth2_s
 
 
 
-@auth.get('/user-registration-status')
-async def user_registration_status(token: str = Depends(oauth2_scheme)):
-    try:
-        return {"is_pdfilled": get_is_pd_filled(token)}
-    except Exception:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-
