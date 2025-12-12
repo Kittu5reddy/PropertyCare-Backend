@@ -342,17 +342,17 @@ async def get_personal_data(
 
         # 3. Prepare response data
         data = {
-            "full_name": f"{record.first_name} {record.last_name}",
-            "user_name": record.user_name,
-            "profile_photo_url": get_image_cloudfront_signed_url(f'/users/{user.user_id}/profile_photo/profile_photo.png'),
-            "contact_number": record.contact_number,
-            "location": record.location,
-            "member_from": record.member_from,
-            "total_properties": record.total_properties,
-            "with_plans": record.with_plans,
-            "no_plans": record.no_plans,
-            "nri": record.nri
-        }
+        "full_name": f"{record.first_name} {record.last_name}",
+        "user_name": record.user_name,
+        "profile_photo_url": get_image_cloudfront_signed_url(
+            f'/users/{user.user_id}/profile_photo/profile_photo.png'
+        ),
+        "contact_number": record.contact_number,
+        "location": record.city,
+        "member_from": record.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "nri": record.nri
+    }
+
 
         return data
 

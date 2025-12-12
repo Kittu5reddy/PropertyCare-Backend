@@ -238,6 +238,14 @@ async def booking_consulting(
         header="Consultation Request"
     )
 
+    send_email_task.delay(
+        subject="Your Consultation Request - Vibhoos PropCare",
+        to_email="vibhoospropcare@gmail.com",
+        template_name="/general/consultation_email.html",
+        context=context,
+        header="Consultation Request"
+    )
+
     # ✅ 5. Response
     return {
         "message": "Consultation booked successfully — confirmation email sent!",
