@@ -306,7 +306,7 @@ async def user_registration_status(token: str = Depends(oauth2_scheme)):
 
 
 
-
+@profile.get('/get-user-id')
 async def get_user_id(token:str=Depends(oauth2_scheme),db:AsyncSession=Depends(get_db)):
     try:
         user=await get_current_user(token,db)
