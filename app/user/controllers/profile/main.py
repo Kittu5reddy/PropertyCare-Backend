@@ -224,7 +224,7 @@ async def get_subscription_details(
             select(PropertyDetails).where(PropertyDetails.user_id == user.user_id)
         )
         properties = result.scalars().all()
-
+        print(properties)
         if not properties:
             raise HTTPException(status_code=404, detail="No properties found for this user")
 
@@ -233,8 +233,12 @@ async def get_subscription_details(
         inactive_properties = [p for p in properties if not p.active_sub]
 
         # 4️⃣ Build structured response
+        data={
+              "total_properties": len(properties),
+                "with_plans": len(active_properties),
+                "no_plans": len(inactive_properties),
+        }
         response = []
-
         if active_properties:
             response.append({
                 "plan_type": "Active Subscription",
@@ -264,8 +268,8 @@ async def get_subscription_details(
                     for p in inactive_properties
                 ]
             })
-
-        return response
+        data['plans']=response
+        return data
 
     except HTTPException as e:
         raise e
@@ -328,10 +332,8 @@ async def get_personal_data(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        # 1. Authenticate User
         user = await get_current_user(token, db)
 
-        # 2. Fetch personal details
         result = await db.execute(
             select(PersonalDetails).where(PersonalDetails.user_id == user.user_id)
         )
@@ -340,22 +342,19 @@ async def get_personal_data(
         if not record:
             raise HTTPException(status_code=404, detail="Personal details not found")
 
-        # 3. Prepare response data
-        data = {
-        "full_name": f"{record.first_name} {record.last_name}",
-        "user_name": record.user_name,
-        "profile_photo_url": get_image_cloudfront_signed_url(
-            f'/users/{user.user_id}/profile_photo/profile_photo.png'
-        ),
-        "contact_number": record.contact_number,
-        "location": record.city,
-        "member_from": record.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-        "nri": record.nri
-    }
+        profile_photo_url = await get_image_cloudfront_signed_url(
+            f"/user/{user.user_id}/profile_photo/profile_photo.png"
+        )
 
-
-        return data
-
+        return {
+            "full_name": f"{record.first_name} {record.last_name}",
+            "user_name": record.user_name,
+            "profile_photo_url": profile_photo_url,
+            "contact_number": record.contact_number,
+            "location": record.city,
+            "member_from": record.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "nri": record.nri
+        }
     except HTTPException:
         raise
     except JWTError:

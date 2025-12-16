@@ -558,7 +558,7 @@ async def get_property_list(
             "name": row[1],
             "location": row[2],
             "type": row[3],
-            "size": f"{str(row[4])} {str(row[5])}",
+            "size": f"{int(row[4])} {str(row[5])}",
             "image_url": await get_image_cloudfront_signed_url(f"/property/{row[0]}/legal_documents/property_photo.png")
             ,"subscription":row[6]
             if image_exists else settings.DEFAULT_IMG_URL

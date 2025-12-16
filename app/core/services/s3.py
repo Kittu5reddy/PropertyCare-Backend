@@ -379,7 +379,6 @@ async def upload_image_as_png(file: dict, category: str, user_id: Union[str, int
     folder = CATEGORY_FOLDER_MAP.get(category.lower())
     if not folder:
         raise HTTPException(status_code=400, detail=f"Invalid category '{category}'")
-
     filename = file.get("filename", f"{category}.png")
     # convert and validate
     buf = _convert_bytes_to_png_buffer(file["bytes"])
