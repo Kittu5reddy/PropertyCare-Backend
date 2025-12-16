@@ -27,6 +27,9 @@ class PropertyDetailsUpdate(BaseModel):
     sub_type: Optional[str] = None
     admin_id: Optional[str] = None
     description: Optional[str] = None
+    scale:Optional[str] = None
+    alternate_name:Optional[str] = None
+    alternate_contact:Optional[str] = None
 
     class Config:
         orm_mode = True

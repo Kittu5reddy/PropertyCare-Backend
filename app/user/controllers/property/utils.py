@@ -16,8 +16,8 @@ def check_property_access(property_obj, user_id: str):
     if property_obj.user_id != user_id:
         raise HTTPException(status_code=403, detail="You do not have access to this property")
     
-async def get_user_documents(user_id:str,property_id:str,db:AsyncSession):
-    smt=await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id==property_id,PropertyDocuments.user_id==user_id))
+async def get_user_documents(property_id:str,db:AsyncSession):
+    smt=await db.execute(select(PropertyDocuments).where(PropertyDocuments.property_id==property_id))
     documents=smt.scalar_one_or_none()
     return documents
 

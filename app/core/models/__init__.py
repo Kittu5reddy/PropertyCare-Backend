@@ -8,6 +8,7 @@ from .property_documents import PropertyDocuments
 from .subscriptions_plans import SubscriptionPlans, SubscriptionPlansHistory
 from .subscriptions import Subscriptions, SubscriptionHistory
 from .subscriptions_transactions import SubscriptionsTransactions
+from .associates import Associates
 # from .associates import Associates
 # from .discounts import Discounts
 
