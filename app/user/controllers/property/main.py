@@ -621,6 +621,7 @@ async def get_property_info(
             "is_verified": full_data["is_verified"],
             "alternate_name": full_data["alternate_name"],
             "alternate_contact": full_data["alternate_contact"],
+            "gmap_url":full_data.get('gmap_url')
         }
         print(f"{int(full_data['size'])} { full_data['scale']}")
         # Add property photo
@@ -634,7 +635,7 @@ async def get_property_info(
         data["property_photos"] = (
             await get_reference_images(property_id=full_data['property_id'],token=token,db=db)
         )
-
+        print(data)
         await redis_set_data(cache_key, data)
         return data
 
