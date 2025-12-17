@@ -12,6 +12,7 @@ from app.core.services.db import get_db
 from app.core.services.redis import redis_delete_data
 from app.user.controllers.auth.main import logout
 from app.user.validators.profile_update_form import ProfileUpdateForm
+from app.user.validators.personal_details import ChangeContactNumber,ChangeUserName
 # from app.user.validators.forms import get_personal_details
 from app.user.models.users import UserNameUpdate
 from app.core.models.property_details import PropertyDetails
@@ -360,7 +361,7 @@ async def check_username_availability(
 
 @profile.put("/change-username")
 async def change_username(
-    user_name: str,
+    user_name: ChangeUserName,
     db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
@@ -442,7 +443,7 @@ async def check_phone_availability(
 
 @profile.put("/change-contact")
 async def change_phone(
-    phone_number: str,
+    phone_number: ChangeContactNumber,
     db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):

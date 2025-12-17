@@ -26,3 +26,10 @@ class PersonalDetails(BaseModel):
     nri: bool
     pan_number: Optional[str] = None
     aadhaar_number: Optional[str] = None
+
+
+
+class ChangeUserName(BaseModel):
+    user_name:str
+class ChangeContactNumber(BaseModel):
+    phone_number:str
