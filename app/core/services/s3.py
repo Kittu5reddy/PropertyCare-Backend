@@ -55,7 +55,7 @@ ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png"}
 
 # Folder maps
 CATEGORY_FOLDER_MAP = {
-    "aadhaar": "aadhar",
+    "aadhaar": "aadhaar",
     "pan": "pan",
     "agreements": "agreements",
     "profile_photo": "profile_photo",

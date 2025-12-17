@@ -16,7 +16,7 @@ class PersonalDetails(BaseModel):
     date_of_birth: date
     gender: str
     contact_number: str
-    description: str
+    description: Optional[str] = None
     house_number: str
     street: str
     city: str

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.user.controllers.auth.utils import get_is_pd_filled
 from jose import JWTError
 from datetime import datetime, timedelta
-
+from typing import Optional
 from app.user.controllers.auth.utils import get_current_user
 from app.core.services.s3 import generate_cloudfront_presigned_url,check_object_exists,upload_image_as_png,get_image_cloudfront_signed_url
 from app.core.services.db import get_db
@@ -18,19 +18,213 @@ from app.user.models.users import UserNameUpdate
 from app.core.models.property_details import PropertyDetails
 from app.user.models.personal_details import PersonalDetails
 
-
+from app.user.validators.personal_details import PersonalDetails as PersonalDetailsCreate    
 from fastapi import HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from app.core.services.s3 import upload_documents
 from jose import JWTError
-
+from app.user.models.required_actions import RequiredAction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 profile = APIRouter(prefix="/profile", tags=["profile"])
 
 
+@profile.post("/add-user-details")
+async def post_user_details(
+    payload: PersonalDetailsCreate,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # Authenticate user
+        user = await get_current_user(token, db)
 
+        # Check if already filled
+        if user.is_pdfilled:
+            raise HTTPException(
+                status_code=400,
+                detail="Personal details already filled"
+            )
 
+        # Check username uniqueness
+        result = await db.execute(
+            select(PersonalDetails).where(
+                PersonalDetails.user_name == payload.user_name
+            )
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=400,
+                detail="Username already exists"
+            )
 
+        # Check phone uniqueness
+        result = await db.execute(
+            select(PersonalDetails).where(
+                PersonalDetails.contact_number == payload.contact_number
+            )
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=400,
+                detail="Contact number already exists"
+            )
+
+        # Create record
+        personal = PersonalDetails(
+            user_id=user.user_id,
+            user_name=payload.user_name,
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            date_of_birth=payload.date_of_birth,
+            gender=payload.gender,
+            contact_number=payload.contact_number,
+            house_number=payload.house_number,
+            street=payload.street,
+            city=payload.city,
+            state=payload.state,
+            country=payload.country,
+            pin_code=payload.pin_code,
+            nri=payload.nri,
+            pan_number=payload.pan_number,
+            aadhaar_number=payload.aadhaar_number,
+            description=payload.description,
+        )
+
+        db.add(personal)
+        pan=RequiredAction(
+                    user_id=user.user_id,
+                    category="USER",
+                    file_name="PAN")
+        aadhaar=RequiredAction(
+                    user_id=user.user_id,
+                    category="USER",
+                    file_name="AADHAR"
+                )
+        
+        db.add(pan)
+        db.add(aadhaar)
+        # Mark profile as filled
+        user.is_pdfilled = True
+
+        await db.commit()
+        await db.refresh(personal)
+
+        return {
+            "message": "Personal details added successfully",
+            "user_id": user.user_id
+        }
+
+    except HTTPException:
+        await db.rollback()
+        raise
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to add personal details: {str(e)}"
+        )
+
+@profile.post("/add-user-documents")
+async def upload_add_user_documents(
+    pan_document: UploadFile | None = File(None),
+    aadhaar_document: UploadFile | None = File(None),
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        user = await get_current_user(token, db)
+
+        if not pan_document and not aadhaar_document:
+            raise HTTPException(
+                status_code=400,
+                detail="At least one document must be uploaded"
+            )
+
+        allowed_types = ["application/pdf", "image/jpeg", "image/png"]
+
+        # -------- PAN DOCUMENT --------
+        if pan_document:
+            # if pan_document.content_type not in allowed_types:
+            #     raise HTTPException(status_code=400, detail="Invalid PAN document type")
+
+            contents = await pan_document.read()
+            file_data = {
+                "filename": pan_document.filename,
+                "bytes": contents,
+                "content_type": pan_document.content_type,
+            }
+
+            await upload_documents(
+                file=file_data,
+                category="pan",
+                user_id=user.user_id
+            )
+
+            # Update RequiredAction
+            result = await db.execute(
+                select(RequiredAction).where(
+                    RequiredAction.user_id == user.user_id,
+                    RequiredAction.category == "PAN"
+                )
+            )
+            record = result.scalar_one_or_none()
+
+            if record:
+                record.status = "completed"
+
+        # -------- AADHAAR DOCUMENT --------
+        if aadhaar_document:
+            # if aadhaar_document.content_type not in allowed_types:
+            #     raise HTTPException(status_code=400, detail="Invalid Aadhaar document type")
+
+            contents = await aadhaar_document.read()
+            file_data = {
+                "filename": aadhaar_document.filename,
+                "bytes": contents,
+                "content_type": aadhaar_document.content_type,
+            }
+
+            await upload_documents(
+                file=file_data,
+                category="aadhaar",
+                user_id=user.user_id
+            )
+
+            # Update RequiredAction
+            result = await db.execute(
+                select(RequiredAction).where(
+                    RequiredAction.user_id == user.user_id,
+                    RequiredAction.category == "AADHAAR"
+                )
+            )
+            record = result.scalar_one_or_none()
+
+            if record:
+                record.status = "completed"
+
+        await db.commit()
+
+        return {
+            "message": "User documents uploaded successfully",
+            "uploaded": {
+                "pan": bool(pan_document),
+                "aadhaar": bool(aadhaar_document)
+            }
+        }
+
+    except HTTPException as e:
+        await db.rollback()
+        raise e
+
+    except JWTError:
+        await db.rollback()
+        raise HTTPException(status_code=401, detail="Token expired")
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @profile.get("/edit-profile")
@@ -190,7 +384,12 @@ async def get_subscription_details(
         properties = result.scalars().all()
         print(properties)
         if not properties:
-            raise HTTPException(status_code=404, detail="No properties found for this user")
+            return {
+              "total_properties": 0,
+                "with_plans": 0,
+                "no_plans": 0,
+                "plans":None
+        }
 
         # 3️⃣ Separate active/inactive
         active_properties = [p for p in properties if p.active_sub]
@@ -201,6 +400,7 @@ async def get_subscription_details(
               "total_properties": len(properties),
                 "with_plans": len(active_properties),
                 "no_plans": len(inactive_properties),
+                
         }
         response = []
         if active_properties:
