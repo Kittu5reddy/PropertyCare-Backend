@@ -8,7 +8,7 @@ class Associates(Base):
     __tablename__ = "associates"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    associates_id :Mapped[str] = mapped_column(String(255), nullable=False)
+    associates_id :Mapped[str] = mapped_column(String(255),unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(10), nullable=True)
