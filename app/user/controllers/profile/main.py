@@ -361,7 +361,7 @@ async def check_username_availability(
 
 @profile.put("/change-username")
 async def change_username(
-    user_name: ChangeUserName,
+    payload: ChangeUserName,
     db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
@@ -372,7 +372,7 @@ async def change_username(
         # Check if username already exists for another user
         result = await db.execute(
             select(PersonalDetails).where(
-                PersonalDetails.user_name == user_name,
+                PersonalDetails.user_name == payload.user_name,
                 PersonalDetails.user_id != user.user_id
             )
         )
@@ -391,7 +391,7 @@ async def change_username(
             raise HTTPException(status_code=404, detail="User details not found")
 
         # Update username
-        personal.user_name = user_name
+        personal.user_name = payload.user_name
         await db.commit()
         await db.refresh(personal)
 
@@ -443,7 +443,7 @@ async def check_phone_availability(
 
 @profile.put("/change-contact")
 async def change_phone(
-    phone_number: ChangeContactNumber,
+    payload: ChangeContactNumber,
     db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
@@ -454,7 +454,7 @@ async def change_phone(
         # Check if phone number already exists for another user
         result = await db.execute(
             select(PersonalDetails).where(
-                PersonalDetails.contact_number == phone_number,
+                PersonalDetails.contact_number == payload.phone_number,
                 PersonalDetails.user_id != user.user_id
             )
         )
@@ -473,7 +473,7 @@ async def change_phone(
             raise HTTPException(status_code=404, detail="User details not found")
 
         # Update phone number
-        personal.contact_number = phone_number
+        personal.contact_number = payload.phone_number
         await db.commit()
         await db.refresh(personal)
 
