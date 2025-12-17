@@ -22,7 +22,7 @@ from app.user.validators.personal_details import PersonalDetails as PersonalDeta
 from fastapi import HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.core.services.s3 import upload_documents
+from app.core.services.s3 import upload_documents,upload_image_as_png
 from jose import JWTError
 from app.user.models.required_actions import RequiredAction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -128,6 +128,7 @@ async def post_user_details(
 
 @profile.post("/add-user-documents")
 async def upload_add_user_documents(
+    profile_photo:UploadFile | None = File(None),
     pan_document: UploadFile | None = File(None),
     aadhaar_document: UploadFile | None = File(None),
     token: str = Depends(oauth2_scheme),
@@ -136,14 +137,25 @@ async def upload_add_user_documents(
     try:
         user = await get_current_user(token, db)
 
-        if not pan_document and not aadhaar_document:
+        if not pan_document and not aadhaar_document and profile_photo:
             raise HTTPException(
                 status_code=400,
                 detail="At least one document must be uploaded"
             )
 
         allowed_types = ["application/pdf", "image/jpeg", "image/png"]
-
+        if profile_photo:
+            contents = await profile_photo.read()
+            file_data = {
+                "filename": profile_photo.filename,
+                "bytes": contents,
+                "content_type": profile_photo.content_type,
+            }
+            await upload_image_as_png(
+                file=file_data,
+                category="profile_photo",
+                user_id=user.user_id
+            )
         # -------- PAN DOCUMENT --------
         if pan_document:
             # if pan_document.content_type not in allowed_types:
