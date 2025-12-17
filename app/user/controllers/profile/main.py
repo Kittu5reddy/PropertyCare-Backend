@@ -17,6 +17,12 @@ from app.user.models.users import UserNameUpdate
 from app.core.models.property_details import PropertyDetails
 from app.user.models.personal_details import PersonalDetails
 
+
+from fastapi import HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from jose import JWTError
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 profile = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -25,49 +31,6 @@ profile = APIRouter(prefix="/profile", tags=["profile"])
 
 
 
-
-
-@profile.get("/check-username/{username}")
-async def check_username(
-    username: str,
-    db: AsyncSession = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
-):
-    try:
-        # Decode token to ensure it's valid
-        payload = await get_current_user(token,db)
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    # Now query the DB
-    result = await db.execute(select(PersonalDetails).where(PersonalDetails.user_name == username))
-    existing = result.scalar_one_or_none()
-    
-    if existing:
-        raise HTTPException(status_code=400, detail="Username already exists")
-    
-    return {"available": True}
-
-@profile.get("/check-contact/{phonenumber}")
-async def check_phonenumber(
-    phonenumber: str,
-    db: AsyncSession = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
-):
-    try:
-        # Decode token to ensure it's valid
-        payload = await get_current_user(token,db)
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    # Now query the DB
-    result = await db.execute(select(PersonalDetails).where(PersonalDetails.contact_number == phonenumber))
-    existing = result.scalar_one_or_none()
-    
-    if existing:
-        raise HTTPException(status_code=400, detail="phone_number  already exists")
-    
-    return {"available": True}
 
 @profile.get("/edit-profile")
 async def get_edit_profile_details(
@@ -364,4 +327,169 @@ async def get_personal_data(
         raise HTTPException(
             status_code=500,
             detail=f"Error fetching personal details: {str(e)}"
+        )
+
+
+
+
+
+@profile.get("/check-username/{username}")
+async def check_username_availability(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = await get_current_user(token, db)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    result = await db.execute(
+        select(PersonalDetails).where(
+            PersonalDetails.user_name == username,
+            PersonalDetails.user_id != user.user_id
+        )
+    )
+
+    if result.scalar_one_or_none():
+        return {"available": False}
+
+    return {"available": True}
+
+
+
+@profile.put("/change-username")
+async def change_username(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # Authenticate user
+        user = await get_current_user(token, db)
+
+        # Check if username already exists for another user
+        result = await db.execute(
+            select(PersonalDetails).where(
+                PersonalDetails.user_name == username,
+                PersonalDetails.user_id != user.user_id
+            )
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Username already taken")
+
+        # Fetch current user's personal details
+        result = await db.execute(
+            select(PersonalDetails).where(
+                PersonalDetails.user_id == user.user_id
+            )
+        )
+        personal = result.scalar_one_or_none()
+
+        if not personal:
+            raise HTTPException(status_code=404, detail="User details not found")
+
+        # Update username
+        personal.user_name = username
+        await db.commit()
+        await db.refresh(personal)
+
+        return {"message": "Username updated successfully"}
+
+    except HTTPException:
+
+        raise
+
+    except JWTError:
+
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    except Exception as e:
+        # Rollback for unexpected errors
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update username: {str(e)}"
+        )
+
+
+
+@profile.get("/check-contact/{phonenumber}")
+async def check_phone_availability(
+    phonenumber: str,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        user = await get_current_user(token, db)
+    
+
+        result = await db.execute(
+            select(PersonalDetails).where(
+                PersonalDetails.contact_number == phonenumber,
+                PersonalDetails.user_id != user.user_id
+            )
+        )
+
+        if result.scalar_one_or_none():
+            return {"available": False}
+
+        return {"available": True}
+    except HTTPException:
+        raise
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+@profile.put("/change-phone")
+async def change_phone(
+    phone_number: str,
+    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+):
+    try:
+        # Authenticate user
+        user = await get_current_user(token, db)
+
+        # Check if phone number already exists for another user
+        result = await db.execute(
+            select(PersonalDetails).where(
+                PersonalDetails.contact_number == phone_number,
+                PersonalDetails.user_id != user.user_id
+            )
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Phone number already in use")
+
+        # Fetch current user record
+        result = await db.execute(
+            select(PersonalDetails).where(
+                PersonalDetails.user_id == user.user_id
+            )
+        )
+        personal = result.scalar_one_or_none()
+
+        if not personal:
+            raise HTTPException(status_code=404, detail="User details not found")
+
+        # Update phone number
+        personal.contact_number = phone_number
+        await db.commit()
+        await db.refresh(personal)
+
+        return {"message": "Phone number updated successfully"}
+
+    except HTTPException:
+
+        raise
+
+    except JWTError:
+
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    except Exception as e:
+        # Rollback for unexpected errors
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update phone number: {str(e)}"
         )

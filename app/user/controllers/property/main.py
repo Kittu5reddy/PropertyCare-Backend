@@ -621,7 +621,8 @@ async def get_property_info(
             "is_verified": full_data["is_verified"],
             "alternate_name": full_data["alternate_name"],
             "alternate_contact": full_data["alternate_contact"],
-            "gmap_url":full_data.get('gmap_url')
+            "gmap_url":full_data.get('gmap_url'),
+           "subscription": full_data.get('active_sub')
         }
         print(f"{int(full_data['size'])} { full_data['scale']}")
         # Add property photo
