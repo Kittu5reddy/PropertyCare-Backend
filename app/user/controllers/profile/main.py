@@ -99,7 +99,7 @@ async def post_user_details(
         aadhaar=RequiredAction(
                     user_id=user.user_id,
                     category="USER",
-                    file_name="AADHAR"
+                    file_name="AADHAAR"
                 )
         
         db.add(pan)
@@ -137,7 +137,7 @@ async def upload_add_user_documents(
     try:
         user = await get_current_user(token, db)
 
-        if not pan_document and not aadhaar_document and profile_photo:
+        if not pan_document and not aadhaar_document and not profile_photo:
             raise HTTPException(
                 status_code=400,
                 detail="At least one document must be uploaded"

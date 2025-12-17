@@ -69,6 +69,20 @@ PROPERTY_FOLDER_MAP = {
     "property_photo": "property_photo",
 }
 
+
+legal_documents={
+    "link_documents":"link_documents",
+    "encumbrance_certificate":"encumbrance_certificate",
+    "patta_title_deed":"patta_title_deed",
+    "mutation_order":"mutation_order",
+    "layout_approval":"layout_approval",
+    "tax_receipt":"tax_receipt",
+    "agreement_of_sale":"agreement_of_sale",
+    "bank_noc":"bank_noc",
+    "property_photo": "property_photo"
+
+}
+
 # Single aioboto3 session
 _session = aioboto3.Session()
 

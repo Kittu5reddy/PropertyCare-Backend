@@ -4,6 +4,8 @@ from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
 import json
+
+from sqlalchemy.exc import IntegrityError
 from app.core.services.s3 import  get_image_cloudfront_signed_url
 # Import utils & models
 from app.user.controllers.auth.utils import get_current_user
@@ -201,7 +203,7 @@ async def add_reference_photo(
 
 
 
-from sqlalchemy.exc import IntegrityError
+
 
 @prop.post("/add-property")
 async def user_add_property(
@@ -243,9 +245,6 @@ async def user_add_property(
 
             # Other DB errors
             raise HTTPException(status_code=400, detail="Database error: " + str(e))
-
-        await redis_delete_pattern(f"user:{user.user_id}:*")
-
         return {
             "property_id": property_id,
             "message": "Property added successfully"
@@ -254,6 +253,7 @@ async def user_add_property(
     except HTTPException:
         raise
     except Exception as e:
+        print(str(e))
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # ======================================================
