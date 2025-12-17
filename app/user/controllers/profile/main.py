@@ -360,7 +360,7 @@ async def check_username_availability(
 
 @profile.put("/change-username")
 async def change_username(
-    username: str,
+    user_name: str,
     db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
@@ -371,7 +371,7 @@ async def change_username(
         # Check if username already exists for another user
         result = await db.execute(
             select(PersonalDetails).where(
-                PersonalDetails.user_name == username,
+                PersonalDetails.user_name == user_name,
                 PersonalDetails.user_id != user.user_id
             )
         )
@@ -390,7 +390,7 @@ async def change_username(
             raise HTTPException(status_code=404, detail="User details not found")
 
         # Update username
-        personal.user_name = username
+        personal.user_name = user_name
         await db.commit()
         await db.refresh(personal)
 
@@ -414,9 +414,9 @@ async def change_username(
 
 
 
-@profile.get("/check-contact/{phonenumber}")
+@profile.get("/check-contact/{phone_number}")
 async def check_phone_availability(
-    phonenumber: str,
+    phone_number: str,
     db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ):
@@ -426,7 +426,7 @@ async def check_phone_availability(
 
         result = await db.execute(
             select(PersonalDetails).where(
-                PersonalDetails.contact_number == phonenumber,
+                PersonalDetails.contact_number == phone_number,
                 PersonalDetails.user_id != user.user_id
             )
         )
@@ -440,7 +440,7 @@ async def check_phone_availability(
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-@profile.put("/change-phone")
+@profile.put("/change-contact")
 async def change_phone(
     phone_number: str,
     db: AsyncSession = Depends(get_db),
