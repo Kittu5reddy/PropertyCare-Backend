@@ -92,18 +92,21 @@ async def post_user_details(
         )
 
         db.add(personal)
-        pan=RequiredAction(
-                    user_id=user.user_id,
-                    category="USER",
-                    file_name="PAN")
-        aadhaar=RequiredAction(
-                    user_id=user.user_id,
-                    category="USER",
-                    file_name="AADHAAR"
-                )
-        
-        db.add(pan)
-        db.add(aadhaar)
+        if not payload.nri:
+            pan=RequiredAction(
+                        user_id=user.user_id,
+                        category="USER",
+                        priority="HIGH",
+                        file_name="PAN")
+            aadhaar=RequiredAction(
+                        user_id=user.user_id,
+                        category="USER",
+                        file_name="AADHAAR",
+                        priority="HIGH",
+                    )
+
+            db.add(pan)
+            db.add(aadhaar)
         # Mark profile as filled
         user.is_pdfilled = True
 
@@ -178,13 +181,14 @@ async def upload_add_user_documents(
             result = await db.execute(
                 select(RequiredAction).where(
                     RequiredAction.user_id == user.user_id,
-                    RequiredAction.category == "PAN"
+                    RequiredAction.category == "USER",
+                    RequiredAction.file_name=="PAN"
                 )
             )
             record = result.scalar_one_or_none()
 
             if record:
-                record.status = "completed"
+                record.status = "COMPLETED"
 
         # -------- AADHAAR DOCUMENT --------
         if aadhaar_document:
@@ -208,13 +212,14 @@ async def upload_add_user_documents(
             result = await db.execute(
                 select(RequiredAction).where(
                     RequiredAction.user_id == user.user_id,
-                    RequiredAction.category == "AADHAAR"
+                    RequiredAction.category == "USER",
+                    RequiredAction.file_name=="AADHAAR"
                 )
             )
             record = result.scalar_one_or_none()
 
             if record:
-                record.status = "completed"
+                record.status = "COMPLETED"
 
         await db.commit()
 

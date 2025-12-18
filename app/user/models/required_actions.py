@@ -15,6 +15,7 @@ class RequiredAction(Base):
         nullable=False
     )
     category: Mapped[str] = mapped_column(String, nullable=False)  
+    priority : Mapped[str] = mapped_column(String(10),nullable=False ,default="HIGH")
     information: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)  
     status: Mapped[str] = mapped_column(String(10), default="pending")
     file_name: Mapped[str] = mapped_column(String, nullable=False)  

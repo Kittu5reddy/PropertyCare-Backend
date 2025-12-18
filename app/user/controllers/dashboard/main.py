@@ -21,16 +21,27 @@ async def get_required_actions(
 ):
     try:
         user = await get_current_user(token, db)
+        from sqlalchemy import case
+
+        priority_order = case(
+            (RequiredAction.priority.ilike("high"), 1),
+            (RequiredAction.priority.ilike("medium"), 2),
+            (RequiredAction.priority.ilike("low"), 3),
+            else_=4
+        )
 
         result = await db.execute(
             select(RequiredAction)
             .where(
                 RequiredAction.user_id == user.user_id,
-                RequiredAction.status.ilike("pending")  
+                RequiredAction.status.ilike("pending")
             )
+            .order_by(priority_order)
         )
 
+
         required_actions = result.scalars().all()
+        print(required_actions[0])
 
         return {"required_actions": required_actions}
 
