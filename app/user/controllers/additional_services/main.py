@@ -2,7 +2,7 @@ from fastapi import APIRouter,Depends
 from fastapi.security import OAuth2PasswordBearer
 from app.core.services.db import AsyncSession,get_db
 from app.user.controllers.auth.utils import get_current_user
-from .utils import is_additional_services_available,get_property_by_id,has_existing_service,get_last_transaction_count,list_property_by_category
+from .utils import is_additional_services_available,get_property_by_id,has_existing_service,get_last_transaction_count,list_property_by_category,list_all_bookings
 from app.user.validators.additional_services import AdditionalServiceCreate 
 from app.core.models.additional_services_transactions import  AdditionalServiceTransaction
 from app.core.business_logic.ids import generate_service_transaction_id
@@ -10,6 +10,26 @@ from fastapi import HTTPException
 from jose import JWTError
 additional_services=APIRouter(prefix='/additional-services',tags=['additional services'])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+
+
+async def get_all_bookings(token:str=Depends(oauth2_scheme),
+                            db:AsyncSession=Depends(get_db)):
+    try:
+        user=await get_current_user(token,db)
+        records=await list_all_bookings(user.user_id)
+        return records
+
+    except HTTPException as e:
+        raise e
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
+    except Exception as e:
+        print(str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 
 
 @additional_services.post('/add-additional-service')
@@ -56,7 +76,12 @@ async def get_property_by_category(
     try:
         user=await get_current_user(token,db)
         print(user)
-        records=await list_property_by_category(user_id=user.user_id,category=category,db=db)
+        records=[]
+        if category=="BOTH":
+            records=await list_property_by_category(user_id=user.user_id,category="PLOT",db=db)
+            records+=await list_property_by_category(user_id=user.user_id,category="FLAT",db=db)
+        if  category!="BOTH":
+            records+=await list_property_by_category(user_id=user.user_id,category=category,db=db)
         return records
     except HTTPException as e:
         raise e

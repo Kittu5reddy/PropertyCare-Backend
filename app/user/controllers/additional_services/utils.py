@@ -120,3 +120,20 @@ async def list_property_by_category(
     )
 
     return result.scalars().all()
+
+
+async def list_all_bookings(
+    user_id: str,
+    db: AsyncSession
+):
+    result = await db.execute(
+        select(AdditionalServiceTransaction
+               ).where(
+            AdditionalServiceTransaction.user_id == user_id,
+        )
+    )
+
+    return result.scalars().all()
+
+
+
