@@ -9,6 +9,7 @@ from .subscriptions_plans import SubscriptionPlans, SubscriptionPlansHistory
 from .subscriptions import Subscriptions, SubscriptionHistory
 from .subscriptions_transactions import SubscriptionsTransactions
 from .additional_services import AdditionalServices,AdditionalServicesHistory
+from .additional_services_transactions import AdditionalServiceTransaction,AdditionalServiceTransactionHistory
 from .associates import Associates
 
 __all__ = [
