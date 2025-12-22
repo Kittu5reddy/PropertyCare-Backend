@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.models.property_details import PropertyDetails
 from sqlalchemy import select
-from sqlalchemy import exists, select,func
+from sqlalchemy import exists, select,func,desc
 
 async def is_additional_services_available(
     service_id: str,
@@ -136,9 +136,9 @@ async def list_property_by_category(
         {
             "property_id": record.property_id,
             "property_name": record.property_name,
-            "category": record.type,
-            "location": record.city,
-            "img": image_urls[i]
+            "property_category": record.type,
+            "property_location": record.city,
+            "property_img": image_urls[i]
         }
         for i, record in enumerate(records)
     ]
@@ -146,18 +146,38 @@ async def list_property_by_category(
     return data
 
 
+
+
+
+from sqlalchemy import func
+
 async def list_all_bookings(
     user_id: str,
-    db: AsyncSession
+    start: int = 1,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(
-        select(AdditionalServiceTransaction
-               ).where(
-            AdditionalServiceTransaction.user_id == user_id,
-        )
+    offset = (start - 1) * limit
+
+    total_result = await db.execute(
+        select(func.count())
+        .where(AdditionalServiceTransaction.user_id == user_id)
+    )
+    total = total_result.scalar()
+
+    data_result = await db.execute(
+        select(AdditionalServiceTransaction)
+        .where(AdditionalServiceTransaction.user_id == user_id)
+        .order_by(desc(AdditionalServiceTransaction.created_at))
+        .offset(offset)
+        .limit(limit)
     )
 
-    return result.scalars().all()
+    data = data_result.scalars().all()
 
-
-
+    return {
+        "page": start,
+        "limit": limit,
+        "total": total,
+        "data": data
+    }
