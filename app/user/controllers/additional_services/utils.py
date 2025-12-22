@@ -2,7 +2,7 @@ from app.core.models.additional_services import AdditionalServices
 from app.core.services.db import AsyncSession,get_db
 from fastapi import Depends
 from sqlalchemy import select
-
+from app.core.services.s3 import generate_cloudfront_presigned_url
 from app.core.models.additional_services_transactions import AdditionalServiceTransaction
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,20 +106,44 @@ async def get_property_by_id(property_id:str,
         )
     
 
+import asyncio
+from sqlalchemy import select
+
 async def list_property_by_category(
     user_id: str,
     category: str,
     db: AsyncSession
 ):
     result = await db.execute(
-        select(PropertyDetails.property_name,PropertyDetails.type,
-               ).where(
+        select(PropertyDetails).where(
             PropertyDetails.user_id == user_id,
             PropertyDetails.type == category
         )
     )
 
-    return result.scalars().all()
+    records = result.scalars().all()
+
+    image_tasks = [
+        generate_cloudfront_presigned_url(
+            f"property/{record.property_id}/legal_documents/property_photo.png"
+        )
+        for record in records
+    ]
+
+    image_urls = await asyncio.gather(*image_tasks)
+
+    data = [
+        {
+            "property_id": record.property_id,
+            "property_name": record.property_name,
+            "category": record.type,
+            "location": record.city,
+            "img": image_urls[i]
+        }
+        for i, record in enumerate(records)
+    ]
+
+    return data
 
 
 async def list_all_bookings(

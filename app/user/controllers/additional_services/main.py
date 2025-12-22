@@ -75,13 +75,12 @@ async def get_property_by_category(
                                   db:AsyncSession=Depends(get_db)):
     try:
         user=await get_current_user(token,db)
-        print(user)
         records=[]
         if category=="BOTH":
             records=await list_property_by_category(user_id=user.user_id,category="PLOT",db=db)
             records+=await list_property_by_category(user_id=user.user_id,category="FLAT",db=db)
         if  category!="BOTH":
-            records+=await list_property_by_category(user_id=user.user_id,category=category,db=db)
+            records=await list_property_by_category(user_id=user.user_id,category=category,db=db)
         return records
     except HTTPException as e:
         raise e
