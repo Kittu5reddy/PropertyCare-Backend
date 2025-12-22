@@ -8,9 +8,8 @@ from .property_documents import PropertyDocuments
 from .subscriptions_plans import SubscriptionPlans, SubscriptionPlansHistory
 from .subscriptions import Subscriptions, SubscriptionHistory
 from .subscriptions_transactions import SubscriptionsTransactions
+from .additional_services import AdditionalServices,AdditionalServicesHistory
 from .associates import Associates
-# from .associates import Associates
-# from .discounts import Discounts
 
 __all__ = [
     "Base",
@@ -28,4 +27,7 @@ __all__ = [
     "SubscriptionPlans",
     "SubscriptionPlansHistory",
     "TransactionSubOffline",
+    "AdditionalServices",
+    'AdditionalServicesHistory',
+    'SubscriptionsTransactions'
 ]

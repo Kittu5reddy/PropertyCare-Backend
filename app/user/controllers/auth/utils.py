@@ -53,6 +53,7 @@ from jose import jwt, JWTError, ExpiredSignatureError
 
 async def get_current_user(token: str, db: AsyncSession) -> User:
     try:
+        print(token)
         payload = jwt.decode(token, ACCES_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:

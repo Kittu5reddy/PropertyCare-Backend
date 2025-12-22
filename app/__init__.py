@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.health import check_postgres, check_redis
-
+from app.user.controllers.additional_services.main import additional_services
 
 
 
@@ -60,6 +60,7 @@ def create_app(docs_url="/docs", redoc_url="/redocs", openapi_url="/openapi.json
     # app.include_router(form)
     app.include_router(prop)
     app.include_router(feedback)
+    app.include_router(additional_services)
     app.include_router(profile)
     app.include_router(email)
     # app.include_router(surveillance)

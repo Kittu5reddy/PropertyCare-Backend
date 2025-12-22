@@ -5,3 +5,21 @@ $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm"
 pg_dump -U postgres -h localhost -p 5432 -d Propcare -F c -b -v -f "C:\Users\kaush\Desktop\Propcare_$timestamp.backup"
 python -m celery -A background_task.celery_app.celery_app worker --loglevel=info
 python -m celery -A background_task.celery_app.celery_app worker -P solo --loglevel=info
+
+
+maintenance
+    Painting
+    Pest control & termite treatment
+    Interior design & modular kitchen
+    Fencing
+Security
+    Security guard management
+Cleaning
+    Deep Cleaning
+    Post construction clean up
+Landscaping
+    Landscaping and Lawn care
+Inspection
+    Surveying
+    Legal Opininon
+    

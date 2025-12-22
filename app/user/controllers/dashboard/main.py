@@ -95,7 +95,7 @@ async def upload_required_documents(
             record = record.scalar_one_or_none()
 
             if record:
-                record.status = "completed"
+                record.status = "COMPLETED"
                 await db.commit()
                 await db.refresh(record)
             else:

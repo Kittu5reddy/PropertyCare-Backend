@@ -15,8 +15,8 @@ def generate_employee_supervisor_id(id: int) -> str:
 def generate_subscription_id(id: int) -> str:
     return f'VPC{datetime.utcnow().year}SUB{str(id).zfill(3)}'
 
-def generate_service_id(id: int) -> str:
-    return f'VPC{datetime.utcnow().year}SRV{str(id).zfill(3)}'
+def generate_service_transaction_id(id: int) -> str:
+    return f'SRVTX{datetime.utcnow().year}SRV{str(id).zfill(4)}'
 
 def generate_transaction_id(id: int) -> str:
     return f'VPC{datetime.utcnow().year}T{str(id).zfill(3)}'

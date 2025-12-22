@@ -8,44 +8,27 @@ from sqlalchemy.sql import func
 from app.core.models import Base
 
 
-class Services(Base):
-    __tablename__ = "services"
+class AdditionalServices(Base):
+    __tablename__ = "additional_services"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     service_id: Mapped[str] = mapped_column(String, unique=True, index=True)
     service_name: Mapped[str] = mapped_column(String(50), nullable=False)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
-
-    services: Mapped[Optional[List[str]]] = mapped_column(
-        ARRAY(String),
-        nullable=True
-    )
-
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
-
-    starting_price: Mapped[int] = mapped_column(Integer, nullable=False)
-
-
+    
     applicable_to: Mapped[Optional[List[str]]] = mapped_column(
         ARRAY(String),
         nullable=True
     )
-
     comments: Mapped[Optional[str]] = mapped_column(
         Text,
         nullable=True   # 🔥 fix: allow null
     )
-
-    short_comments: Mapped[Optional[str]] = mapped_column(
-        String(110),
-        nullable=True   # 🔥 fix: allow null
-    )
-
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now()
     )
-
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -53,14 +36,14 @@ class Services(Base):
     )
 
 
-class ServicesHistory(Base):
-    __tablename__ = "services_history"
+class AdditionalServicesHistory(Base):
+    __tablename__ = "additional_services_history"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
 
     service_id: Mapped[str] = mapped_column(
         String,
-        ForeignKey("services.service_id", ondelete="CASCADE"),
+        ForeignKey("additional_services.service_id"),
         nullable=False
     )
 
