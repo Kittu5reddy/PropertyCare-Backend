@@ -7,55 +7,34 @@ from app.core.models.additional_services_transactions import AdditionalServiceTr
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.models.property_details import PropertyDetails
-from sqlalchemy import select
-from sqlalchemy import exists, select,func,desc
 
+from sqlalchemy import exists, select,func,desc
 async def is_additional_services_available(
     service_id: str,
     category: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession
 ):
-    try:
-        result = await db.execute(
-            select(AdditionalServices).where(
-                AdditionalServices.service_id == service_id
-            )
+    result = await db.execute(
+        select(AdditionalServices).where(
+            AdditionalServices.service_id == service_id
         )
+    )
 
-        service = result.scalar_one_or_none()
+    service = result.scalar_one_or_none()
 
-        #  Service not found
-        if not service:
-            raise HTTPException(
-                status_code=404,
-                detail="Service not found"
-            )
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
 
-        #  Service inactive
-        if not service.is_active:
-            raise HTTPException(
-                status_code=400,
-                detail="Service not available"
-            )
+    if not service.is_active:
+        raise HTTPException(status_code=400, detail="Service not available")
 
-        #  Category mismatch
-        if service.category != category:
-            raise HTTPException(
-                status_code=400,
-                detail="Service not allowed for this property type"
-            )
-
-        # ✅ Service is valid
-        return service
-
-    except HTTPException:
-        raise  # IMPORTANT: re-raise HTTP exceptions
-
-    except Exception as e:
+    if category not in service.applicable_to:
         raise HTTPException(
-            status_code=500,
-            detail="Internal server error while checking service availability"
+            status_code=400,
+            detail="Service not allowed for this property type"
         )
+
+    return service
 
 
 from sqlalchemy import select
@@ -78,32 +57,32 @@ async def has_existing_service(
     return result.scalar()
 
 
-async def get_last_transaction_count(
-    db: AsyncSession
-) -> int:
+async def get_last_transaction_count(db: AsyncSession) -> int:
     result = await db.execute(
         select(func.count()).select_from(AdditionalServiceTransaction)
     )
-    return result.scalar()
-
-async def get_property_by_id(property_id:str,
-                             user_id:str,
-                         db: AsyncSession = Depends(get_db)):
-    try:
-        smt=await db.execute(select(PropertyDetails).where(PropertyDetails.property_id==property_id))
-        property=smt.scalar_one_or_none()
-        if not property:
-            raise HTTPException(status_code=404,detail="Property Not Found")
-        if property.user_id!=user_id:
-            raise HTTPException(status_code=403,detail="User Not Authorized")
-        return property
-    except HTTPException:
-        raise  # IMPORTANT: re-raise HTTP exceptions
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error checking service availability: {str(e)}"
+    return result.scalar() or 0
+async def get_property_by_id(
+    property_id: str,
+    user_id: str,
+    db: AsyncSession
+):
+    result = await db.execute(
+        select(PropertyDetails).where(
+            PropertyDetails.property_id == property_id
         )
+    )
+
+    property = result.scalar_one_or_none()
+
+    if not property:
+        raise HTTPException(status_code=404, detail="Property Not Found")
+
+    if property.user_id != user_id:
+        raise HTTPException(status_code=403, detail="User Not Authorized")
+
+    return property
+
     
 
 import asyncio
@@ -153,9 +132,9 @@ from sqlalchemy import func
 
 async def list_all_bookings(
     user_id: str,
+    db: AsyncSession ,
     start: int = 1,
     limit: int = 10,
-    db: AsyncSession = Depends(get_db)
 ):
     offset = (start - 1) * limit
 
