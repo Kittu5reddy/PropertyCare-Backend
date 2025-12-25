@@ -24,6 +24,8 @@ from app.admin.controllers.consultation.main import admin_consultation
 from app.user.controllers.emails.main import email
 from app.user.controllers.feedback.main import feedback
 from app.user.controllers.profile.main import profile
+from app.admin.controllers.auth.main import admin_auth
+from app.admin.controllers.auth.mfa.main import admin_mfa
 from config import settings
 
 ALLOW_ORIGINS = settings.allow_origins
@@ -52,6 +54,8 @@ def create_app(docs_url="/docs", redoc_url="/redocs", openapi_url="/openapi.json
     #       admin
     #====================== 
     app.include_router(admin_consultation)
+    app.include_router(admin_auth)
+    app.include_router(admin_mfa)
 
 
 
