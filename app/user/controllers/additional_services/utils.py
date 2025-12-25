@@ -2,7 +2,7 @@ from app.core.models.additional_services import AdditionalServices
 from app.core.services.db import AsyncSession,get_db
 from fastapi import Depends
 from sqlalchemy import select
-from app.core.services.s3 import generate_cloudfront_presigned_url
+from app.core.services.s3 import generate_cloudfront_presigned_url, get_image_cloudfront_signed_url
 from app.core.models.additional_services_transactions import AdditionalServiceTransaction
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -103,7 +103,7 @@ async def list_property_by_category(
     records = result.scalars().all()
 
     image_tasks = [
-        generate_cloudfront_presigned_url(
+         get_image_cloudfront_signed_url(
             f"property/{record.property_id}/legal_documents/property_photo.png"
         )
         for record in records

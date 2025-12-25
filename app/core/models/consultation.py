@@ -12,7 +12,7 @@ class Consultation(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(10), nullable=True)
     preferred_date: Mapped[date] = mapped_column(Date, nullable=False)
-    preferred_time: Mapped[time] = mapped_column(Time, nullable=False)
+    preferred_time: Mapped[time] = mapped_column(String, nullable=False)
     subject: Mapped[str] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="Pending")
     reason: Mapped[str] = mapped_column(Text, nullable=True)
