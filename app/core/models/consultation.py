@@ -15,6 +15,7 @@ class Consultation(Base):
     preferred_time: Mapped[time] = mapped_column(Time, nullable=False)
     subject: Mapped[str] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="Pending")
+    reason: Mapped[str] = mapped_column(Text, nullable=True)
     comment: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

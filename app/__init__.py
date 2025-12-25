@@ -20,7 +20,7 @@ from app.user.controllers.auth.google.main import google_auth
 # from app.user.controllers.surveillance.main import surveillance
 from app.user.controllers.dashboard.main import dash
 from app.user.controllers.property.main import prop
-# from app.user.controllers.services.main import services
+from app.admin.controllers.consultation.main import admin_consultation
 from app.user.controllers.emails.main import email
 from app.user.controllers.feedback.main import feedback
 from app.user.controllers.profile.main import profile
@@ -48,21 +48,27 @@ def create_app(docs_url="/docs", redoc_url="/redocs", openapi_url="/openapi.json
         allow_headers=["*"],
     )
 
+    #======================
+    #       admin
+    #====================== 
+    app.include_router(admin_consultation)
+
+
+
+
+
+
+
     # Include routers
     app.include_router(auth)
     app.include_router(google_auth)
-    # app.include_router(services)
-    # app.include_router(admin_auth)
-    # app.include_router(admin_dash)
+
     app.include_router(dash)
-    # app.include_router(subscriptions)
-    # app.include_router(admin_subscriptions)
-    # app.include_router(form)
+
     app.include_router(prop)
     app.include_router(feedback)
     app.include_router(additional_services)
     app.include_router(profile)
     app.include_router(email)
-    # app.include_router(surveillance)
 
     return app
