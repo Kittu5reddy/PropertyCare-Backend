@@ -12,6 +12,8 @@ class Admin(Base):
     email: Mapped[str] = mapped_column(String, unique=True, index=True)
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
 
+    pd_filled:Mapped[bool]=mapped_column(Boolean,nullable=False,default=False)
+
     MFA: Mapped[bool] = mapped_column(Boolean, default=False)
 
     mfa_secret: Mapped[str] = mapped_column(String, nullable=True)
