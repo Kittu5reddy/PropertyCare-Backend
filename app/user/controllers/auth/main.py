@@ -28,7 +28,7 @@ from app.core.services.redis import redis_set_data,redis_get_data,redis_delete_d
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from app.core.services.s3 import create_user_directory
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
 from app.user.validators.auth import ChangePassword
 
 

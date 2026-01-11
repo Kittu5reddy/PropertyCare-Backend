@@ -1,4 +1,5 @@
 from fastapi import APIRouter,HTTPException,Depends,Response,Request
+from fastapi.security import OAuth2PasswordBearer
 from app.admin.validators.auth.login import AdminLogin
 from app.core.services.db import get_db,AsyncSession
 from sqlalchemy import select
@@ -7,7 +8,8 @@ from app.core.controllers.auth.utils import create_access_token,create_refresh_t
 from datetime import timedelta,datetime
 from config import settings
 admin_auth=APIRouter(prefix='/admin-auth',tags=['Admin Auth'])
-
+from .utils import get_current_admin
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 from fastapi import Depends, HTTPException, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -84,3 +86,16 @@ async def refresh_token(request: Request):
 
 
 
+@admin_auth.post("/logout")
+async def logout(
+    response: Response,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    admin = await get_current_admin(token, db)
+
+
+    # Remove refresh token cookie
+    response.delete_cookie("refresh_token")
+
+    return {"message": "Logged out"}
