@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordBearer
 from app.admin.controllers.auth.utils import get_current_admin
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 from app.core.services.db import AsyncSession,get_db
-admin_properties=APIRouter(prefix='/admin_properties',tags=['Admin Properties'])
+admin_properties=APIRouter(prefix='/admin-properties',tags=['Admin Properties'])
 from sqlalchemy import select
 from app.core.services.s3 import get_image_cloudfront_signed_url
 from jose import JWTError
@@ -16,6 +16,123 @@ from sqlalchemy.future import select
 from sqlalchemy import select, func
 from fastapi import HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.user.validators.propertydetails import PropertyDetailForm as ChangePropertySchema
+from app.admin.validators.properties import UpdatePhysicalVerfication
+
+@admin_properties.put("/update-property-details/{property_id}")
+async def update_property_details(
+    property_id: str,
+    payload: ChangePropertySchema,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        # 1️⃣ Authenticate user
+        admin = await get_current_admin(token, db)
+
+        # 2️⃣ Fetch property
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+        )
+        property_obj = result.scalar_one_or_none()
+
+        if not property_obj:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        # 4️⃣ Extract only allowed fields
+        update_data = payload.dict(exclude_unset=True)
+
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No fields provided for update")
+
+        allowed_fields = set(PropertyDetails.__table__.columns.keys())
+
+        for key, value in update_data.items():
+            if key in allowed_fields:
+                setattr(property_obj, key, value)
+
+        # 5️⃣ Commit changes
+        await db.commit()
+        await db.refresh(property_obj)
+
+        # 6️⃣ Clear Redis cache
+        # cache_key = f"property:{property_id}:info"
+        # await redis_delete_data(cache_key)
+
+        return {
+            "message": "Property details updated successfully",
+            "property_id": property_id
+        }
+
+    except HTTPException:
+        # 👈 Let FastAPI handle it properly
+        raise
+
+    except Exception as e:
+        print(str(e))
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while updating property"
+        )
+
+@admin_properties.put("/update-physical-verification/{property_id}")
+async def update_property_details(
+    property_id: str,
+    payload: UpdatePhysicalVerfication,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        # 1️⃣ Authenticate user
+        admin = await get_current_admin(token, db)
+
+        # 2️⃣ Fetch property
+        result = await db.execute(
+            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+        )
+        property_obj = result.scalar_one_or_none()
+
+        if not property_obj:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        property_obj=payload.is_verified
+        # 5️⃣ Commit changes
+        await db.commit()
+        await db.refresh(property_obj)
+
+        # 6️⃣ Clear Redis cache
+        # cache_key = f"property:{property_id}:info"
+        # await redis_delete_data(cache_key)
+
+        return {
+            "message": f"Physcial updated to {payload.is_verified}",
+            "property_id": property_id
+        }
+
+    except HTTPException:
+        # 👈 Let FastAPI handle it properly
+        raise
+
+    except Exception as e:
+        print(str(e))
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while updating property"
+        )
+
+@admin_properties.put("/update-physical-verification/{property_id}")
+async def update_property_details(
+    property_id: str,
+    payload: UpdatePhysicalVerfication,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+
+    except:
+
 
 @admin_properties.get("/get-properties")
 async def get_properties(
