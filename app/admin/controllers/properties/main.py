@@ -13,44 +13,56 @@ from app.user.models.personal_details import PersonalDetails
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import select, func
+from fastapi import HTTPException, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 @admin_properties.get("/get-properties")
 async def get_properties(
-    # token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
     start: int = 0,
     limit: int = 10
 ):
     try:
-        # 🔒 Auth check
-        # admin = await get_current_admin(token=token, db=db)
+        # 🛑 pagination safety
+        if start < 0 or limit <= 0 or limit > 100:
+            raise HTTPException(status_code=400, detail="Invalid pagination")
 
+        # ✅ TOTAL COUNT (correct way)
+        total_count = await db.scalar(
+            select(func.count()).select_from(PropertyDetails)
+        )
 
+        # ✅ PAGINATED QUERY
         stmt = (
             select(PropertyDetails)
-            .order_by(PropertyDetails.id.desc())  # 👈 important
+            .order_by(PropertyDetails.id.desc())
             .offset(start)
             .limit(limit)
         )
 
         result = await db.execute(stmt)
         properties = result.scalars().all()
-        response = [
-        {
-            "image_url": await get_image_cloudfront_signed_url(f"/property/{record.property_id}/legal_documents/property_photo.png"),
-            "is_active": record.active_sub,
-            "property_id": record.property_id,
-            "property_name": record.property_name,
-            "user_id": record.user_id
-        }
-        for record in properties
-]   
 
+        # ✅ async-safe response build
+        response = []
+        for record in properties:
+            image_url = await get_image_cloudfront_signed_url(
+                f"/property/{record.property_id}/legal_documents/property_photo.png"
+            )
+
+            response.append({
+                "image_url": image_url,
+                "is_active": record.active_sub,
+                "property_id": record.property_id,
+                "property_name": record.property_name,
+                "user_id": record.user_id
+            })
 
         return {
             "start": start,
             "limit": limit,
-            "count": len(properties),
+            "count": total_count,
             "data": response
         }
     except HTTPException as e:
@@ -132,6 +144,7 @@ async def get_property_detail(
         return {
             "property_id": property.property_id,
             "plot_number": property.plot_number,
+            "name":property.property_name,
             "project_name_or_venture": property.project_name_or_venture,
             "house_number": property.house_number,
             "street": property.street,
