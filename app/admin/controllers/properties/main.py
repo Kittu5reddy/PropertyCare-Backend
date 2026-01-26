@@ -122,16 +122,6 @@ async def update_property_details(
             detail="Internal server error while updating property"
         )
 
-@admin_properties.put("/update-physical-verification/{property_id}")
-async def update_property_details(
-    property_id: str,
-    payload: UpdatePhysicalVerfication,
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
-):
-    try:
-
-    except:
 
 
 @admin_properties.get("/get-properties")
