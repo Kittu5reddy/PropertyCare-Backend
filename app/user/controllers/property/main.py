@@ -245,6 +245,8 @@ async def user_add_property(
 
             # Other DB errors
             raise HTTPException(status_code=400, detail="Database error: " + str(e))
+        cache_key=f"user:{user.user_id}:property-details"
+        await redis_delete_data(cache_key)
         return {
             "property_id": property_id,
             "message": "Property added successfully"
