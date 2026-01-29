@@ -17,16 +17,17 @@ from sqlalchemy import select, func
 from fastapi import HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.models.subscriptions_plans import SubscriptionPlans
-
+from app.core.models.subscriptions import Subscriptions
+from app.admin.validators.subscriptions import AddSubscription
 @admin_subscriptions.get("/get-subscriptions")
 async def get_subscriptions_details(
     type: str,
-    # token: str = Depends(oauth2_scheme),
+    token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
     try:
         # 🔐 Auth
-        # admin = await get_current_admin(token, db)
+        admin = await get_current_admin(token, db)
 
         # 📦 Fetch plans
         result = await db.execute(
@@ -66,14 +67,100 @@ async def get_subscriptions_details(
 
 
 
+from fastapi import Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import timedelta
+from dateutil.relativedelta import relativedelta
 
+@admin_subscriptions.post("/add-subscription")
+async def add_subscription(
+    payload: AddSubscription,
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # 🔐 Auth
+        admin = await get_current_admin(token, db)
 
-# @admin_subscriptions.get("/add-subscription")
-# async def get_subscriptions_details(
-#     # token: str = Depends(oauth2_scheme),
-#     db: AsyncSession = Depends(get_db)
-# ):
-#     try:
-#         # 🔐 Auth
-#         # admin = await get_current_admin(token, db)
+        # 📦 Fetch subscription plan
+        result = await db.execute(
+            select(SubscriptionPlans)
+            .where(SubscriptionPlans.sub_id == payload.sub_id)
+            .where(SubscriptionPlans.is_active == True)
+        )
+        sub = result.scalar_one_or_none()
 
+        if not sub:
+            raise HTTPException(status_code=404, detail="Subscription plan not found")
+
+        # 🏠 Fetch property
+        result = await db.execute(
+            select(PropertyDetails)
+            .where(
+                PropertyDetails.property_id == payload.property_id,
+                PropertyDetails.user_id == payload.user_id
+            )
+        )
+        property = result.scalar_one_or_none()
+
+        if not property:
+            raise HTTPException(status_code=404, detail="Property not found")
+
+        # ❗ Validate property vs plan
+        if str(property.type).upper() != str(sub.category).upper():
+            raise HTTPException(
+                status_code=400,
+                detail="Subscription plan not valid for this property type"
+            )
+
+        # 👤 Fetch user
+        result = await db.execute(
+            select(User).where(User.user_id == payload.user_id)
+        )
+        user = result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # 📅 Calculate end date
+        sub_end_date = payload.start_of_sub + relativedelta(months=payload.duration)
+
+        # 🧾 Create subscription
+        new_record = Subscriptions(
+            admin_id=admin.admin_id,
+            # admin_id="ADMIN001",
+            user_id=user.user_id,
+            sub_id=sub.sub_id,
+            property_id=property.property_id,
+            sub_name=sub.sub_type,
+            services=sub.services,
+            sub_start_date=payload.start_of_sub,
+            sub_end_date=sub_end_date,
+            durations=payload.duration,
+            payment_method=payload.payment_method,
+            comment=payload.comment,
+            is_active=True
+            
+        )
+
+        # 🔄 Update property
+        property.active_sub = True
+
+        # 💾 Save
+        db.add(new_record)
+        await db.commit()
+        await db.refresh(new_record)
+
+        return {
+            "status": "success",
+            "subscription_id": new_record.id,
+            "message": "Subscription added successfully"
+        }
+
+    except HTTPException:
+        raise
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Token expired or invalid")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
