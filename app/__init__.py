@@ -26,7 +26,7 @@ from app.user.controllers.feedback.main import feedback
 from app.user.controllers.profile.main import profile
 from app.admin.controllers.auth.main import admin_auth
 from app.admin.controllers.properties.main import admin_properties
-
+from app.admin.controllers.subscriptions.main import admin_subscriptions
 from config import settings
 
 ALLOW_ORIGINS = settings.allow_origins
@@ -57,6 +57,7 @@ def create_app(docs_url="/docs", redoc_url="/redocs", openapi_url="/openapi.json
     app.include_router(admin_consultation)
     app.include_router(admin_auth)
     app.include_router(admin_properties)
+    app.include_router(admin_subscriptions)
 
 
 

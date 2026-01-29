@@ -5,9 +5,9 @@ from .consultation import Consultation, ConsultationHistory
 from .newsletter import NewsLetter
 from .property_details import PropertyDetails, PropertyHistory
 from .property_documents import PropertyDocuments
-from .subscriptions_plans import SubscriptionPlans, SubscriptionPlansHistory
+from .subscriptions_plans import SubscriptionPlans
 from .subscriptions import Subscriptions, SubscriptionHistory
-from .subscriptions_transactions import SubscriptionsTransactions
+
 from .additional_services import AdditionalServices,AdditionalServicesHistory
 from .additional_services_transactions import AdditionalServiceTransaction,AdditionalServiceTransactionHistory
 from .associates import Associates

@@ -16,12 +16,10 @@ from sqlalchemy.future import select
 from sqlalchemy import select, func
 from fastapi import HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.user.validators.propertydetails import PropertyDetailForm as ChangePropertySchema
-from app.admin.validators.properties import UpdatePhysicalVerfication
+from app.admin.validators.properties import UpdatePhysicalVerfication,AdminPropertyDetailForm as ChangePropertySchema
 
-@admin_properties.put("/update-property-details/{property_id}")
+@admin_properties.put("/update-property-details")
 async def update_property_details(
-    property_id: str,
     payload: ChangePropertySchema,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
@@ -32,7 +30,7 @@ async def update_property_details(
 
         # 2️⃣ Fetch property
         result = await db.execute(
-            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+            select(PropertyDetails).where(PropertyDetails.property_id == payload.property_id)
         )
         property_obj = result.scalar_one_or_none()
 
@@ -61,7 +59,7 @@ async def update_property_details(
 
         return {
             "message": "Property details updated successfully",
-            "property_id": property_id
+            "property_id": payload.property_id
         }
 
     except HTTPException:
@@ -76,51 +74,49 @@ async def update_property_details(
             detail="Internal server error while updating property"
         )
 
-@admin_properties.put("/update-physical-verification/{property_id}")
+@admin_properties.put("/update-physical-verification")
 async def update_property_details(
-    property_id: str,
     payload: UpdatePhysicalVerfication,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        # 1️⃣ Authenticate user
+        # 1️⃣ Authenticate admin
         admin = await get_current_admin(token, db)
 
         # 2️⃣ Fetch property
         result = await db.execute(
-            select(PropertyDetails).where(PropertyDetails.property_id == property_id)
+            select(PropertyDetails)
+            .where(PropertyDetails.property_id == payload.property_id)
         )
         property_obj = result.scalar_one_or_none()
 
         if not property_obj:
             raise HTTPException(status_code=404, detail="Property not found")
 
-        property_obj=payload.is_verified
-        # 5️⃣ Commit changes
+        # 3️⃣ UPDATE FIELD (THIS WAS THE BUG)
+        property_obj.is_verified = payload.is_verified
+
+        # 4️⃣ Commit
         await db.commit()
         await db.refresh(property_obj)
 
-        # 6️⃣ Clear Redis cache
-        # cache_key = f"property:{property_id}:info"
-        # await redis_delete_data(cache_key)
-
         return {
-            "message": f"Physcial updated to {payload.is_verified}",
-            "property_id": property_id
+            "message": f"Physical verification updated to {payload.is_verified}",
+            "property_id": payload.property_id
         }
 
     except HTTPException:
-        # 👈 Let FastAPI handle it properly
         raise
 
     except Exception as e:
-        print(str(e))
+        print("ERROR:", e)
         await db.rollback()
         raise HTTPException(
             status_code=500,
             detail="Internal server error while updating property"
         )
+
 
 
 
