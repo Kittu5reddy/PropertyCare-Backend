@@ -1,5 +1,5 @@
 from app.core.models import Base
-from sqlalchemy import  Integer, String, Boolean, DateTime, func,ForeignKey,Text
+from sqlalchemy import  Integer, String, Boolean, DateTime, func,ForeignKey,Text,Float
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
@@ -22,6 +22,7 @@ class Subscriptions(Base):
     sub_end_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     durations:Mapped[int]=mapped_column(Integer,nullable=False)
+    amount:Mapped[float]=mapped_column(Float,nullable=False)
     payment_method: Mapped[str] = mapped_column(Text, nullable=True)
     comment:Mapped[str]=mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(

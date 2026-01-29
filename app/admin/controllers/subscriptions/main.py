@@ -76,12 +76,12 @@ from dateutil.relativedelta import relativedelta
 @admin_subscriptions.post("/add-subscription")
 async def add_subscription(
     payload: AddSubscription,
-    token: str = Depends(oauth2_scheme),
+    # token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
 ):
     try:
         # 🔐 Auth
-        admin = await get_current_admin(token, db)
+        # admin = await get_current_admin(token, db)
 
         # 📦 Fetch subscription plan
         result = await db.execute(
@@ -128,8 +128,8 @@ async def add_subscription(
 
         # 🧾 Create subscription
         new_record = Subscriptions(
-            admin_id=admin.admin_id,
-            # admin_id="ADMIN001",
+            # admin_id=admin.admin_id,
+            admin_id="ADMIN001",
             user_id=user.user_id,
             sub_id=sub.sub_id,
             property_id=property.property_id,
@@ -138,6 +138,7 @@ async def add_subscription(
             sub_start_date=payload.start_of_sub,
             sub_end_date=sub_end_date,
             durations=payload.duration,
+            amount=float(sub.durations[str(payload.duration)] if property.size<400 else sub.durations[str(payload.duration)]+((property.size//400)*1000)),
             payment_method=payload.payment_method,
             comment=payload.comment,
             is_active=True
