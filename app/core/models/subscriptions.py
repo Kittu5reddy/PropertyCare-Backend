@@ -16,6 +16,7 @@ class Subscriptions(Base):
     sub_id: Mapped[str] = mapped_column(String(50), ForeignKey("subscriptions_plans.sub_id"), nullable=False)
     property_id: Mapped[str] = mapped_column(String(50), ForeignKey("property_details.property_id"), nullable=True)
     sub_name:Mapped[str]=mapped_column(String(20),nullable=False)
+    baesd_on:Mapped[str]=mapped_column(String,nullable=False)
     # Subscription details
     services: Mapped[list[str] ] = mapped_column(ARRAY(String), nullable=True)
     sub_start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

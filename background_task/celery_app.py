@@ -6,7 +6,8 @@ celery_app = Celery(
     broker="redis://localhost:6379/0",
     backend="redis://localhost:6379/0",
     include=[
-        "background_task.tasks.email_tasks",  # ✅ Required for Celery to load tasks
+        "background_task.tasks.email_tasks",
+        "background_task.tasks.subscription_tasks",
     ],
 )
 
@@ -18,9 +19,12 @@ celery_app.conf.update(
     enable_utc=False,
 )
 
+from celery.schedules import crontab
+
 celery_app.conf.beat_schedule = {
-    "cleanup-tasks": {
-        "task": "background_task.tasks.email_tasks.clean_logs_task",
-        "schedule": crontab(hour=0, minute=0),
+    "deactivate-expired-subscriptions-nightly": {
+        "task": "background_task.tasks.subscription_tasks.deactivate_expired_subscriptions",
+        "schedule": crontab(hour=1, minute=0),  # ✅ 1:00 AM IST
     },
 }
+

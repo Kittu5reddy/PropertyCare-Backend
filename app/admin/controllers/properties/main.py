@@ -224,12 +224,12 @@ async def get_user_details(
 @admin_properties.get("/get-property-detail")
 async def get_property_detail(
     property_id:str,
-    # token: str = Depends(oauth2_scheme),
+    token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 
 ):
     try:
-        # admin = await get_current_admin(token=token, db=db)
+        admin = await get_current_admin(token=token, db=db)
 
         stmt = await db.execute(
             select(PropertyDetails)
@@ -247,7 +247,7 @@ async def get_property_detail(
         return {
             "property_id": property.property_id,
             "plot_number": property.plot_number,
-            "name":property.property_name,
+            "property_name":property.property_name,
             "project_name_or_venture": property.project_name_or_venture,
             "house_number": property.house_number,
             "street": property.street,

@@ -153,14 +153,42 @@ async def generate_cloudfront_presigned_url(resource_key: str, expires_in: int =
     signed_url = f"{resource_url}{connector}Expires={expires}&Signature={signature}&Key-Pair-Id={CLOUDFRONT_KEY_PAIR_ID}"
     return signed_url
 
+import aiohttp
 
-async def get_image_cloudfront_signed_url(filename: str, expires_in: int = 300, include_cache_buster: bool = True) -> str:
-    """
-    Convenience wrapper to get a signed CloudFront URL from an object key or file path.
-    filename: may start with or without leading slash.
-    """
+async def url_is_200(url: str, timeout: int = 3) -> bool:
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.head(url, timeout=timeout, allow_redirects=True) as resp:
+                return resp.status == 200
+    except Exception:
+        return False
+
+DEFAULT_IMG_URL = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1075&q=80"
+
+
+
+async def get_image_cloudfront_signed_url(
+    filename: str | None,
+    expires_in: int = 300,
+    include_cache_buster: bool = True
+) -> str:
+    if not filename:
+        return DEFAULT_IMG_URL
+
     key = filename.lstrip("/")
-    return await generate_cloudfront_presigned_url(key, expires_in=expires_in, include_cache_buster=include_cache_buster)
+
+    signed_url = await generate_cloudfront_presigned_url(
+        key,
+        expires_in=expires_in,
+        include_cache_buster=include_cache_buster
+    )
+
+    # 🔍 TEST IT
+    if await _s3_head_object(signed_url):
+        return signed_url
+
+    return DEFAULT_IMG_URL
+
 
 
 # -----------------------
