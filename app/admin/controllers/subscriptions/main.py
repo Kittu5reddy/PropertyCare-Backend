@@ -204,6 +204,7 @@ async def add_subscription(
         sub_end_date = payload.start_date + relativedelta(months=payload.duration)
 
         # 💰 Calculate amount (Decimal-safe)
+        amount=0
         duration_amount = Decimal(str(sub.durations[str(payload.duration)]))
         baesd_on="PLAN" # plan
         if str(property.type).upper() == "FLAT":
